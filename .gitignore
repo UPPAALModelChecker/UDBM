@@ -1,3 +1,31 @@
+.config
+.scripts
+config.log
+config.status
+autom4te.cache
+makefile
+
+base/.depend
+base/Makefile
+base/tests/Makefile
+
+dbm/.depend
+dbm/Makefile
+dbm/tests/Makefile
+
+debug/.depend
+debug/Makefile
+debug/tests/Makefile
+
+hash/.depend
+hash/Makefile
+hash/tests/Makefile
+
+io/.depend
+io/Makefile
+io/tests/Makefile
+
+
 # Prerequisites
 *.d
 

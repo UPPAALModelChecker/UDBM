@@ -1,0 +1,5 @@
+test: default
+	./testioqueue 0
+	./testioqueue 10
+	./testioqueue 100
+	./testioqueue 1000

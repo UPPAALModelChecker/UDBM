@@ -1,0 +1,10 @@
+test: default
+	./testnew 0
+	./testnew 1
+	./testnew 2 || echo "Abort is normal"
+	./testnew 3
+	./testutils 10 || echo "Assertion failed line 61 is normal"
+	./testutils 20 || echo "Assertion failed line 61 is normal"
+	./testutils 1 || echo "Assertion failed line 61 is normal"
+	./testutils 7 || echo "Assertion failed line 61 is normal"
+	./testutils 50 || echo "Assertion failed line 61 is normal"

@@ -1,0 +1,12 @@
+test: default
+	./testdbm 1 10
+	./testdbmfederation 1 7 7
+	./testext 10
+	./testextrapolation 10
+	./testfed 1 7 7
+	./testfeddbm 1 10
+	./testinfimum 1 10
+	./testmingraph 1 10
+	./testmingraph 1 10 1
+	./testvaluation 20
+

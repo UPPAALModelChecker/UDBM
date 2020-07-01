@@ -1,0 +1,6 @@
+source      :@abs_top_srcdir@
+build       :@abs_top_builddir@
+cxxcompiler :@CXX@
+ccompiler   :@CC@
+cflags      :@CFLAGS@
+

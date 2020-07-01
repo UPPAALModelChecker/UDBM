@@ -1,0 +1,53 @@
+g =
+<=0 <=-1 <=-1
+<=4 <=0 < inf
+<=4 < inf <=0;
+
+b=
+<=0 <=0 <=-2
+<=2 <=0 < inf
+<=3 < inf <=0;
+
+f = down(g)-(down(b)-down((g-b)&down(b)));
+p = predt(g,b);
+
+// Good:
+g;
+// Bad:
+b;
+// Formula:
+f;
+// predt:
+p;
+// OK?
+f == p;
+
+g =
+<=0     <=-4    <=-9    <=-36
+<=4     <=0     <=-5    <=-32
+<=9     <=5     <=0     <=-27
+<=36    <=32    <=27    <=0;
+
+b =
+<=0     <=-4    <=-9    <-36
+<=4     <=0     <=-5    <-32
+<=14    <=10    <=0     <=-27
+<=41    <=37    <=32    <=0;
+
+f = down(g)-(down(b)-down((g-b)&down(b)));
+h = (down(g)-down(b))|down((g&down(b))-b);
+p = predt(g,b);
+
+// Didier's good:
+g;
+// Didier's bad:
+b;
+// Formula:
+f;
+// predt:
+p;
+h;
+// OK?
+f == p;
+f == h;
+quit;

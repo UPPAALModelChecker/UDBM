@@ -1,0 +1,12 @@
+# Special option if under cygwin (=compile with mingwin)
+ifeq (Cygwin,$(OS))
+EXTRALIBS += -liphlpapi
+endif
+
+ifeq (i586-mingw32msvc-gcc,$(CC))
+EXTRALIBS += -liphlpapi
+endif
+
+ifeq (amd64-mingw32msvc-gcc,$(CC))
+EXTRALIBS += -liphlpapi
+endif

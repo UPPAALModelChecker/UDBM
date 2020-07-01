@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+#
+# Filename: udbm-config
+#
+# $Id: udbm-config.in,v 1.4 2005/09/15 14:24:16 adavid Exp $
+
+prefix=@prefix@
+inc=-I${prefix}/uppaal/include
+lib=-L${prefix}/uppaal/lib
+
+usage()
+{
+    cat <<EOF
+Usage: udbm-config [OPTION]
+
+Known values for OPTION are:
+
+  --version       print version information
+  --libs          print library linking information
+  --inc           print include path
+  --cflags        print pre-processor and compiler flags
+  --dir           print the installation directory
+
+EOF
+
+    exit 1
+}
+
+if [ -z "$1" ]; then
+    usage
+fi
+
+while [ ! -z "$1" ]; do
+    case "$1" in
+    -*=*) optarg=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'` ;;
+    *) optarg= ;;
+    esac
+
+    case "$1" in
+
+    --version)
+    echo "@DBM_VERSION@"
+    ;;
+
+    --libs)
+    echo $lib -ludbm
+    ;;
+
+    --inc)
+    echo $inc
+    ;;
+
+    --cflags)
+    echo @CFLAGS@
+    ;;
+
+    --dir)
+    echo ${prefix}/uppaal
+    ;;
+
+    *)
+    usage
+    ;;
+
+    esac
+    shift
+done

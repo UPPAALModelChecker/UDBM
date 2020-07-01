@@ -1,0 +1,23 @@
+test: default
+	./testallocator 10000
+	./testallocator 30000
+	./testarray 10 0
+	./testarray 10 1 || echo "Abort is normal"
+	./testarray 10 2 || echo "Abort is normal"
+	./testarray 10 3 || echo "Abort is normal"
+	./testbitptr
+	./testbitstring
+	./testcppbitstring 10
+	./testcppbitstring 1000
+	./testcrashallocator 0 || echo "Abort is normal"
+	./testcrashallocator 1 || echo "Abort is normal"
+	./testcrashallocator 2 || echo "Abort is normal"
+	./testcrashallocator 3 || echo "Abort is normal"
+	./testcrashallocator 4
+	./testintutils 10
+	./testintutils 10000
+	./testitemallocator 1
+	./testitemallocator 10
+	./testitemallocator 100000
+	./testobject
+	./testtimer 100

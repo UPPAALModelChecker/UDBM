@@ -1,0 +1,14 @@
+test: default
+	./testcompute
+	./testitemtables 0
+	./testitemtables 1
+	./testitemtables 100000
+	./teststreamhasher
+	./testtables 0
+	./testtables 1
+	./testtables 10000
+	./testtables 1000000
+	./testtinytable 0
+	./testtinytable 10
+	./testtinytable 100
+	./testtinytable 1000

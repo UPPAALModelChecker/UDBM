@@ -1,0 +1,8 @@
+# Pb with X.
+LINKFLAGS := $(LINKFLAGS:-static=)
+LINKLIBS += -lm
+xdbm-FLAGS := -I/usr/X11R6/include -L/usr/X11R6/lib -lX11
+xfed-FLAGS := $(xdbm-FLAGS)
+BISON += -dv
+
+
