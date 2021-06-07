@@ -89,11 +89,11 @@ cleanall: clean
 install: base.lib dbm.lib debug.lib hash.lib
 	@.scripts/mergelibs.sh
 	@echo "Installing in $(PREFIX)"
-	@install -d $(PREFIX)/uppaal/include
-	@install -d $(PREFIX)/uppaal/lib
-	@install -d $(PREFIX)/uppaal/bin
-	@mv lib/libudbm.a $(PREFIX)/uppaal/lib/
-	@cp -r include/* $(PREFIX)/uppaal/include/
-	@cp udbm-config $(PREFIX)/uppaal/bin/
-	@if [ -d $(PREFIX)/bin ]; then ln -sf $(PREFIX)/uppaal/bin/udbm-config $(PREFIX)/bin/; fi
+	@install -d $(PREFIX)/include
+	@install -d $(PREFIX)/lib
+	@install -d $(PREFIX)/bin
+	@mv lib/libudbm.a $(PREFIX)/lib/
+	@cp -r include/* $(PREFIX)/include/
+	#@cp udbm-config $(PREFIX)/uppaal/bin/
+	#@if [ -d $(PREFIX)/bin ]; then ln -sf $(PREFIX)/uppaal/bin/udbm-config $(PREFIX)/bin/; fi
 	@rm -f $(PREFIX)/uppaal/include/config.h.in
