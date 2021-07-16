@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 /* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 /*********************************************************************
  *
@@ -52,9 +32,8 @@ extern "C" {
  * for only 1 DBM, which go well beyond the addressable memory in 32 bits.
  *************************************************************************/
 
-
 /**
- * @file 
+ * @file
  *
  * Support for minimum graph representation.
  *
@@ -72,11 +51,11 @@ extern "C" {
  * standard allocation schemes (malloc, new) and with custom
  * allocators. This interface is in C to make it easy to wrap to other
  * languages so we use a generic function to allocate memory.  The
- * type of this function is 
- * \code 
- * int32_t* function(uint32_t size, void *data) 
- * \endcode 
- * where: 
+ * type of this function is
+ * \code
+ * int32_t* function(uint32_t size, void *data)
+ * \endcode
+ * where:
  * - \a size is the size in \c int to allocate, and it returns a
  *   pointer to a \c int32_t[size]
  * - \a data is other custom data.
@@ -111,14 +90,11 @@ extern "C" {
  * @see dbm_writeToMinDBMWithOffset()
  */
 
-
 /** Style typedef: to make the difference clear
  * between just allocated memory and the minimal
  * graph representation.
  */
 typedef const int32_t* mingraph_t;
-
-
 
 /** Save a DBM in minimal representation.
  *
@@ -134,11 +110,11 @@ typedef const int32_t* mingraph_t;
  * block. Thus in the following piece of code, most functions expect
  * \c mg and not \c memory:
  *
- * \code 
+ * \code
  * int32_t *memory = dbm_writeToMinDBMWithOffset(...);
- * mingraph_t mg = &memory[offset]; 
- * \endcode 
- * 
+ * mingraph_t mg = &memory[offset];
+ * \endcode
+ *
  * \b NOTES:
  * - if \a offset is 0 and \a dim is 1, NULL may be returned.
  *   NULL is valid as an input to the other functions.
@@ -151,7 +127,7 @@ typedef const int32_t* mingraph_t;
  * @param dbm: the DBM to save.
  * @param dim: its dimension.
  * @param minimizeGraph: activate minimized graph
- * reduction. If it is FALSE, then the DBM is copied
+ * reduction. If it is false, then the DBM is copied
  * without its diagonal.
  * @param tryConstraints16: flag to try to save
  * constraints on 16 bits, will cost dim*dim time.
@@ -166,12 +142,8 @@ typedef const int32_t* mingraph_t;
  * @post the returned memory is of size offset+something
  *  unknown from the caller point of view.
  */
-int32_t* dbm_writeToMinDBMWithOffset(const raw_t* dbm, cindex_t dim,
-                                     BOOL minimizeGraph,
-                                     BOOL tryConstraints16,
-                                     allocator_t c_alloc,
-                                     size_t offset);
-
+int32_t* dbm_writeToMinDBMWithOffset(const raw_t* dbm, cindex_t dim, bool minimizeGraph,
+                                     bool tryConstraints16, allocator_t c_alloc, size_t offset);
 
 /** Save a pre-analyzed DBM in minimal representation.
  * @param dbm: the DBM to save.
@@ -198,15 +170,11 @@ int32_t* dbm_writeToMinDBMWithOffset(const raw_t* dbm, cindex_t dim,
  *   unknown from the caller point of view.
  * - bitMatrix is cleaned from the constraints xi >= 0
  */
-int32_t* dbm_writeAnalyzedDBM(const raw_t *dbm, cindex_t dim,
-                              uint32_t *bitMatrix,
-                              size_t nbConstraints,
-                              BOOL tryConstraints16,
-                              allocator_t c_alloc,
+int32_t* dbm_writeAnalyzedDBM(const raw_t* dbm, cindex_t dim, uint32_t* bitMatrix,
+                              size_t nbConstraints, bool tryConstraints16, allocator_t c_alloc,
                               size_t offset);
 
-
-/** 
+/**
  * Analyze a DBM for its minimal graph representation. Computes the
  * smallest number of constraints needed to represent the same zone as
  * the full DBM in \a dbm. The result in returned in \a bitMatrix: If
@@ -220,16 +188,16 @@ int32_t* dbm_writeAnalyzedDBM(const raw_t *dbm, cindex_t dim,
  * - bit matrix that marks which constraints belong to the minimal graph
  * @pre bitMatrix is a uint32_t[bits2intsize(dim*dim)]
  */
-size_t dbm_analyzeForMinDBM(const raw_t *dbm, cindex_t dim, uint32_t *bitMatrix);
+size_t dbm_analyzeForMinDBM(const raw_t* dbm, cindex_t dim, uint32_t* bitMatrix);
 
-/** @return TRUE if the mingraph contains zero, FALSE otherwise.
+/** @return true if the mingraph contains zero, false otherwise.
  */
-BOOL dbm_mingraphHasZero(mingraph_t ming);
+bool dbm_mingraphHasZero(mingraph_t ming);
 
 /**
  * This is a post-processing function for dbm_analyzeForMinDBM
  * to remove constraints of the form x>=0 that are part of the
- * minimal graph but that do not give much information.
+ * minimal graph but that do not give information - if CLOCKS_POSITIVE.
  * @param dbm,dim: DBM of dimension dim
  * @param bitMatrix: bit matrix (already computed minimal graph)
  * @param nbConstraints: the number of constraints of the minimal graph.
@@ -238,8 +206,8 @@ BOOL dbm_mingraphHasZero(mingraph_t ming);
  * @pre dbm_analyzeForMinDBM has been called before and nbConstraints
  * corresponds to the number of constraints of the minimal graph.
  */
-size_t dbm_cleanBitMatrix(const raw_t *dbm, cindex_t dim, uint32_t *bitMatrix, size_t nbConstraints);
-
+size_t dbm_cleanBitMatrix(const raw_t* dbm, cindex_t dim, uint32_t* bitMatrix,
+                          size_t nbConstraints);
 
 /**
  * Get back the minimal graph from the internal representation.
@@ -257,9 +225,8 @@ size_t dbm_cleanBitMatrix(const raw_t *dbm, cindex_t dim, uint32_t *bitMatrix, s
  * bitMatrix is the same as the one given by dbm_analyzeForMinDBM(A,dim,bitMatrix)
  * + buffer always contains the unpacked mingraph.
  */
-size_t dbm_getBitMatrixFromMinDBM(uint32_t *bitMatrix, mingraph_t ming,
-                                  BOOL isUnpacked, raw_t *buffer);
-
+size_t dbm_getBitMatrixFromMinDBM(uint32_t* bitMatrix, mingraph_t ming, bool isUnpacked,
+                                  raw_t* buffer);
 
 /**
  * Convert a bit matrix marking constraints to an array of indices.
@@ -271,9 +238,8 @@ size_t dbm_getBitMatrixFromMinDBM(uint32_t *bitMatrix, mingraph_t ming,
  * @pre index is a indexij_t[dim*(dim-1)] and bits on the
  * diagonal are not marked, nbConstraints <= dim*(dim-1).
  */
-void dbm_bitMatrix2indices(const uint32_t *bitMatrix, size_t nbConstraints,
-                           uint32_t *index, cindex_t dim);
-
+void dbm_bitMatrix2indices(const uint32_t* bitMatrix, size_t nbConstraints, uint32_t* index,
+                           cindex_t dim);
 
 /** Read a DBM from its minimal DBM representation.
  * @param dbm: where to write.
@@ -284,15 +250,13 @@ void dbm_bitMatrix2indices(const uint32_t *bitMatrix, size_t nbConstraints,
  *   offset.
  * @return dimension of DBM and unpacked DBM in dbm.
  */
-cindex_t dbm_readFromMinDBM(raw_t *dbm, mingraph_t minDBM);
-
+cindex_t dbm_readFromMinDBM(raw_t* dbm, mingraph_t minDBM);
 
 /** Dimension of a DBM from its packed minimal representation.
  * @param minDBM: the minimal DBM data directly, without offset.
  * @return dimension of DBM.
  */
 cindex_t dbm_getDimOfMinDBM(mingraph_t minDBM);
-
 
 /** Size of the representation of the MinDBM.
  * This is the size of the allocated memory (without offset) for the
@@ -306,7 +270,6 @@ cindex_t dbm_getDimOfMinDBM(mingraph_t minDBM);
  */
 size_t dbm_getSizeOfMinDBM(mingraph_t minDBM);
 
-
 /** Equality test with a full DBM.
  * Unfortunately, this may be expensive (dim^3) if the
  * minimal graph format is used.
@@ -314,25 +277,21 @@ size_t dbm_getSizeOfMinDBM(mingraph_t minDBM);
  * @param dim: dimension of dbm.
  * @param minDBM: minimal DBM representation (without offset).
  * @pre dbm is a raw_t[dim*dim] and dim > 0 (at least ref clock)
- * @return TRUE if the DBMs are the same, FALSE otherwise.
+ * @return true if the DBMs are the same, false otherwise.
  */
-BOOL dbm_isEqualToMinDBM(const raw_t *dbm, cindex_t dim, mingraph_t minDBM);
-
+bool dbm_isEqualToMinDBM(const raw_t* dbm, cindex_t dim, mingraph_t minDBM);
 
 /** Equality test between 2 minimal graphs (saved
  * with the same function and flags).
  * @param mg1,mg2: minimal graph arguments.
- * @return TRUE if the graphs are the same, provided
- * they were saved with the same flags, FALSE otherwise.
+ * @return true if the graphs are the same, provided
+ * they were saved with the same flags, false otherwise.
  */
-static inline
-BOOL dbm_areMinDBMVerbatimEqual(mingraph_t mg1, mingraph_t mg2)
+static inline bool dbm_areMinDBMVerbatimEqual(mingraph_t mg1, mingraph_t mg2)
 {
     assert(mg1 && mg2); /* mingraph_t == const int* */
-    return (BOOL)
-        (*mg1 == *mg2 && base_areEqual(mg1+1, mg2+1, dbm_getSizeOfMinDBM(mg1)-1));
+    return (*mg1 == *mg2 && base_areEqual(mg1 + 1, mg2 + 1, dbm_getSizeOfMinDBM(mg1) - 1));
 }
-
 
 /** Equality test with a full DBM.
  * This variant of the equality test may be used if the
@@ -348,15 +307,12 @@ BOOL dbm_areMinDBMVerbatimEqual(mingraph_t mg1, mingraph_t mg2)
  * @pre
  * - dbm is a raw_t[dim*dim] and dim > 0 (at least ref clock)
  * - bitMatrix is a uint32_t[bits2intsize(dim*dim)]
- * @return TRUE if the DBMs are the same, FALSE otherwise.
+ * @return true if the DBMs are the same, false otherwise.
  * @post the bitMatrix may have the bits for the constraints on
  * the 1st row cleaned and nbConstraints will be updated accordingly.
  */
-BOOL dbm_isAnalyzedDBMEqualToMinDBM(const raw_t *dbm, cindex_t dim,
-                                    uint32_t *bitMatrix,
-                                    size_t *nbConstraints,
-                                    mingraph_t minDBM);
-
+bool dbm_isAnalyzedDBMEqualToMinDBM(const raw_t* dbm, cindex_t dim, uint32_t* bitMatrix,
+                                    size_t* nbConstraints, mingraph_t minDBM);
 
 /** Another variant for equality checking:
  * this one may unpack the minimal graph if needed.
@@ -373,11 +329,9 @@ BOOL dbm_isAnalyzedDBMEqualToMinDBM(const raw_t *dbm, cindex_t dim,
  *   if buffer[0] == 0. If mingraph is unpacked then it
  *   is guaranteed that buffer[0] == dbm_LE_ZERO, otherwise
  *   buffer is untouched.
- * @return TRUE if the DBMs are the same, FALSE otherwise.
+ * @return true if the DBMs are the same, false otherwise.
  */
-BOOL dbm_isUnpackedEqualToMinDBM(const raw_t *dbm, cindex_t dim,
-                                 mingraph_t minDBM, raw_t *buffer);
-
+bool dbm_isUnpackedEqualToMinDBM(const raw_t* dbm, cindex_t dim, mingraph_t minDBM, raw_t* buffer);
 
 /** Relation between a full DBM and a minimal representation
  * DBM. The relation may be exact or not:
@@ -409,9 +363,8 @@ BOOL dbm_isUnpackedEqualToMinDBM(const raw_t *dbm, cindex_t dim,
  * - dim > 0 (at least ref clock)
  * @return relation as described above.
  */
-relation_t dbm_relationWithMinDBM(const raw_t *dbm, cindex_t dim,
-                                  mingraph_t minDBM, raw_t *unpackBuffer);
-
+relation_t dbm_relationWithMinDBM(const raw_t* dbm, cindex_t dim, mingraph_t minDBM,
+                                  raw_t* unpackBuffer);
 
 /** Variant of the previous relation function.
  * This may be cheaper if what count is to know
@@ -438,9 +391,8 @@ relation_t dbm_relationWithMinDBM(const raw_t *dbm, cindex_t dim,
  * - dim > 0 (at least ref clock)
  * @return relation as described above.
  */
-relation_t dbm_approxRelationWithMinDBM(const raw_t *dbm, cindex_t dim,
-                                        mingraph_t minDBM, raw_t *unpackBuffer);
-
+relation_t dbm_approxRelationWithMinDBM(const raw_t* dbm, cindex_t dim, mingraph_t minDBM,
+                                        raw_t* unpackBuffer);
 
 /** Convex union.
  * This may cost dim^3 in time since the minimal DBM has
@@ -455,36 +407,29 @@ relation_t dbm_approxRelationWithMinDBM(const raw_t *dbm, cindex_t dim,
  * - DBMs have the same dimensions
  * - unpackBuffer != NULL and is a raw_t[dim*dim]
  */
-void dbm_convexUnionWithMinDBM(raw_t *dbm, cindex_t dim,
-                               mingraph_t minDBM, raw_t *unpackBuffer);
-
+void dbm_convexUnionWithMinDBM(raw_t* dbm, cindex_t dim, mingraph_t minDBM, raw_t* unpackBuffer);
 
 /** Simple type to allow for statistics on the different internal
  * formats used. The format are not user controllable and should
  * not be read from outside. For the tuple representation, it is
  * not said here if it is (i,j,c_ij) or a bunch of c_ij and (i,j).
  */
-typedef enum
-{
-    dbm_MINDBM_TRIVIAL = 0,  /**< only clock ref, dim == 1           */
-    dbm_MINDBM_COPY32,       /**< 32 bits, dbm copy without diagonal */
-    dbm_MINDBM_BITMATRIX32,  /**< 32 bits, c_ij and a bit matrix     */
-    dbm_MINDBM_TUPLES32,     /**< 32 bits, c_ij and tuples (i,j)     */
-    dbm_MINDBM_COPY16,       /**< 16 bits, dbm copy without diagonal */
-    dbm_MINDBM_BITMATRIX16,  /**< 16 bits, c_ij and a bit matrix     */
-    dbm_MINDBM_TUPLES16,     /**< 16 bits, c_ij and tuples (i,j)     */
-    dbm_MINDBM_ERROR         /**< should never be the case */
-}
-representationOfMinDBM_t;
-
+typedef enum {
+    dbm_MINDBM_TRIVIAL = 0, /**< only clock ref, dim == 1           */
+    dbm_MINDBM_COPY32,      /**< 32 bits, dbm copy without diagonal */
+    dbm_MINDBM_BITMATRIX32, /**< 32 bits, c_ij and a bit matrix     */
+    dbm_MINDBM_TUPLES32,    /**< 32 bits, c_ij and tuples (i,j)     */
+    dbm_MINDBM_COPY16,      /**< 16 bits, dbm copy without diagonal */
+    dbm_MINDBM_BITMATRIX16, /**< 16 bits, c_ij and a bit matrix     */
+    dbm_MINDBM_TUPLES16,    /**< 16 bits, c_ij and tuples (i,j)     */
+    dbm_MINDBM_ERROR        /**< should never be the case */
+} representationOfMinDBM_t;
 
 /** @return the type of the internal format used.
  * @param minDBM: minimal representation (without offset)
  * to read.
  */
 representationOfMinDBM_t dbm_getRepresentationType(mingraph_t minDBM);
-    
-
 
 #ifdef __cplusplus
 }

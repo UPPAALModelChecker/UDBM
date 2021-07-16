@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 // -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 ////////////////////////////////////////////////////////////////////
 //
@@ -43,6 +23,8 @@
 #include "base/intutils.h"
 #include "base/Enumerator.h"
 
+#include <algorithm>  // std::fill
+
 /**
  * @file
  * Basis for hash tables. To get a working hash table one has
@@ -50,7 +32,7 @@
  * type, in particular to test for equality.
  */
 
-namespace hash
+namespace uhash
 {
     /** Single linked buckets
      * info contains the hash value and possible other data:
@@ -60,30 +42,29 @@ namespace hash
      * type to avoid tons of casts.
      */
     struct SingleBucket_t : /* concrete type */
-        public base::SingleLinkable<SingleBucket_t>
+                            public base::SingleLinkable<SingleBucket_t>
     {
         uint32_t info;
     };
 
-    template<class BucketType>
-    struct SingleBucket :   /* template */
-        public base::SingleLinkable<BucketType>
+    template <class BucketType>
+    struct SingleBucket : /* template */
+                          public base::SingleLinkable<BucketType>
     {
         uint32_t info;
     };
-
 
     /** Double linked buckets, as for single buckets.
      */
     struct DoubleBucket_t : /* concrete type */
-        public base::DoubleLinkable<DoubleBucket_t>
+                            public base::DoubleLinkable<DoubleBucket_t>
     {
         uint32_t info;
     };
 
-    template<class BucketType>
-    struct DoubleBucket :   /* template */
-        public base::DoubleLinkable<BucketType>
+    template <class BucketType>
+    struct DoubleBucket : /* template */
+                          public base::DoubleLinkable<BucketType>
     {
         uint32_t info;
         /**< Default use of info lower bits:
@@ -99,7 +80,8 @@ namespace hash
          */
         void incRef(uint32_t mask)
         {
-            if ((info & mask) != mask) info++;
+            if ((info & mask) != mask)
+                info++;
         }
 
         /** Decrement reference counter.
@@ -109,12 +91,12 @@ namespace hash
          */
         bool decRef(uint32_t mask)
         {
-            if ((info & mask) == mask) return false;
-            assert(info & mask); // must be referenced
+            if ((info & mask) == mask)
+                return false;
+            assert(info & mask);  // must be referenced
             return (--info & mask) == 0;
         }
     };
-
 
     /** Rehashing for single/double linked
      * buckets. In practice, the hash value is
@@ -129,9 +111,8 @@ namespace hash
      * @post *tablePtr is deallocated (delete) and
      * the new table is newly allocated (new).
      */
-    void rehash(SingleBucket_t*** tablePtr, uint32_t *maskPtr);
-    void rehash(DoubleBucket_t*** tablePtr, uint32_t *maskPtr);
-
+    void rehash(SingleBucket_t*** tablePtr, uint32_t* maskPtr);
+    void rehash(DoubleBucket_t*** tablePtr, uint32_t* maskPtr);
 
     /** Abstract general hash table. DO NOT USE DIRECTLY.
      * @param BucketType: customized buckets (with customized
@@ -139,33 +120,28 @@ namespace hash
      * @param BucketParentType: SingleBucket_t or DoubleBucket_t
      * @param BucketParentTemplate: SingleBucket or DoubleBucket
      */
-    template<class BucketType,
-             class BucketParentType,
-             class BucketParentTemplate>
+    template <class BucketType, class BucketParentType, class BucketParentTemplate>
     class AbstractTable
     {
     public:
-
         /** Control rehashing: by default
          * hash tables rehash themselves
          * automatically. You can disable this
          * feature.
          */
         void disableRehash() { mayRehash = false; }
-        void enableRehash()  { mayRehash = mask < MAX_TABLE_SIZE-1; }
+        void enableRehash() { mayRehash = mask < MAX_TABLE_SIZE - 1; }
 
         /** Return the hash mask to get access
          * to the table: index = hashValue & mask.
          * @return a binary mask.
          */
-        uint32_t getHashMask()  const { return mask; }
-
+        uint32_t getHashMask() const { return mask; }
 
         /** @return the number of used buckets
          * so far.
          */
         size_t getNbBuckets() const { return nbBuckets; }
-        
 
         /** @return the size of the table. As the size
          * is a power of 2, mask = size - 1. We keep
@@ -173,15 +149,13 @@ namespace hash
          */
         size_t getTableSize() const { return mask + 1; }
 
-        
         /** Reset the table without deleting the buckets
          */
         void reset()
         {
             nbBuckets = 0;
-            base_resetLarge(buckets, getTableSize()*(sizeof(void*)/sizeof(int)));
+            std::fill(buckets, buckets + getTableSize(), nullptr);
         }
-
 
         /** Reset the table and delete the buckets.
          * Note: as the bucket type is custom, the delete call
@@ -189,23 +163,22 @@ namespace hash
          */
         void resetDelete()
         {
-            size_t n = getTableSize(); // mask + 1 > 0
-            BucketType **table = getBuckets();
+            size_t n = getTableSize();  // mask + 1 > 0
+            BucketType** table = getBuckets();
             do {
                 if (*table) {
-                    BucketType *bucket = *table;
+                    BucketType* bucket = *table;
                     do {
-                        BucketType *next = bucket->getNext();
+                        BucketType* next = bucket->getNext();
                         delete bucket;
                         bucket = next;
-                    } while(bucket);
-                    *table = NULL;
+                    } while (bucket);
+                    *table = nullptr;
                 }
                 ++table;
-            } while(--n);
-            nbBuckets = 0;  
+            } while (--n);
+            nbBuckets = 0;
         }
-
 
         /** Simple adapter to tie together the hash table and
          * bucket types.
@@ -213,14 +186,12 @@ namespace hash
         struct Bucket_t : public BucketParentTemplate
         {};
 
-        
         /** Enumerator
          */
         base::Enumerator<BucketType> getEnumerator() const
         {
             return base::Enumerator<BucketType>(getTableSize(), getBuckets());
         }
-
 
         /** Increase the counter of the buckets. This
          * automatically calls rehash if needed. Call
@@ -231,14 +202,12 @@ namespace hash
         void incBuckets()
         {
             ++nbBuckets;
-            if (needsRehash() && mayRehash)
-            {
+            if (needsRehash() && mayRehash) {
                 rehash(reinterpret_cast<BucketParentType***>(&buckets), &mask);
-                mayRehash = mask < MAX_TABLE_SIZE-1;
+                mayRehash = mask < MAX_TABLE_SIZE - 1;
             }
         }
-        
-        
+
         /** Decrease the counter of the buckets.
          * Call this whenever you remove a bucket from
          * the hash table.
@@ -248,32 +217,22 @@ namespace hash
             assert(nbBuckets);
             --nbBuckets;
         }
-        
-        
+
         /** Access to a particular table
          * entry with a hash value.
          * @param hashValue: the hash to compute the index.
          */
-        BucketType** getAtBucket(uint32_t hashValue) const
-        {
-            return &buckets[hashValue & mask];
-        }
-        
-        
+        BucketType** getAtBucket(uint32_t hashValue) const { return &buckets[hashValue & mask]; }
+
         /** Access to the first bucket in the
          * table with a given hash value.
          * @param hashValue: the hash to compute the index.
          */
-        BucketType* getBucket(uint32_t hashValue) const
-        {
-            return buckets[hashValue & mask];
-        }
-
+        BucketType* getBucket(uint32_t hashValue) const { return buckets[hashValue & mask]; }
 
         /** Swap this table with another.
          */
-        void swap(AbstractTable<BucketType,
-                  BucketParentType,BucketParentTemplate>& arg)
+        void swap(AbstractTable<BucketType, BucketParentType, BucketParentTemplate>& arg)
         {
             size_t n = arg.nbBuckets;
             arg.nbBuckets = nbBuckets;
@@ -287,20 +246,15 @@ namespace hash
             bool r = arg.mayRehash;
             arg.mayRehash = mayRehash;
             mayRehash = r;
-            BucketType **b = arg.buckets;
+            BucketType** b = arg.buckets;
             arg.buckets = buckets;
             buckets = b;
         }
 
     protected:
-
         /** Access to the bucket table.
          */
-        BucketType** getBuckets() const
-        {
-            return buckets;
-        }
-
+        BucketType** getBuckets() const { return buckets; }
 
         /** Protected constructor: this is an abstract
          * class only.
@@ -309,14 +263,12 @@ namespace hash
          * @param aggressive: aggressive rehashing or not,
          * which decides the threshold for rehashing.
          */
-        AbstractTable(uint32_t sizePower2, bool aggressive)
-            : nbBuckets(0),
-              mask((1 << sizePower2) - 1),
-              shiftThreshold(aggressive ? 1 : 0),
-              mayRehash(true)
+        AbstractTable(uint32_t sizePower2, bool aggressive):
+            nbBuckets(0), mask((1u << sizePower2) - 1), shiftThreshold(aggressive ? 1 : 0),
+            mayRehash(true)
         {
             buckets = new BucketType*[getTableSize()];
-            base_resetLarge(buckets, getTableSize()*(sizeof(void*)/sizeof(int)));
+            std::fill(buckets, buckets + getTableSize(), nullptr);
 
 #ifndef NDEBUG
             for (size_t i = 0; i < getTableSize(); ++i) {
@@ -325,38 +277,30 @@ namespace hash
 #endif /* not NDEBUG */
         }
 
-        
         /** Destructor: not virtual. There is no polymorphism
          * involved here.
          */
-        ~AbstractTable() { delete [] buckets; }
-
+        ~AbstractTable() { delete[] buckets; }
 
         /** We give a limit to the size of the tables
          * to stop rehashing after a certain point.
          */
-        enum { MAX_TABLE_SIZE = (1 << 26) };
+        enum { MAX_TABLE_SIZE = (1u << 26u) };
 
-        size_t nbBuckets;   /**< number of buckets */
+        size_t nbBuckets; /**< number of buckets */
 
     private:
-
         /** @return true if the threshold for rehashing is reached
          */
-        bool needsRehash() const
-        {
-            return nbBuckets > (mask >> shiftThreshold);
-        }
-        
-        
+        bool needsRehash() const { return nbBuckets > (mask >> shiftThreshold); }
+
         uint32_t mask;           /**< mask to apply to hash value
                                     to get indices = size - 1 since
                                     the size of the table is a power of 2     */
         uint32_t shiftThreshold; /**< mask >> shiftThreshold is the threshold */
         bool mayRehash;          /**< used to disable rehashing               */
-        BucketType **buckets;    /**< the table of buckets                    */
+        BucketType** buckets;    /**< the table of buckets                    */
     };
-
 
     /**************************************************************
      * Adapters to implement easily hash tables using single or
@@ -379,20 +323,14 @@ namespace hash
      *
      ***************************************************************/
 
-    template<class BucketType>
-    class TableSingle :
-        public AbstractTable<BucketType,
-                             SingleBucket_t,
-                             SingleBucket<BucketType> >
+    template <typename BucketType,
+              typename Parent = AbstractTable<BucketType, SingleBucket_t, SingleBucket<BucketType>>>
+    class TableSingle : public Parent
     {
     public:
-        TableSingle(uint32_t sizePower2 = 8, bool aggressive = false)
-            : AbstractTable<BucketType,
-                            SingleBucket_t,
-                            SingleBucket<BucketType> >
-                           (sizePower2, aggressive)
-            {}
-
+        explicit TableSingle(uint32_t sizePower2 = 8, bool aggressive = false):
+            Parent(sizePower2, aggressive)
+        {}
 
         /** Remove a bucket from the hash table. This
          * is useful for singly linked buckets only
@@ -404,10 +342,7 @@ namespace hash
          * - bucket is stored in this hash table (otherwise segfault)
          * @post bucket is removed but not deallocated
          */
-        void remove(BucketType *bucket)
-        {
-            remove(bucket, bucket->info);
-        }
+        void remove(BucketType* bucket) { remove(bucket, bucket->info); }
 
         /** Real implementation of remove, using explicitely the
          * hash value that was used to entering this bucket in the
@@ -415,53 +350,38 @@ namespace hash
          * @param bucket: bucket belonging to this table to remove
          * @param hashValue: hash that was used to enter this table
          */
-        void remove(BucketType *bucket, uint32_t hashValue)
+        void remove(BucketType* bucket, uint32_t hashValue)
         {
-            BucketType **entry = 
-                AbstractTable<BucketType,
-                SingleBucket_t,
-                SingleBucket<BucketType> >::getAtBucket(hashValue);
-            while(*entry != bucket)
-            {
-                assert(*entry); // MUST find it
+            BucketType** entry = Parent::getAtBucket(hashValue);
+            while (*entry != bucket) {
+                assert(*entry);  // MUST find it
                 entry = (*entry)->getAtNext();
             }
-            *entry = bucket->getNext(); // unlink
-            AbstractTable<BucketType,
-                             SingleBucket_t,
-                             SingleBucket<BucketType> >::decBuckets();
+            *entry = bucket->getNext();  // unlink
+            Parent::decBuckets();
         }
-
     };
 
-    template<class BucketType>
-    class TableDouble :
-        public AbstractTable<BucketType,
-                             DoubleBucket_t,
-                             DoubleBucket<BucketType> >
+    template <typename BucketType,
+              typename Parent = AbstractTable<BucketType, DoubleBucket_t, DoubleBucket<BucketType>>>
+    class TableDouble : public Parent
     {
     public:
-        TableDouble(uint32_t sizePower2 = 8, bool aggressive = false)
-            : AbstractTable<BucketType,
-                            DoubleBucket_t,
-                            DoubleBucket<BucketType> >
-                           (sizePower2, aggressive)
-            {}
+        TableDouble(uint32_t sizePower2 = 8, bool aggressive = false):
+            Parent(sizePower2, aggressive)
+        {}
 
         /** Remove a bucket from this hash table.
          * @param bucket: bucket in this hash table to remove
          */
-        void remove(BucketType *bucket)
+        void remove(BucketType* bucket)
         {
             assert(bucket);
             bucket->unlink();
-            AbstractTable<BucketType,
-                DoubleBucket_t,
-                DoubleBucket<BucketType> >::decBuckets();
+            Parent::decBuckets();
         }
     };
 
-} // namespace hash
+}  // namespace uhash
 
-#endif // INCLUDE_BASE_TABLES_H
-
+#endif  // INCLUDE_BASE_TABLES_H

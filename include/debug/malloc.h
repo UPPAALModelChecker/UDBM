@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 /* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 /*********************************************************************
  *
@@ -52,7 +32,7 @@ extern "C" {
  */
 
 #define malloc(SIZE) debug_monitoredMalloc(SIZE, __FILE__, __LINE__, __FUNCTION__)
-#define free(PTR) debug_monitoredFree(PTR, __FILE__, __LINE__, __FUNCTION__)
+#define free(PTR)    debug_monitoredFree(PTR, __FILE__, __LINE__, __FUNCTION__)
 
 /** Monitored malloc.
  * @return allocated memory, as malloc would do
@@ -61,7 +41,7 @@ extern "C" {
  * @param line: line where malloc is called
  * @param function: function in which malloc is called
  */
-void *debug_monitoredMalloc(size_t size, const char *filename, int line, const char *function);
+void* debug_monitoredMalloc(size_t size, const char* filename, int line, const char* function);
 
 /** Monitored free.
  * @param ptr: memory to free
@@ -69,7 +49,7 @@ void *debug_monitoredMalloc(size_t size, const char *filename, int line, const c
  * @param line: line where free is called
  * @param function: function in which free is called
  */
-void debug_monitoredFree(void *ptr, const char *filename, int line, const char *function);
+void debug_monitoredFree(void* ptr, const char* filename, int line, const char* function);
 
 #ifdef __cplusplus
 }

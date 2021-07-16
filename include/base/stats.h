@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 // -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 ////////////////////////////////////////////////////////////////////
 //
@@ -49,41 +29,39 @@ namespace base
         Stats() {}
         ~Stats();
 
-        void count(const char *statName, const char *subStat = NULL);
+        void count(const char* statName, const char* subStat = NULL);
 
         struct stat_t
         {
-            stat_t(const char *statName, stat_t *nxt)
-                : name(statName), counter(1), next(nxt) {}
+            stat_t(const char* statName, stat_t* nxt): name(statName), counter(1), next(nxt) {}
             ~stat_t() { delete next; }
 
-            const char *name;
-            long counter;
-            stat_t *next;
+            const char* name;
+            int64_t counter;
+            stat_t* next;
         };
 
-        struct entry_t : public hash::TableSingle<entry_t>::Bucket_t
+        struct entry_t : public uhash::TableSingle<entry_t>::Bucket_t
         {
-            entry_t(const char *name, stat_t *next = NULL)
-                : stat(name, next) {}
+            entry_t(const char* name, stat_t* next = NULL): stat(name, next) {}
 
-            stat_t stat; // Main stat, with list of sub-stats.
+            stat_t stat;  // Main stat, with list of sub-stats.
         };
 
     private:
-        hash::TableSingle<entry_t> table;
+        uhash::TableSingle<entry_t> table;
     };
 
     extern Stats stats;
-}
+}  // namespace base
 
 // Typical way of using stats:
 
 #define RECORD_STAT()        base::stats.count(__PRETTY_FUNCTION__, NULL)
 #define RECORD_SUBSTAT(NAME) base::stats.count(__PRETTY_FUNCTION__, NAME)
-#define RECORD_NSTAT(ROOT, NAME)\
-base::stats.count(ROOT, NULL);  \
-base::stats.count(ROOT, NAME)
+#define RECORD_NSTAT(ROOT, NAME)   \
+    base::stats.count(ROOT, NULL); \
+    base::stats.count(ROOT, NAME)
 
 #else
 
@@ -91,6 +69,6 @@ base::stats.count(ROOT, NAME)
 #define RECORD_SUBSTAT(NAME)
 #define RECORD_NSTAT(ROOT, NAME)
 
-#endif // SHOW_STATS
+#endif  // SHOW_STATS
 
-#endif // INCLUDE_BASE_STATS_H
+#endif  // INCLUDE_BASE_STATS_H

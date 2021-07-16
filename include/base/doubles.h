@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 /* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 /*********************************************************************
  *
@@ -75,12 +55,12 @@ double base_subtractEpsilon(double value, double epsilon);
 #define IS_GE(X,Y) ((X) > (Y)-DBL_EPSILON)
 #define IS_LE(X,Y) ((X) < (Y)+DBL_EPSILON)
 */
-#define IS_GT(X,Y) ((X)-(Y) >= 1e-14)
-#define IS_LT(X,Y) IS_GT(Y,X)
-#define IS_GE(X,Y) ((Y)-(X) <= 1e-14)
-#define IS_LE(X,Y) IS_GE(Y,X)
+#define IS_GT(X, Y) ((X) - (Y) >= 1e-14)
+#define IS_LT(X, Y) IS_GT(Y, X)
+#define IS_GE(X, Y) ((Y) - (X) <= 1e-14)
+#define IS_LE(X, Y) IS_GE(Y, X)
 
-#define IS_EQ(X,Y) (IS_GE(X,Y) && IS_LE(X,Y))
+#define IS_EQ(X, Y) (IS_GE(X, Y) && IS_LE(X, Y))
 
 /*
 
@@ -100,4 +80,4 @@ points handled by the GUI.
 
 */
 
-#endif // INCLUDE_BASE_DOUBLES_H
+#endif  // INCLUDE_BASE_DOUBLES_H

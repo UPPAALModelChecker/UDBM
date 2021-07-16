@@ -1,36 +1,21 @@
-Uppaal DBM Library
-==================
+# UPPAAL DBM Library
 
-How to compile:
----------------
-```sh
-./configure
-make
-```
+See details about the UPPAAL DBM Libary at the [wiki pages](https://github.com/UPPAALModelChecker/UDBM/wiki).
 
-The `configure` script can be regenerated using locally installed `autotools` by running `./autogen.sh` as the first command.
+## Build 
+The following packages need to be installed:
 
-How to install:
----------------
-```sh
-sudo make install
-```
+  * Compiler: GCC-10 g++-10
+  * Build system generator: cmake >= 3.15
+  * Build driver: make (or ninja)
 
-How to compile using the configure front-end:
----------------------------------------------
-```sh
-./setup.sh
-make
-```
+To Install Packages on ubuntu:
+``` sh
+apt install gcc-10 cmake make
+``` 
 
-Typical configuration:
-----------------------
-```sh
-CFLAGS="-Wall -O2 -DNDEBUG" ./configure --prefix=/usr/local
-```
-
-Debug configuration:
---------------------
-```sh
-CFLAGS="-Wall -g" ./configure
+Compile source:
+``` sh
+cmake -B build/ -DCMAKE_BUILD_TYPE=Release
+cmake --build build/
 ```

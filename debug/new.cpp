@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 // -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 ////////////////////////////////////////////////////////////////////
 //
@@ -68,11 +48,11 @@
 // of verbosity, ie, debug information available.
 // These 2 structures are MemBucket_t and ExtMemBucket_t
 // for the extended version. EXTENSION_BIT marks that
-// the extended version is used. The bit is stored in 
+// the extended version is used. The bit is stored in
 // the size field of MemBucket_t. The extension contains
 // position information on where the memory was allocated.
 
-#define INIT_SIZE (1 << 10)
+#define INIT_SIZE     (1 << 10)
 #define EXTENSION_BIT 0x80000000
 #define NOSIZE        0x7fffffff
 #define BUCKETSIZE(B) ((B)->size & ~EXTENSION_BIT)
@@ -87,22 +67,15 @@ namespace debug
      */
     struct PositionInfo_t
     {
-        const char *filename; /**< which filename */
+        const char* filename; /**< which filename */
         int line;             /**< line number    */
-        const char *function; /**< which function */
-
+        const char* function; /**< which function */
 
         /** @return a hash for this
          * position. Used when gathering
          * statistics on leaks.
          */
-        uintptr_t hash() const
-        {
-            return
-                (uintptr_t) filename ^
-                line ^
-                (uintptr_t) function;
-        }
+        uintptr_t uhash() const { return (uintptr_t)filename ^ line ^ (uintptr_t)function; }
 
         /** @return true if 2 positions
          * are equal. NULL are possible
@@ -112,23 +85,17 @@ namespace debug
          * by the compiler, which means,
          * they are unique pointers.
          */
-        static bool areEqual(const PositionInfo_t *p1,
-                             const PositionInfo_t *p2)
+        static bool areEqual(const PositionInfo_t* p1, const PositionInfo_t* p2)
         {
-            if (p1 && p2)
-            {
-                return
-                    p1->filename == p2->filename &&
-                    p1->line     == p2->line &&
-                    p1->function == p2->function;
-            }
-            else
-            {
+            if (p1 && p2) {
+                return p1->filename == p2->filename && p1->line == p2->line &&
+                       p1->function == p2->function;
+            } else {
                 return p1 == p2;
             }
         }
     };
-    
+
     /** To gather statistics on leaks we
      * use a simple hash table of STATS_SIZE
      * that is allocated in the stack.
@@ -136,7 +103,6 @@ namespace debug
      */
 #define STATS_SIZE 256
 #define STATS_MASK ((STATS_SIZE)-1)
-
 
     /** The simple hash table to gather
      * statistics on leaks.
@@ -158,23 +124,21 @@ namespace debug
          * @param where: where it was allocated (may
          * be NULL if information not available).
          */
-        void addLeak(size_t size,
-                     const PositionInfo_t *where);
+        void addLeak(size_t size, const PositionInfo_t* where);
 
         /** Print statistics.
          * @param os: where to print.
          */
-        void printStats(std::ostream &os) const;
+        void printStats(std::ostream& os) const;
 
     private:
-
         /** The bucket used to store leaks.
          */
         struct leak_t : public base::SingleLinkable<leak_t>
         {
-            size_t size;            /**< size of the leak       */
-            const PositionInfo_t *where; /**< where it was allocated */
-            size_t nb;              /**< number of allocations  */
+            size_t size;                 /**< size of the leak       */
+            const PositionInfo_t* where; /**< where it was allocated */
+            size_t nb;                   /**< number of allocations  */
         };
 
         leak_t* table[STATS_SIZE]; /**< entries of the hash table */
@@ -189,21 +153,21 @@ namespace debug
     public:
         NewPointerTable();
         ~NewPointerTable();
-        
+
         /** Remember an allocated memory zone
          * of some size = store in the hash table.
          * @param ptr: allocated memory.
          * @param size: size (bytes) of the allocation.
          */
-        void remember(void *ptr, size_t size);
+        void remember(void* ptr, size_t size);
 
         /** Forget an allocated memory zone ==
          * remove from hash table.
          * @param ptr: allocated memory.
          * @param nosize: check for NOSIZE or normal size
          */
-        void forget(void *ptr, bool nosize);
-        
+        void forget(void* ptr, bool nosize);
+
         /** Remember an allocated memory zone
          * of some size = store in the hash table;
          * with allocation source information.
@@ -213,9 +177,7 @@ namespace debug
          * @param line: line position.
          * @param function: in which function.
          */
-        void remember(void *ptr, size_t size,
-                      const char *filename, int line,
-                      const char *function);
+        void remember(void* ptr, size_t size, const char* filename, int line, const char* function);
 
         /** Prepare a delete = store position information
          * before calling a delete. This is a trick to
@@ -226,32 +188,28 @@ namespace debug
          * @param line: line position.
          * @param function: in which function
          */
-        void prepareDelete(const char *filename, int line,
-                           const char *function);
-        
+        void prepareDelete(const char* filename, int line, const char* function);
+
     private:
-        
         /** Print allocation statistics (not the leaks).
          * @param isLeak: format the printout as
          * leak if isLeak is true, or simply as allocated
          * memory if isLeak is false.
          */
         void printStats(bool isLeak) const;
-        
+
         /** Computes a hash value from a pointer:
          * since pointers are 32 bit aligned, pointer >> 2
          * is a good associated hash value.
          */
-        static uintptr_t hashPtr(const void* ptr)
-        {
-            return ((uintptr_t)ptr) >> 2;
-        }
-        
+        static uintptr_t hashPtr(const void* ptr) { return ((uintptr_t)ptr) >> 2; }
+
         /** Increment number of buckets, may rehash.
          */
         void inc()
         {
-            if (++nbBuckets > (mask >> 1)) rehash();
+            if (++nbBuckets > (mask >> 1))
+                rehash();
         }
 
         /** Decrement number of buckets.
@@ -266,7 +224,7 @@ namespace debug
         /** Rehash the hash table.
          */
         void rehash();
-        
+
         /** Basic allocation information (bucket in
          * the hash table): pointer and size
          * allocated.
@@ -275,13 +233,12 @@ namespace debug
          * information, ie, if the bucket is an
          * ExtMemBucket_t.
          */
-        struct MemBucket_t :
-            public base::SingleLinkable<MemBucket_t>
+        struct MemBucket_t : public base::SingleLinkable<MemBucket_t>
         {
-            const void *ptr;  /**< allocated memory */
-            size_t size; /**< allocated size | extension bit */
+            const void* ptr; /**< allocated memory */
+            size_t size;     /**< allocated size | extension bit */
         };
-        
+
         /** Extended allocation information: contains
          * the position of the allocation.
          */
@@ -289,7 +246,7 @@ namespace debug
         {
             PositionInfo_t pos; /**< where memory was allocated */
         };
-        
+
         PositionInfo_t pos;  /**< temporary position used by prepareDelete */
         int peakAlloc;       /**< peak allocation == largest cumulated allocation */
         uint minAlloc;       /**< smallest allocation == smallest unit */
@@ -299,31 +256,27 @@ namespace debug
         int maxOverhead;     /**< maximal overhead ever used by NewPointerTable */
         uint nbBuckets;      /**< current number of buckets */
         uint mask;           /**< mask to access the hash table = size-1 where size=2^n */
-        MemBucket_t **table; /**< hash table of size mask+1 */
+        MemBucket_t** table; /**< hash table of size mask+1 */
     };
 
     /* Constructor: reset the hash table
      */
-    StatsTable::StatsTable()
-    {
-        base_resetLarge(table, STATS_SIZE*(sizeof(void*)/sizeof(int)));
-    }
+    StatsTable::StatsTable() { std::fill(table, table + STATS_SIZE, nullptr); }
 
     /* Destructor: deallocate all the buckets.
      */
     StatsTable::~StatsTable()
     {
         size_t n = STATS_SIZE;
-        leak_t **leakTable = table;
+        leak_t** leakTable = table;
         do {
-            leak_t *leaki = *leakTable++;
-            while(leaki)
-            {
-                leak_t *next = leaki->getNext();
+            leak_t* leaki = *leakTable++;
+            while (leaki) {
+                leak_t* next = leaki->getNext();
                 free(leaki);
                 leaki = next;
             }
-        } while(--n);
+        } while (--n);
     }
 
     /* Use a simple hash based on the size
@@ -332,25 +285,21 @@ namespace debug
      * kind of leak (same file, line, function, size)
      * is not found.
      */
-    void StatsTable::addLeak(size_t size,
-                            const PositionInfo_t *where)
+    void StatsTable::addLeak(size_t size, const PositionInfo_t* where)
     {
-        uintptr_t hashValue = size ^ (where ? where->hash() : 0);
-        leak_t **entry = &table[hashValue & STATS_MASK];
-        leak_t *leak = *entry;
+        uintptr_t hashValue = size ^ (where ? where->uhash() : 0);
+        leak_t** entry = &table[hashValue & STATS_MASK];
+        leak_t* leak = *entry;
         // look for this leak
-        while(leak)
-        {
-            if (leak->size == size &&
-                PositionInfo_t::areEqual(leak->where, where))
-            {
-                leak->nb++; // one more of this type of leak
+        while (leak) {
+            if (leak->size == size && PositionInfo_t::areEqual(leak->where, where)) {
+                leak->nb++;  // one more of this type of leak
                 return;
             }
             leak = leak->getNext();
         }
         // new type of leak
-        leak = (leak_t*) malloc(sizeof(leak_t));
+        leak = (leak_t*)malloc(sizeof(leak_t));
         leak->link(entry);
         leak->size = size;
         leak->where = where;
@@ -361,71 +310,59 @@ namespace debug
      * go through all buckets and print
      * information.
      */
-    void StatsTable::printStats(std::ostream &os) const
+    void StatsTable::printStats(std::ostream& os) const
     {
         size_t n = STATS_SIZE;
         // The compiler gave the right type...
         leak_t* const* leakTable = table;
         do {
-            const leak_t *leaki = *leakTable++;
-            while(leaki)
-            {
-                os << RED(BOLD) "\t"
-                   << leaki->nb;
-                if (leaki->size != NOSIZE)
-                {
+            const leak_t* leaki = *leakTable++;
+            while (leaki) {
+                os << RED(BOLD) "\t" << leaki->nb;
+                if (leaki->size != NOSIZE) {
                     os << " x " << leaki->size << " bytes";
-                }
-                else
-                {
+                } else {
                     os << (leaki->nb > 1 ? " pointers" : " pointer");
                 }
-                if (leaki->where)
-                {
-                    os << " from "
-                       << debug_shortSource(leaki->where->filename)
-                       << ':' << leaki->where->function
-                       << '(' << leaki->where->line
-                       << ')';
+                if (leaki->where) {
+                    os << " from " << debug_shortSource(leaki->where->filename) << ':'
+                       << leaki->where->function << '(' << leaki->where->line << ')';
                 }
 
                 os << NORMAL "\n";
                 leaki = leaki->getNext();
             }
-        } while(--n);
+        } while (--n);
     }
 
     /* Constructor for table of allocated memory
      * by new: reset the hash table and the statistics.
      */
-    NewPointerTable::NewPointerTable()
-        : peakAlloc(0), minAlloc(0xffffffff), maxAlloc(0),
-          totalAlloc(0), nbBuckets(0), mask(INIT_SIZE-1)
+    NewPointerTable::NewPointerTable():
+        peakAlloc(0), minAlloc(0xffffffff), maxAlloc(0), totalAlloc(0), nbBuckets(0),
+        mask(INIT_SIZE - 1)
     {
-        table = (MemBucket_t**) malloc(INIT_SIZE*sizeof(MemBucket_t*));
-        if (!table)
-        {
+        table = (MemBucket_t**)malloc(INIT_SIZE * sizeof(MemBucket_t*));
+        if (!table) {
             std::cerr << "Fatal: could not allocate table for monitor!\n";
             throw std::bad_alloc();
         }
-        base_resetLarge(table, INIT_SIZE*(sizeof(void*)/sizeof(int)));
-        overhead = INIT_SIZE*sizeof(MemBucket_t*) + sizeof(NewPointerTable);
+        std::fill(table, table + INIT_SIZE, nullptr);
+        overhead = INIT_SIZE * sizeof(MemBucket_t*) + sizeof(NewPointerTable);
         maxOverhead = overhead;
-        pos.filename = NULL;
+        pos.filename = nullptr;
         pos.line = 0;
-        pos.function = NULL;
+        pos.function = nullptr;
     }
-    
+
     /** Print memory usage:
      * @param caption: caption for a given statistic
      * @param mem: memory usage statistic
      */
-    static
-    void new_print(const char *caption, uint mem)
+    static void new_print(const char* caption, uint mem)
     {
         std::cerr << caption << mem << 'B';
-        if (mem >= 1024)
-        {
+        if (mem >= 1024) {
             std::cerr << "\t= ";
             debug_printMemory(stderr, mem);
         }
@@ -435,30 +372,22 @@ namespace debug
      */
     void NewPointerTable::printStats(bool leak) const
     {
-        uint min =
-            (minAlloc == 0xffffffff) ? 0 : minAlloc;
-        
+        uint min = (minAlloc == 0xffffffff) ? 0 : minAlloc;
+
         std::cerr << CYAN(THIN) "Allocated memory stats:";
         new_print("\n\tPeak     = ", peakAlloc);
         new_print("\n\tSmallest = ", min);
         new_print("\n\tLargest  = ", maxAlloc);
         new_print("\n\tOverhead = ", maxOverhead);
         std::cerr << NORMAL "\n";
-        
-        if (leak)
-        {
-            if (totalAlloc != 0)
-            {
-                std::cerr << RED(BOLD) "Memory leak of "
-                          << totalAlloc
+
+        if (leak) {
+            if (totalAlloc != 0) {
+                std::cerr << RED(BOLD) "Memory leak of " << totalAlloc
                           << " bytes!\nDetails:" NORMAL "\n";
             }
-        }
-        else
-        {
-            std::cerr << CYAN(THIN) "Allocated memory: "
-                      << totalAlloc 
-                      << " bytes" NORMAL "\n";
+        } else {
+            std::cerr << CYAN(THIN) "Allocated memory: " << totalAlloc << " bytes" NORMAL "\n";
         }
     }
 
@@ -468,50 +397,44 @@ namespace debug
      * 4) deallocate (if any) the memory allocation
      *    records
      * 5) deallocate hash table
-     */    
+     */
     NewPointerTable::~NewPointerTable()
     {
-        if (table)
-        {
+        if (table) {
             StatsTable stats;
             printStats(true);
-            
-            MemBucket_t **entry = table;
+
+            MemBucket_t** entry = table;
             uint n = mask + 1;
             do {
-                MemBucket_t *bucket = *entry++;
-                while(bucket)
-                {
-                    if (bucket->size & EXTENSION_BIT)
-                    {
-                        ExtMemBucket_t *ebucket = static_cast<ExtMemBucket_t*>(bucket);
+                MemBucket_t* bucket = *entry++;
+                while (bucket) {
+                    if (bucket->size & EXTENSION_BIT) {
+                        ExtMemBucket_t* ebucket = static_cast<ExtMemBucket_t*>(bucket);
                         stats.addLeak(BUCKETSIZE(ebucket), &ebucket->pos);
-                    }
-                    else
-                    {
-                        stats.addLeak(bucket->size, NULL);
+                    } else {
+                        stats.addLeak(bucket->size, nullptr);
                     }
                     bucket = bucket->getNext();
                 }
-            } while(--n);
-            
+            } while (--n);
+
             // need the PositionInfo_t to print the stats
             stats.printStats(std::cerr);
 
             entry = table;
             n = mask + 1;
             do {
-                MemBucket_t *bucket = *entry++;
-                while(bucket)
-                {
-                    MemBucket_t *next = bucket->getNext();
+                MemBucket_t* bucket = *entry++;
+                while (bucket) {
+                    MemBucket_t* next = bucket->getNext();
                     free(bucket);
                     bucket = next;
                 }
-            } while(--n);
+            } while (--n);
 
             free(table);
-            table = NULL;
+            table = nullptr;
             overhead = sizeof(NewPointerTable);
         }
     }
@@ -522,54 +445,48 @@ namespace debug
     void NewPointerTable::rehash()
     {
         uint oldSize = mask + 1;
-        uint newSize = oldSize << 1; // double size
-        MemBucket_t **oldBuckets = table;
-        MemBucket_t **newBuckets =
-            (MemBucket_t**) malloc(newSize*sizeof(MemBucket_t*));
-        
-        if (!newBuckets)
-        {
+        uint newSize = oldSize << 1;  // double size
+        MemBucket_t** oldBuckets = table;
+        MemBucket_t** newBuckets = (MemBucket_t**)malloc(newSize * sizeof(MemBucket_t*));
+
+        if (!newBuckets) {
             DODEBUG(std::cerr << "Rehash aborted: out of memory\n");
             return;
         }
-        
-        overhead += newSize*sizeof(MemBucket_t*);
+
+        overhead += newSize * sizeof(MemBucket_t*);
         mask = newSize - 1;
         table = newBuckets;
-        base_resetLarge(newBuckets + oldSize, oldSize*(sizeof(void*)/sizeof(int)));
-        
+        std::fill(newBuckets + oldSize, newBuckets + (2 * oldSize), nullptr);
+
         uint i = 0;
         do {
-            MemBucket_t *bucketi = oldBuckets[i];
-            newBuckets[i] = NULL;
-            while(bucketi)
-            {
-                MemBucket_t *next = bucketi->getNext();
-                MemBucket_t **newEntry =
-                    newBuckets + i + (hashPtr(bucketi->ptr) & oldSize);
+            MemBucket_t* bucketi = oldBuckets[i];
+            newBuckets[i] = nullptr;
+            while (bucketi) {
+                MemBucket_t* next = bucketi->getNext();
+                MemBucket_t** newEntry = newBuckets + i + (hashPtr(bucketi->ptr) & oldSize);
                 bucketi->link(newEntry);
                 bucketi = next;
             }
-        } while(++i < oldSize);
-        
+        } while (++i < oldSize);
+
         free(oldBuckets);
-        overhead -= oldSize*sizeof(MemBucket_t*);
-        if (overhead > maxOverhead)
-        {
+        overhead -= oldSize * sizeof(MemBucket_t*);
+        if (overhead > maxOverhead) {
             maxOverhead = overhead;
         }
     }
-    
+
     /* Add a new bucket to the hash table.
      */
-    void NewPointerTable::remember(void *ptr, size_t size)
+    void NewPointerTable::remember(void* ptr, size_t size)
     {
-        if (table)
-        {
-            MemBucket_t **entry = &table[hashPtr(ptr) & mask];
-            MemBucket_t *bucket = *entry;
+        if (table) {
+            MemBucket_t** entry = &table[hashPtr(ptr) & mask];
+            MemBucket_t* bucket = *entry;
             bool warning = false;
-            
+
             // never called with size == NOSIZE
             assert(size != NOSIZE);
 
@@ -578,136 +495,105 @@ namespace debug
             // returns twice the same pointer, which is
             // unlikely.
 
-            while(bucket)
-            {
-                if (bucket->ptr == ptr)
-                {
-                    if (BUCKETSIZE(bucket) != NOSIZE)
-                    {
+            while (bucket) {
+                if (bucket->ptr == ptr) {
+                    if (BUCKETSIZE(bucket) != NOSIZE) {
                         fprintf(stderr,
-                                MAGENTA(BOLD)
-                                "Error: pointer 0x%x already registered!"
-                                NORMAL "\n",
-                                (uintptr_t)ptr);
+                                MAGENTA(BOLD) "Error: pointer %p already registered!" NORMAL "\n",
+                                ptr);
                         return;
-                    }
-                    else if (!warning)
-                    {
+                    } else if (!warning) {
                         fprintf(stderr,
-                                MAGENTA(BOLD)
-                                "Warning: user pointer 0x%x already registered!"
-                                NORMAL "\n",
-                                (uintptr_t)ptr);
+                                MAGENTA(BOLD) "Warning: user pointer %p already registered!" NORMAL
+                                              "\n",
+                                ptr);
                         warning = true;
                     }
                 }
                 bucket = bucket->getNext();
             }
-            
+
             /* New bucket.
              */
-            bucket = (MemBucket_t*) malloc(sizeof(MemBucket_t));
-            if (!bucket)
-            {
+            bucket = (MemBucket_t*)malloc(sizeof(MemBucket_t));
+            if (!bucket) {
                 std::cerr << "Fatal: could not allocate bucket for monitor!\n";
                 throw std::bad_alloc();
             }
             overhead += sizeof(MemBucket_t);
-            if (overhead > maxOverhead)
-            {
+            if (overhead > maxOverhead) {
                 maxOverhead = overhead;
             }
             bucket->link(entry);
             bucket->ptr = ptr;
             bucket->size = size;
-            
+
             /* Allocation stats.
              */
-            if (size != NOSIZE)
-            {
+            if (size != NOSIZE) {
                 totalAlloc += size;
-                if (peakAlloc < totalAlloc)
-                {
+                if (peakAlloc < totalAlloc) {
                     peakAlloc = totalAlloc;
                 }
-                if (minAlloc > size)
-                {
+                if (minAlloc > size) {
                     minAlloc = size;
                 }
-                if (maxAlloc < size)
-                {
+                if (maxAlloc < size) {
                     maxAlloc = size;
                 }
             }
-            inc(); // one more bucket
+            inc();  // one more bucket
         }
     }
-    
+
     /* Add a new extended bucket to the hash table.
      * Similar to previous 'remember'.
      */
-    void NewPointerTable::remember(void *ptr, size_t size,
-                                   const char *filename, int line, const char *function)
+    void NewPointerTable::remember(void* ptr, size_t size, const char* filename, int line,
+                                   const char* function)
     {
-        if (table)
-        {
-            MemBucket_t **entry = &table[hashPtr(ptr) & mask];
-            MemBucket_t *bucket = *entry;
+        if (table) {
+            MemBucket_t** entry = &table[hashPtr(ptr) & mask];
+            MemBucket_t* bucket = *entry;
             bool warning1 = false, warning2 = false;
 
-            while(bucket)
-            {
-                if (bucket->ptr == ptr)
-                {
-                    if (size == NOSIZE)
-                    {
-                        if (BUCKETSIZE(bucket) == NOSIZE)
-                        {
-                            if (!warning1)
-                            {
-                                fprintf(stderr,
-                                        MAGENTA(BOLD)
-                                        "Warning: registering again user pointer 0x%x! [%s",
-                                        (uintptr_t)ptr,
-                                        filename ? debug_shortSource(filename) : "");
-                                if (function)
-                                {
+            while (bucket) {
+                if (bucket->ptr == ptr) {
+                    if (size == NOSIZE) {
+                        if (BUCKETSIZE(bucket) == NOSIZE) {
+                            if (!warning1) {
+                                fprintf(
+                                    stderr,
+                                    MAGENTA(BOLD) "Warning: registering again user pointer %p! [%s",
+                                    ptr, filename ? debug_shortSource(filename) : "");
+                                if (function) {
                                     fprintf(stderr, ":%s", function);
                                 }
                                 fprintf(stderr, "(%d)]" NORMAL "\n", line);
                                 warning1 = true;
                             }
                         }
-                        //else fprintf(stderr, "OK to register a user pointer already allocated\n");
-                    }
-                    else // size != NOSIZE
+                        // else fprintf(stderr, "OK to register a user pointer already
+                        // allocated\n");
+                    } else  // size != NOSIZE
                     {
-                        if (BUCKETSIZE(bucket) == NOSIZE)
-                        {
-                            if (!warning2)
-                            {
+                        if (BUCKETSIZE(bucket) == NOSIZE) {
+                            if (!warning2) {
                                 fprintf(stderr,
-                                        MAGENTA(BOLD)
-                                        "Warning: pointer 0x%x already registered as user pointer! [%s",
-                                        (uintptr_t)ptr,
-                                        filename ? debug_shortSource(filename) : "");
-                                if (function)
-                                {
+                                        MAGENTA(BOLD) "Warning: pointer %p already registered as "
+                                                      "user pointer! [%s",
+                                        ptr, filename ? debug_shortSource(filename) : "");
+                                if (function) {
                                     fprintf(stderr, ":%s", function);
                                 }
                                 fprintf(stderr, "(%d)]" NORMAL "\n", line);
                                 warning2 = true;
                             }
-                        }
-                        else
-                        {
+                        } else {
                             fprintf(stderr,
-                                    MAGENTA(BOLD)
-                                    "Error: pointer 0x%x already registered! [%s",
-                                    (uintptr_t)ptr,
+                                    MAGENTA(BOLD) "Error: pointer %p already registered! [%s", ptr,
                                     filename ? debug_shortSource(filename) : "");
-                            if (function)
-                            {
+                            if (function) {
                                 fprintf(stderr, ":%s", function);
                             }
                             fprintf(stderr, "(%d)]" NORMAL "\n", line);
@@ -717,19 +603,16 @@ namespace debug
                 }
                 bucket = bucket->getNext();
             }
-            
+
             /* Add new extended bucket
              */
-            ExtMemBucket_t *ebucket =
-                (ExtMemBucket_t*) malloc(sizeof(ExtMemBucket_t));
-            if (!ebucket)
-            {
+            ExtMemBucket_t* ebucket = (ExtMemBucket_t*)malloc(sizeof(ExtMemBucket_t));
+            if (!ebucket) {
                 std::cerr << "Fatal: could not allocate bucket for monitor!\n";
                 throw std::bad_alloc();
             }
             overhead += sizeof(ExtMemBucket_t);
-            if (overhead > maxOverhead)
-            {
+            if (overhead > maxOverhead) {
                 maxOverhead = overhead;
             }
             ebucket->link(entry);
@@ -738,59 +621,49 @@ namespace debug
             ebucket->pos.filename = filename;
             ebucket->pos.line = line;
             ebucket->pos.function = function;
-            
+
             /* Allocation stats
              */
-            if (size != NOSIZE)
-            {
+            if (size != NOSIZE) {
                 totalAlloc += size;
-                if (peakAlloc < totalAlloc)
-                {
+                if (peakAlloc < totalAlloc) {
                     peakAlloc = totalAlloc;
                 }
-                if (minAlloc > size)
-                {
+                if (minAlloc > size) {
                     minAlloc = size;
                 }
-                if (maxAlloc < size)
-                {
+                if (maxAlloc < size) {
                     maxAlloc = size;
                 }
             }
-            inc(); // one more bucket
+            inc();  // one more bucket
         }
     }
-    
+
     /* Look for the corresponding bucket
      * that records this allocation and remove it.
      * If not found, print error, meaning that one
      * tries to delete non allocated memory.
      */
-    void NewPointerTable::forget(void *ptr, bool nosize)
+    void NewPointerTable::forget(void* ptr, bool nosize)
     {
-        if (table && ptr)
-        {
-            MemBucket_t **toBucket = &table[hashPtr(ptr) & mask];
-            MemBucket_t *bucket = *toBucket;
+        if (table && ptr) {
+            MemBucket_t** toBucket = &table[hashPtr(ptr) & mask];
+            MemBucket_t* bucket = *toBucket;
 
-            while(bucket)
-            {
+            while (bucket) {
                 assert(BUCKETSIZE(bucket) != NOSIZE || (bucket->size & EXTENSION_BIT));
 
-                if (bucket->ptr == ptr &&
-                    ((nosize && BUCKETSIZE(bucket) == NOSIZE) ||
-                     (!nosize && BUCKETSIZE(bucket) != NOSIZE)))
-                {
-                    if (!nosize)
-                    {
+                if (bucket->ptr == ptr && ((nosize && BUCKETSIZE(bucket) == NOSIZE) ||
+                                           (!nosize && BUCKETSIZE(bucket) != NOSIZE))) {
+                    if (!nosize) {
                         totalAlloc -= BUCKETSIZE(bucket);
                     }
                     bucket->unlink(toBucket);
-                    overhead -= (bucket->size & EXTENSION_BIT) ?
-                        sizeof(ExtMemBucket_t) :
-                        sizeof(MemBucket_t);
+                    overhead -= (bucket->size & EXTENSION_BIT) ? sizeof(ExtMemBucket_t)
+                                                               : sizeof(MemBucket_t);
                     free(bucket);
-                    dec(); // one fewer bucket
+                    dec();  // one fewer bucket
                     return;
                 }
                 toBucket = bucket->getAtNext();
@@ -800,50 +673,39 @@ namespace debug
             /* Error: bucket not found == ptr was not
              * allocated -> print msg.
              */
-            if (pos.filename)
-            {
+            if (pos.filename) {
                 fprintf(stderr, RED(BOLD) "%s", debug_shortSource(pos.filename));
-                if (pos.function)
-                {
+                if (pos.function) {
                     fprintf(stderr, ":%s", pos.function);
                 }
-                fprintf(stderr,
-                        "(%d):\n%s 0x%x%s"
-                        NORMAL "\n",
-                        pos.line,
-                        nosize ? "Unknown pointer" : "Pointer",
-                        (uintptr_t)ptr,
+                fprintf(stderr, "(%d):\n%s %p%s" NORMAL "\n", pos.line,
+                        nosize ? "Unknown pointer" : "Pointer", ptr,
                         nosize ? "!" : " not registered! Segmentation fault soon!");
-            }
-            else
-            {
-                fprintf(stderr,
-                        RED(BOLD)
-                        "%s 0x%x%s"
-                        NORMAL "\n",
-                        nosize ? "Unknown pointer" : "Pointer",
-                        (uintptr_t) ptr,
+            } else {
+                fprintf(stderr, RED(BOLD) "%s %p%s" NORMAL "\n",
+                        nosize ? "Unknown pointer" : "Pointer", ptr,
                         nosize ? "!" : " not registered! Segmentation fault soon!");
             }
 
-            if (!nosize) printStats(false); // before crashing...
+            if (!nosize)
+                printStats(false);  // before crashing...
         }
-        
+
         // invalidate for next call
-        pos.filename = NULL;
-        pos.function = NULL;
+        pos.filename = nullptr;
+        pos.function = nullptr;
     }
-    
+
     /* Remember position for upcoming delete.
      */
-    void NewPointerTable::prepareDelete(const char *filename, int line, const char *function)
+    void NewPointerTable::prepareDelete(const char* filename, int line, const char* function)
     {
         pos.filename = filename;
         pos.line = line;
         pos.function = function;
     }
 
-} // namespace debug
+}  // namespace debug
 
 // Monitor instance
 
@@ -857,7 +719,7 @@ static debug::NewPointerTable new_table;
 // new/delete any more. We implement them!
 // Implementation is straight-forward: malloc for new and free for delete
 // with an associated remember/forget to monitor pointers.
-// 
+//
 // There is one trick however with delete: we cannot use special information
 // with the delete command so we have to call a prepare function first
 // that stores position and file, then the delete itself. A macro does
@@ -865,123 +727,111 @@ static debug::NewPointerTable new_table;
 // the limitation for no placement constructor comes from here. The limitation
 // for delete being inside brackets comes from here too. You should check
 // all delete with a grep to be sure they'll all right.
-// 
+//
 //////////////////////////////////////////////////////////////////////////
 
-void *operator new(size_t size) throw (std::bad_alloc)
+void* operator new(size_t size)
 {
-    void *ptr = malloc(size);
-    if (!ptr)
-    {
+    void* ptr = malloc(size);
+    if (!ptr) {
         throw std::bad_alloc();
     }
     new_table.remember(ptr, size);
     return ptr;
 }
 
-void *operator new[](size_t size) throw (std::bad_alloc)
+void* operator new[](size_t size)
 {
-    void *ptr = malloc(size);
-    if (!ptr)
-    {
+    void* ptr = malloc(size);
+    if (!ptr) {
         throw std::bad_alloc();
     }
     new_table.remember(ptr, size);
     return ptr;
 }
 
-void operator delete(void *ptr) throw()
+void operator delete(void* ptr) noexcept
 {
     new_table.forget(ptr, false);
-    if (ptr) free(ptr);
-}
-
-void operator delete[](void *ptr) throw()
-{
-    new_table.forget(ptr, false);
-    if (ptr) free(ptr);
-}
-
-void *operator new(size_t size, const std::nothrow_t&) throw()
-{
-    void *ptr = malloc(size);
     if (ptr)
-    {
+        free(ptr);
+}
+
+void operator delete[](void* ptr) noexcept
+{
+    new_table.forget(ptr, false);
+    if (ptr)
+        free(ptr);
+}
+
+void* operator new(size_t size, const std::nothrow_t&) noexcept
+{
+    void* ptr = malloc(size);
+    if (ptr) {
         new_table.remember(ptr, size);
-    }
-    else
-    {
+    } else {
         std::cerr << "NULL pointer crash soon!\n";
     }
     return ptr;
 }
 
-void *operator new[](size_t size, const std::nothrow_t&) throw()
+void* operator new[](size_t size, const std::nothrow_t&) noexcept
 {
-    void *ptr = malloc(size);
-    if (ptr)
-    {
+    void* ptr = malloc(size);
+    if (ptr) {
         new_table.remember(ptr, size);
-    }
-    else
-    {
+    } else {
         std::cerr << "NULL pointer crash soon!\n";
     }
     return ptr;
 }
 
-void operator delete(void *ptr, const std::nothrow_t&) throw()
+void operator delete(void* ptr, const std::nothrow_t&) noexcept
 {
     new_table.forget(ptr, false);
-    if (ptr) free(ptr);
+    if (ptr)
+        free(ptr);
 }
 
-void operator delete[](void *ptr, const std::nothrow_t&) throw()
+void operator delete[](void* ptr, const std::nothrow_t&) noexcept
 {
     new_table.forget(ptr, false);
-    if (ptr) free(ptr);
+    if (ptr)
+        free(ptr);
 }
 
-void *operator new(size_t size,
-                   const char *filename, int line, const char *function)
-    throw (std::bad_alloc)
+void* operator new(size_t size, const char* filename, int line, const char* function)
+
 {
-    void *ptr = malloc(size);
-    if (ptr)
-    {
+    void* ptr = malloc(size);
+    if (ptr) {
         new_table.remember(ptr, size, filename, line, function);
-    }
-    else
-    {
+    } else {
         std::cerr << "NULL pointer crash soon!\n";
     }
     return ptr;
 }
 
-void *operator new[](size_t size,
-                     const char *filename, int line, const char *function)
-    throw (std::bad_alloc)
+void* operator new[](size_t size, const char* filename, int line, const char* function)
+
 {
-    void *ptr = malloc(size);
-    if (ptr)
-    {
+    void* ptr = malloc(size);
+    if (ptr) {
         new_table.remember(ptr, size, filename, line, function);
-    }
-    else
-    {
+    } else {
         std::cerr << "NULL pointer crash soon!\n";
     }
     return ptr;
 }
 
-void debug_prepareDelete(const char *filename, int line, const char *function)
+void debug_prepareDelete(const char* filename, int line, const char* function)
 {
     new_table.prepareDelete(filename, line, function);
 }
 
-static debug::PositionInfo_t localPosition = { filename:NULL, line:0, function:NULL};
+static debug::PositionInfo_t localPosition = {filename : nullptr, line : 0, function : nullptr};
 
-void debug_pushPosition(const char *filename, int line, const char *function)
+void debug_pushPosition(const char* filename, int line, const char* function)
 {
     localPosition.filename = filename;
     localPosition.line = line;
@@ -993,53 +843,49 @@ void debug_pop()
     debug_prepareDelete(localPosition.filename, localPosition.line, localPosition.function);
 }
 
-void *debug_monitoredMalloc(size_t size, const char *filename, int line, const char *function)
+void* debug_monitoredMalloc(size_t size, const char* filename, int line, const char* function)
 {
-    void *ptr = malloc(size);
-    if (ptr)
-    {
+    void* ptr = malloc(size);
+    if (ptr) {
         new_table.remember(ptr, size, filename, line, function);
-    }
-    else
-    {
+    } else {
         std::cerr << "Warning: malloc returns NULL...\n";
     }
-    //fprintf(stderr, "Register 0x%x\n", (uintptr_t)ptr);
+    // fprintf(stderr, "Register 0x%x\n", (uintptr_t)ptr);
     return ptr;
 }
 
-void debug_monitoredFree(void *ptr, const char *filename, int line, const char *function)
+void debug_monitoredFree(void* ptr, const char* filename, int line, const char* function)
 {
     new_table.prepareDelete(filename, line, function);
     new_table.forget(ptr, false);
-    if (ptr)
-    {
+    if (ptr) {
         free(ptr);
+    } else {
+        std::cerr << RED(
+            BOLD) "Error: free(NULL) was called: expect a segfault without -DENABLE_MONITOR!" NORMAL
+                  "\n";
     }
-    else
-    {
-        std::cerr << RED(BOLD) "Error: free(NULL) was called: expect a segfault without -DENABLE_MONITOR!" NORMAL "\n";
-    }
-    //fprintf(stderr, "Unregister 0x%x\n", (uintptr_t)ptr);
+    // fprintf(stderr, "Unregister 0x%x\n", (uintptr_t)ptr);
 }
 
-void* debug_rememberPointer(void *ptr, const char *filename, int line, const char *function)
+void* debug_rememberPointer(void* ptr, const char* filename, int line, const char* function)
 {
-    //fprintf(stderr, "Remember 0x%x\n", (uintptr_t) ptr);
+    // fprintf(stderr, "Remember 0x%x\n", (uintptr_t) ptr);
     new_table.remember(ptr, NOSIZE, filename, line, function);
     return ptr;
 }
 
-void debug_forgetPointer(void *ptr, const char *filename, int line, const char *function)
+void debug_forgetPointer(void* ptr, const char* filename, int line, const char* function)
 {
-    //fprintf(stderr, "Forget 0x%x\n", (uintptr_t) ptr);
+    // fprintf(stderr, "Forget 0x%x\n", (uintptr_t) ptr);
     new_table.prepareDelete(filename, line, function);
     new_table.forget(ptr, true);
 }
 
-void debug_forgetPtr(void *ptr)
+void debug_forgetPtr(void* ptr)
 {
-    //fprintf(stderr, "Forget 0x%x\n", (uintptr_t) ptr);
+    // fprintf(stderr, "Forget 0x%x\n", (uintptr_t) ptr);
     new_table.forget(ptr, true);
 }
 

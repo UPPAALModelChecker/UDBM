@@ -1,29 +1,9 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 /* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 /*********************************************************************
  *
  * Filename: dbm.h (dbm)
  * C header.
- * 
+ *
  * Basic DBM operations.
  *
  * This file is a part of the UPPAAL toolkit.
@@ -46,6 +26,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Hack to control the behaviour of freeing clocks.
+extern bool CLOCKS_POSITIVE;
 
 /**
  * @mainpage
@@ -75,17 +58,15 @@ extern "C" {
  * Common pre-condition: DBMs are always of dimension >= 1.
  */
 
-
 /** Initialize a DBM with:
- * - <= 0 on the diagonal and the 1st row
+ * - <= 0 on the diagonal and the 1st row if CLOCKS_POSITIVE
  * - <= infinity elsewhere
  * @param dbm: DBM to initialize.
  * @param dim: dimension.
  * @return initialized DBM.
  * @post DBM is closed.
  */
-void dbm_init(raw_t *dbm, cindex_t dim);
-
+void dbm_init(raw_t* dbm, cindex_t dim);
 
 /** Set the DBM so that it contains only 0.
  * @param dbm: DBM to set to 0
@@ -93,28 +74,24 @@ void dbm_init(raw_t *dbm, cindex_t dim);
  * @return zeroed DBM
  * @post DBM is closed
  */
-static inline
-void dbm_zero(raw_t *dbm, cindex_t dim)
+static inline void dbm_zero(raw_t* dbm, cindex_t dim)
 {
-    base_fill(dbm, dim*dim, dbm_LE_ZERO);
+    base_fill(dbm, dbm + (dim * dim), dbm_LE_ZERO);
 }
-
 
 /** Equality test with trivial dbm as obtained from
  * dbm_init(dbm, dim).
  * @param dbm: DBM to test
  * @param dim: dimension.
  */
-BOOL dbm_isEqualToInit(const raw_t *dbm, cindex_t dim);
-
+bool dbm_isEqualToInit(const raw_t* dbm, cindex_t dim);
 
 /** Test if a DBM contains the zero point of not.
  * @param dbm: DBM to test.
  * @param dim: dimension.
- * @return TRUE if the DBM contains the origin 0, FALSE otherwise.
+ * @return true if the DBM contains the origin 0, false otherwise.
  */
-BOOL dbm_hasZero(const raw_t *dbm, cindex_t dim);
-
+bool dbm_hasZero(const raw_t* dbm, cindex_t dim);
 
 /** Equality test with dbm as obtained from dbm_zero(dbm, dim, tauClock)
  * @param dbm: DBM to test
@@ -125,12 +102,10 @@ BOOL dbm_hasZero(const raw_t *dbm, cindex_t dim);
  * @pre
  * - tauClock > 0 (not reference clock)
  */
-static inline
-BOOL dbm_isEqualToZero(const raw_t *dbm, cindex_t dim)
+static inline bool dbm_isEqualToZero(const raw_t* dbm, cindex_t dim)
 {
-    return (BOOL)(base_diff(dbm, dim*dim, dbm_LE_ZERO) == 0);
+    return (base_diff(dbm, dim * dim, dbm_LE_ZERO) == 0);
 }
-
 
 /** Convex hull union between 2 DBMs.
  * @param dbm1,dbm2: DBMs.
@@ -141,8 +116,7 @@ BOOL dbm_isEqualToZero(const raw_t *dbm, cindex_t dim)
  * @return dbm1 = dbm1 U dbm2
  * @post dbm1 is closed.
  */
-void dbm_convexUnion(raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
-
+void dbm_convexUnion(raw_t* dbm1, const raw_t* dbm2, cindex_t dim);
 
 /** Intersection of 2 DBMs.
  * @param dbm1,dbm2: DBMs.
@@ -151,11 +125,10 @@ void dbm_convexUnion(raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
  * - both DBMs have the same dimension
  * - both DBMs are closed and non empty
  * @return dbm1 = dbm1 intersected with dbm2 and
- * TRUE if dbm1 is non empty.
+ * true if dbm1 is non empty.
  * @post dbm1 is closed and non empty OR dbm1 is empty.
  */
-BOOL dbm_intersection(raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
-
+bool dbm_intersection(raw_t* dbm1, const raw_t* dbm2, cindex_t dim);
 
 /** Relaxed intersection of 2 DBMs.
  * @param dbm1,dbm2: DBMs.
@@ -165,20 +138,18 @@ BOOL dbm_intersection(raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
  * - both DBMs are closed and non empty
  * - dim > 0
  * @return dst = relaxed(dbm1) intersected with relaxed(dbm2) and
- * TRUE if dst is non empty.
+ * true if dst is non empty.
  * @post dst is closed and non empty OR dst is empty.
  */
-BOOL dbm_relaxedIntersection(raw_t *dst, const raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
-
+bool dbm_relaxedIntersection(raw_t* dst, const raw_t* dbm1, const raw_t* dbm2, cindex_t dim);
 
 /** Test if 2 DBMs have an intersection.
  * @param dbm1,dbm2: DBMs to test.
  * @param dim: dimension of both DBMs.
- * @return FALSE if dbm1 intersection dbm2 is empty
- * and TRUE if it *may* be non empty (not guaranteed).
+ * @return false if dbm1 intersection dbm2 is empty
+ * and true if it *may* be non empty (not guaranteed).
  */
-BOOL dbm_haveIntersection(const raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
-
+bool dbm_haveIntersection(const raw_t* dbm1, const raw_t* dbm2, cindex_t dim);
 
 /** Constrain a DBM with a constraint.
  * USAGE:
@@ -191,10 +162,10 @@ BOOL dbm_haveIntersection(const raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
  * @param i,j,constraint: the clock constraint xi-xj <= constraint
  * (or < constraint) according to the clock constraint encoding.
  * @param touched: bit table to keep track of modified clocks.
- * @return: FALSE if the DBM is empty, TRUE otherwise, the constrained
+ * @return: false if the DBM is empty, true otherwise, the constrained
  * DBM, and which clocks were modified (touched).
  * It is not guaranteed that the DBM is non empty, but
- * if FALSE is returned then the DBM is guaranteed to be empty.
+ * if false is returned then the DBM is guaranteed to be empty.
  * @pre
  * - touched is at least a uint32_t[bits2intsize(dim)]
  * - constraint is finite
@@ -203,10 +174,8 @@ BOOL dbm_haveIntersection(const raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
  * @post THE RESULTING DBM MAY NOT BE CLOSED, calls to isEmpty
  * can return erroneous results.
  */
-BOOL dbm_constrain(raw_t *dbm, cindex_t dim,
-                   cindex_t i, cindex_t j, raw_t constraint,
-                   uint32_t *touched);
-
+bool dbm_constrain(raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j, raw_t constraint,
+                   uint32_t* touched);
 
 /** Constrain a DBM with several constraints.
  * USAGE:
@@ -218,16 +187,14 @@ BOOL dbm_constrain(raw_t *dbm, cindex_t dim,
  * - valid constraint: not of the form xi-xi <= something
  * - dim > 1 induced by i < dim & j < dim & i != j
  * - constraints[*].{i,j} < dim
- * @return TRUE if the DBM is non empty, the constrained
+ * @return true if the DBM is non empty, the constrained
  * DBM
  * @post the resulting DBM is closed if it is non empty.
  */
-BOOL dbm_constrainN(raw_t *dbm, cindex_t dim,
-                    const constraint_t *constraints, size_t n);
-
+bool dbm_constrainN(raw_t* dbm, cindex_t dim, const constraint_t* constraints, size_t n);
 
 /** Constrain a DBM with several constraints using a table for
- * index translation (translates absolute clock indices to 
+ * index translation (translates absolute clock indices to
  * local clock indices for this DBM).
  * USAGE:
  * @param dbm: DBM
@@ -239,13 +206,12 @@ BOOL dbm_constrainN(raw_t *dbm, cindex_t dim,
  * - valid constraint: not of the form xi-xi <= something
  * - dim > 1 induced by i < dim & j < dim & i != j
  * - constraints[*].{i,j} < dim
- * @return TRUE if the DBM is non empty, the constrained
+ * @return true if the DBM is non empty, the constrained
  * DBM
  * @post the resulting DBM is closed if it is non empty.
  */
-BOOL dbm_constrainIndexedN(raw_t *dbm, cindex_t dim, const cindex_t *indexTable,
-                           const constraint_t *constraints, size_t n);
-
+bool dbm_constrainIndexedN(raw_t* dbm, cindex_t dim, const cindex_t* indexTable,
+                           const constraint_t* constraints, size_t n);
 
 /** Constrain a DBM with one constraint.
  * If you have several constraints, it may be better to
@@ -259,27 +225,23 @@ BOOL dbm_constrainIndexedN(raw_t *dbm, cindex_t dim, const cindex_t *indexTable,
  * - as a consequence: i>=0 & j>=0 & i!=j => (i or j) > 0
  *   and dim > (i or j) > 0 => dim > 1
  * - i < dim, j < dim, i != j
- * @return TRUE if the DBM is non empty and the constrained
+ * @return true if the DBM is non empty and the constrained
  * DBM.
  * @post the resulting DBM is closed if it is non empty.
  */
-BOOL dbm_constrain1(raw_t *dbm, cindex_t dim,
-                    cindex_t i, cindex_t j, raw_t constraint);
-
+bool dbm_constrain1(raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j, raw_t constraint);
 
 /** Wrapper for constrain1.
  * @param dbm: DBM, assume closed
  * @param dim: dimension
  * @param c: the constraint to apply
- * @return TRUE if the DBM is non empty
+ * @return true if the DBM is non empty
  * @post the resulting DBM is closed if it is non empty
  */
-static inline
-BOOL dbm_constrainC(raw_t *dbm, cindex_t dim, constraint_t c)
+static inline bool dbm_constrainC(raw_t* dbm, cindex_t dim, constraint_t c)
 {
     return dbm_constrain1(dbm, dim, c.i, c.j, c.value);
 }
-
 
 /** Delay operation.
  * Remove constraints of the form xi-x0 <= ci
@@ -291,8 +253,7 @@ BOOL dbm_constrainC(raw_t *dbm, cindex_t dim, constraint_t c)
  * - DBM closed and non empty
  * @post DBM is closed.
  */
-void dbm_up(raw_t *dbm, cindex_t dim);
-
+void dbm_up(raw_t* dbm, cindex_t dim);
 
 /** Delay operation with stopped clocks.
  * Apply delay except for a number of stopped clocks. The
@@ -309,9 +270,8 @@ void dbm_up(raw_t *dbm, cindex_t dim);
  */
 void dbm_up_stop(raw_t* dbm, cindex_t dim, const uint32_t* stopped);
 
-
 /** Internal dbm_down, don't use directly */
-void dbm_downFrom(raw_t *dbm, cindex_t dim, cindex_t j0);
+void dbm_downFrom(raw_t* dbm, cindex_t dim, cindex_t j0);
 
 /** Inverse delay operation.
  * Also called weakest pre-condition.
@@ -321,12 +281,7 @@ void dbm_downFrom(raw_t *dbm, cindex_t dim, cindex_t j0);
  * - DBM closed and non empty
  * @post DBM is closed.
  */
-static inline
-void dbm_down(raw_t *dbm, cindex_t dim)
-{
-    dbm_downFrom(dbm, dim, 1);
-}
-
+static inline void dbm_down(raw_t* dbm, cindex_t dim) { dbm_downFrom(dbm, dim, 1); }
 
 /** Inverse delay operation with stopped clocks.
  * This one is more tricky: 1) It lowers the lower
@@ -342,8 +297,7 @@ void dbm_down(raw_t *dbm, cindex_t dim)
  * - stopped != NULL and stopped is a uint32_t[bits2intsize(dim)]
  * @post DBM is closed.
  */
-void dbm_down_stop(raw_t *dbm, cindex_t dim, const uint32_t *stopped);
-
+void dbm_down_stop(raw_t* dbm, cindex_t dim, const uint32_t* stopped);
 
 /** Former "reset" operation, properly called update.
  * Implement the operation x := v, where x is a clock and v
@@ -360,13 +314,11 @@ void dbm_down_stop(raw_t *dbm, cindex_t dim, const uint32_t *stopped);
  * - value >= 0 (int used for type convenience and compatibility).
  * @post DBM is closed.
  */
-void dbm_updateValue(raw_t *dbm, cindex_t dim,
-                     cindex_t index, int32_t value);
-
+void dbm_updateValue(raw_t* dbm, cindex_t dim, cindex_t index, int32_t value);
 
 /** Free operation. Remove all constraints (lower and upper
  * bounds) for a given clock, i.e., set them to infinity,
- * except for x0-xk <= 0.
+ * except for x0-xk <= 0 if CLOCKS_POSITIVE is true.
  * @param dbm: DBM.
  * @param dim: dimension.
  * @param index: the clock to free.
@@ -376,9 +328,8 @@ void dbm_updateValue(raw_t *dbm, cindex_t dim,
  * - index > 0, index < dim
  * @post DBM is closed.
  */
-void dbm_freeClock(raw_t *dbm, cindex_t dim, cindex_t index);
+void dbm_freeClock(raw_t* dbm, cindex_t dim, cindex_t index);
 
-              
 /** Free all upper bounds for a given clock.
  * @param dbm: DBM.
  * @param dim: dimension.
@@ -386,8 +337,7 @@ void dbm_freeClock(raw_t *dbm, cindex_t dim, cindex_t index);
  * @pre DBM closed and non empty and 0 < index < dim
  * @post DBM is closed and non empty.
  */
-void dbm_freeUp(raw_t *dbm, cindex_t dim, cindex_t index);
-
+void dbm_freeUp(raw_t* dbm, cindex_t dim, cindex_t index);
 
 /** Free all upper bounds for all clocks.
  * @param dbm: DBM.
@@ -397,13 +347,11 @@ void dbm_freeUp(raw_t *dbm, cindex_t dim, cindex_t index);
  */
 void dbm_freeAllUp(raw_t* dbm, cindex_t dim);
 
-
 /** @return true if dbm_freeAllUp(dbm,dim) has
  * no effect on dbm.
  * @param dbm,dim: DBM of dimension dim to test.
  */
-BOOL dbm_isFreedAllUp(const raw_t *dbm, cindex_t dim);
-
+bool dbm_isFreedAllUp(const raw_t* dbm, cindex_t dim);
 
 /** @return 0 if dbm_freeAllDown(dbm,dim) has
  * no effect on dbm, or (j << 16)|i otherwise
@@ -411,8 +359,7 @@ BOOL dbm_isFreedAllUp(const raw_t *dbm, cindex_t dim);
  * differs from its expected result.
  * @param dbm,dim: DBM of dimension dim to test.
  */
-uint32_t dbm_testFreeAllDown(const raw_t *dbm, cindex_t dim);
-
+uint32_t dbm_testFreeAllDown(const raw_t* dbm, cindex_t dim);
 
 /** Free all lower bounds for a given clock.
  * @param dbm: DBM.
@@ -424,8 +371,7 @@ uint32_t dbm_testFreeAllDown(const raw_t *dbm, cindex_t dim);
  * - DBM closed and non empty
  * @post DBM is closed and non empty.
  */
-void dbm_freeDown(raw_t *dbm, cindex_t dim, cindex_t index);
-
+void dbm_freeDown(raw_t* dbm, cindex_t dim, cindex_t index);
 
 /** Free all lower bounds for all clocks.
  * @param dbm: DBM.
@@ -433,8 +379,7 @@ void dbm_freeDown(raw_t *dbm, cindex_t dim, cindex_t index);
  * @pre DBM closed and non empty.
  * @post DBM closed and non empty.
  */
-void dbm_freeAllDown(raw_t *dbm, cindex_t dim);
-
+void dbm_freeAllDown(raw_t* dbm, cindex_t dim);
 
 /** Clock copy operation = update clock:
  * xi := xj, where xi and xj are clocks.
@@ -447,9 +392,7 @@ void dbm_freeAllDown(raw_t *dbm, cindex_t dim);
  * - i > 0, j > 0, i < dim, j < dim
  * @post DBM is closed.
  */
-void dbm_updateClock(raw_t *dbm, cindex_t dim,
-                     cindex_t i, cindex_t j);
-
+void dbm_updateClock(raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j);
 
 /** Increment operation: xi := xi + value, where xi is a clock.
  * WARNING: if offset is negative it may be incorrect to use this.
@@ -464,9 +407,7 @@ void dbm_updateClock(raw_t *dbm, cindex_t dim,
  * - if value < 0, then |value| <= min bound of clock i
  * @post DBM is closed.
  */
-void dbm_updateIncrement(raw_t *dbm, cindex_t dim,
-                         cindex_t i, int32_t value);
-
+void dbm_updateIncrement(raw_t* dbm, cindex_t dim, cindex_t i, int32_t value);
 
 /** More general update operation: xi := xj + value,
  * where xi and yi are clocks.
@@ -482,9 +423,7 @@ void dbm_updateIncrement(raw_t *dbm, cindex_t dim,
  * - if value < 0 then |value| <= min bound of clock j
  * @post DBM is closed.
  */
-void dbm_update(raw_t *dbm, cindex_t dim,
-                cindex_t i, cindex_t j, int32_t value);
-
+void dbm_update(raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j, int32_t value);
 
 /** @return constraint clock to == value, and return
  * if the result is non empty.
@@ -493,8 +432,7 @@ void dbm_update(raw_t *dbm, cindex_t dim,
  * @param value: reset value to apply
  * @pre clock != 0 (not ref clock) && clock < dim
  */
-BOOL dbm_constrainClock(raw_t *dbm, cindex_t dim, cindex_t clock, int32_t value);
-
+bool dbm_constrainClock(raw_t* dbm, cindex_t dim, cindex_t clock, int32_t value);
 
 /** Satisfy operation.
  * Check if a DBM satisfies a constraint. The DBM is not modified.
@@ -509,18 +447,15 @@ BOOL dbm_constrainClock(raw_t *dbm, cindex_t dim, cindex_t clock, int32_t value)
  * - dim > 0
  * - i != j (don't touch the diagonal)
  * - i < dim, j < dim
- * @return TRUE if the DBM satisfies the constraint.
+ * @return true if the DBM satisfies the constraint.
  */
-static inline
-BOOL dbm_satisfies(const raw_t *dbm, cindex_t dim,
-                   cindex_t i, cindex_t j, raw_t constraint)
+static inline bool dbm_satisfies(const raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j,
+                                 raw_t constraint)
 {
-    assert(dbm && dim && i < dim && j < dim && i != j && dim > 0);
-    return (BOOL)
-        !(dbm[i*dim+j] > constraint &&             /* tightening ? */
-          dbm_negRaw(constraint) >= dbm[j*dim+i]); /* too tight ? */
+    assert(dbm && dim && i < dim && j < dim && dim > 0);
+    return !(dbm[i * dim + j] > constraint &&             /* tightening ? */
+             dbm_negRaw(constraint) >= dbm[j * dim + i]); /* too tight ? */
 }
-
 
 /** Check if a DBM is empty by looking
  * at its diagonal. There should be only == 0
@@ -531,33 +466,30 @@ BOOL dbm_satisfies(const raw_t *dbm, cindex_t dim,
  * @param dim: dimension.
  * @pre
  * - the close function was run before on the dbm
- * @return: TRUE if empty, FALSE otherwise.
+ * @return: true if empty, false otherwise.
  */
-BOOL dbm_isEmpty(const raw_t *dbm, cindex_t dim);
-
+bool dbm_isEmpty(const raw_t* dbm, cindex_t dim);
 
 /** Close operation. Complexity: cubic in dim.
  * Apply Floyd's shortest path algorithm.
  * @param dbm: DBM.
  * @param dim: dimension.
- * @return TRUE if the DBM is non empty.
+ * @return true if the DBM is non empty.
  * @post DBM is closed *if* non empty.
  * @pre if dim == 1 then *dbm==dbm_LE_ZERO: close has
  * not sense and will not work for dim == 1.
  */
-BOOL dbm_close(raw_t *dbm, cindex_t dim);
-
+bool dbm_close(raw_t* dbm, cindex_t dim);
 
 /** Check that a DBM is closed. This test is as
  * expensive as dbm_close! It is there mainly for
  * testing/debugging purposes.
  * @param dbm: DBM to check.
  * @param dim: dimension.
- * @return TRUE if DBM is closed and non empty,
- * FALSE otherwise.
+ * @return true if DBM is closed and non empty,
+ * false otherwise.
  */
-BOOL dbm_isClosed(const raw_t *dbm, cindex_t dim);
-
+bool dbm_isClosed(const raw_t* dbm, cindex_t dim);
 
 /** Close operation. Complexity: custom*dim*dim,
  * where custom is the number of clocks to look at.
@@ -569,10 +501,9 @@ BOOL dbm_isClosed(const raw_t *dbm, cindex_t dim);
  * - touched is at least a uint32_t[bit2intsize(dim)]
  * - if there is no bit set (nothing to do) then
  *   the input DBM is non empty.
- * @return TRUE if the dbm is non empty.
+ * @return true if the dbm is non empty.
  */
-BOOL dbm_closex(raw_t *dbm, cindex_t dim, const uint32_t *touched);
-
+bool dbm_closex(raw_t* dbm, cindex_t dim, const uint32_t* touched);
 
 /** Close operation for 1 clock. Complexity: dim*dim.
  * @param dbm: DBM.
@@ -580,10 +511,9 @@ BOOL dbm_closex(raw_t *dbm, cindex_t dim, const uint32_t *touched);
  * @param k: the clock for which the closure applies.
  * @pre
  * - k < dim
- * @return TRUE if the DBM is non empty.
+ * @return true if the DBM is non empty.
  */
-BOOL dbm_close1(raw_t *dbm, cindex_t dim, cindex_t k);
-
+bool dbm_close1(raw_t* dbm, cindex_t dim, cindex_t k);
 
 /** Specialization of close valid if only one
  * constraint cij is tightened, ie, DBM is closed,
@@ -604,8 +534,7 @@ BOOL dbm_close1(raw_t *dbm, cindex_t dim, cindex_t k);
  *   at all because we know the DBM is empty.
  * @post DBM is not empty
  */
-void dbm_closeij(raw_t *dbm, cindex_t dim, cindex_t i, cindex_t j);
-
+void dbm_closeij(raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j);
 
 /** Tighten with a constraint c and maintain the closed form.
  * @param dbm,dim DBM of dimension dim
@@ -614,27 +543,24 @@ void dbm_closeij(raw_t *dbm, cindex_t dim, cindex_t i, cindex_t j);
  * (it does not tighten too much, ie, to an empty DBM).
  * @post dbm is not empty.
  */
-static inline
-void dbm_tighten(raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j, raw_t c)
+static inline void dbm_tighten(raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j, raw_t c)
 {
     // it is a tightening and it does not tighten too much
-    assert(dbm[i*dim+j] > c && dbm_negRaw(c) < dbm[j*dim+i]);
-    dbm[i*dim+j] = c;
+    assert(dbm[i * dim + j] > c && dbm_negRaw(c) < dbm[j * dim + i]);
+    dbm[i * dim + j] = c;
     dbm_closeij(dbm, dim, i, j);
     assert(!dbm_isEmpty(dbm, dim));
 }
-
 
 /** Check if a DBM is unbounded, i.e., if one point
  * can delay infinitely.
  * @param dbm: DBM.
  * @param dim: dimension.
- * @return TRUE if unbounded, FALSE otherwise.
+ * @return true if unbounded, false otherwise.
  * @pre
  * - dbm_isValid(dbm, dim)
  */
-BOOL dbm_isUnbounded(const raw_t *dbm, cindex_t dim);
-
+bool dbm_isUnbounded(const raw_t* dbm, cindex_t dim);
 
 /** Relation between 2 dbms.
  * See relation_t.
@@ -645,8 +571,7 @@ BOOL dbm_isUnbounded(const raw_t *dbm, cindex_t dim);
  * - dbm_isValid for both DBMs
  * @return: exact relation result, @see relation_t.
  */
-relation_t dbm_relation(const raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
-
+relation_t dbm_relation(const raw_t* dbm1, const raw_t* dbm2, cindex_t dim);
 
 /** Test only if dbm1 <= dbm2.
  * @param dbm1,dbm2: DBMs to be tested.
@@ -654,19 +579,17 @@ relation_t dbm_relation(const raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
  * @pre
  * - dbm1 and dbm2 have the same dimension
  * - dbm_isValid for both DBMs
- * @return TRUE if dbm1 <= dbm2, FALSE otherwise.
+ * @return true if dbm1 <= dbm2, false otherwise.
  */
-BOOL dbm_isSubsetEq(const raw_t *dbm1, const raw_t *dbm2, cindex_t dim);
+bool dbm_isSubsetEq(const raw_t* dbm1, const raw_t* dbm2, cindex_t dim);
 
 /** Symmetric relation, just for completeness.
- * @return TRUE if dbm1 >= dbm2, FALSE otherwise.
+ * @return true if dbm1 >= dbm2, false otherwise.
  */
-static inline
-BOOL dbm_isSupersetEq(const raw_t *dbm1, const raw_t *dbm2, cindex_t dim)
+static inline bool dbm_isSupersetEq(const raw_t* dbm1, const raw_t* dbm2, cindex_t dim)
 {
     return dbm_isSubsetEq(dbm2, dbm1, dim);
 }
-
 
 /** Relax upper bounds of a given clocks, ie, make them weak.
  * @param dbm, dim: DBM of dimension dim
@@ -675,8 +598,7 @@ BOOL dbm_isSupersetEq(const raw_t *dbm1, const raw_t *dbm2, cindex_t dim)
  * && dbm_isValid(dbm,dim)
  * @post DBM is closed and non empty
  */
-void dbm_relaxUpClock(raw_t *dbm, cindex_t dim, cindex_t clock);
-
+void dbm_relaxUpClock(raw_t* dbm, cindex_t dim, cindex_t clock);
 
 /** Relax lower bounds of a given clocks, ie, make them weak.
  * @param dbm, dim: DBM of dimension dim
@@ -687,7 +609,6 @@ void dbm_relaxUpClock(raw_t *dbm, cindex_t dim, cindex_t clock);
  */
 void dbm_relaxDownClock(raw_t* dbm, cindex_t dim, cindex_t clock);
 
-
 /** Relax all bounds so that they are non strict (except
  * for infinity).
  * @param dbm,dim: DBM of dimension dim.
@@ -695,7 +616,6 @@ void dbm_relaxDownClock(raw_t* dbm, cindex_t dim, cindex_t clock);
  * @post dbm_isValid(dbm, dim)
  */
 void dbm_relaxAll(raw_t* dbm, cindex_t dim);
-
 
 /** Smallest possible delay. Render upper bounds xi-x0 <= ci0
  * non strict if possible.
@@ -705,13 +625,11 @@ void dbm_relaxAll(raw_t* dbm, cindex_t dim);
  * - dbm_isValid(dbm, dim)
  * @post DBM is closed and non empty (if dim > 0)
  */
-static inline
-void dbm_relaxUp(raw_t *dbm, cindex_t dim)
+static inline void dbm_relaxUp(raw_t* dbm, cindex_t dim)
 {
     // down of the ref clock == up of all other clocks
     dbm_relaxDownClock(dbm, dim, 0);
 }
-
 
 /** Smallest possible inverse delay. Render lower bounds x0-xi <= c0i
  * non strict if possible.
@@ -721,29 +639,27 @@ void dbm_relaxUp(raw_t *dbm, cindex_t dim)
  * - dbm_isValid(dbm, dim)
  * @post DBM is closed and non empty (if dim > 0)
  */
-static inline
-void dbm_relaxDown(raw_t *dbm, cindex_t dim)
+static inline void dbm_relaxDown(raw_t* dbm, cindex_t dim)
 {
     // up of the ref clock == down of all other clocks
     dbm_relaxUpClock(dbm, dim, 0);
 }
 
-
 /** Constrain all lower bounds to be strict.
  * @param dbm: DBM.
  * @param dim: dimension.
  * @pre dbm_isValid(dbm,dim)
- * @return TRUE if the DBM is non empty and closed, 0 otherwise.
+ * @return true if the DBM is non empty and closed, 0 otherwise.
  */
-BOOL dbm_tightenDown(raw_t* dbm, cindex_t dim);
+bool dbm_tightenDown(raw_t* dbm, cindex_t dim);
 
 /** Constrain all upper bounds to be strict.
  * @param dbm: DBM.
  * @param dim: dimension.
  * @pre dbm_isValid(dbm,dim)
- * @return TRUE if the DBM is non empty and closed, 0 otherwise.
+ * @return true if the DBM is non empty and closed, 0 otherwise.
  */
-BOOL dbm_tightenUp(raw_t* dbm, cindex_t dim);
+bool dbm_tightenUp(raw_t* dbm, cindex_t dim);
 
 /** Copy DBMs.
  * @param src: source.
@@ -751,25 +667,21 @@ BOOL dbm_tightenUp(raw_t* dbm, cindex_t dim);
  * @param dim: dimension.
  * @pre src and dst are raw_t[dim*dim]
  */
-static inline
-void dbm_copy(raw_t *dst, const raw_t *src, cindex_t dim)
+static inline void dbm_copy(raw_t* dst, const raw_t* src, cindex_t dim)
 {
-    base_copyBest(dst, src, dim*dim);
+    memcpy(dst, src, dim * dim * sizeof(raw_t));
 }
-
 
 /** Test equality.
  * @param dbm1,dbm2: DBMs to compare.
  * @param dim: dimension.
  * @pre dbm1 and dbm2 are raw_t[dim*dim]
- * @return TRUE if dbm1 == dbm2
+ * @return true if dbm1 == dbm2
  */
-static inline
-BOOL dbm_areEqual(const raw_t *dbm1, const raw_t *dbm2, cindex_t dim)
+static inline bool dbm_areEqual(const raw_t* dbm1, const raw_t* dbm2, cindex_t dim)
 {
-    return base_areEqual(dbm1, dbm2, dim*dim);
+    return base_areEqual(dbm1, dbm2, dim * dim);
 }
-
 
 /** Compute a hash value for a DBM.
  * @param dbm: input DBM.
@@ -777,12 +689,10 @@ BOOL dbm_areEqual(const raw_t *dbm1, const raw_t *dbm2, cindex_t dim)
  * @pre dbm is a raw_t[dim*dim]
  * @return hash value.
  */
-static inline
-uint32_t dbm_hash(const raw_t *dbm, cindex_t dim)
+static inline uint32_t dbm_hash(const raw_t* dbm, cindex_t dim)
 {
-    return hash_computeI32(dbm, dim*dim, dim);
+    return hash_computeI32(dbm, dim * dim, dim);
 }
-
 
 /** Test if a (discrete) point is included in the
  * zone represented by the DBM.
@@ -793,10 +703,9 @@ uint32_t dbm_hash(const raw_t *dbm, cindex_t dim)
  * - pt is a int32_t[dim]
  * - dbm is a raw_t[dim*dim]
  * - dbm is closed
- * @return TRUE if the pt satisfies the constraints of dbm
+ * @return true if the pt satisfies the constraints of dbm
  */
-BOOL dbm_isPointIncluded(const int32_t *pt, const raw_t *dbm, cindex_t dim);
-
+bool dbm_isPointIncluded(const int32_t* pt, const raw_t* dbm, cindex_t dim);
 
 /** Test if a (real) point is included in the
  * zone represented by the DBM.
@@ -807,10 +716,9 @@ BOOL dbm_isPointIncluded(const int32_t *pt, const raw_t *dbm, cindex_t dim);
  * - pt is a int32_t[dim]
  * - dbm is a raw_t[dim*dim]
  * - dbm is closed
- * @return TRUE if the pt satisfies the constraints of dbm
+ * @return true if the pt satisfies the constraints of dbm
  */
-BOOL dbm_isRealPointIncluded(const double *pt, const raw_t *dbm, cindex_t dim);
-
+bool dbm_isRealPointIncluded(const double* pt, const raw_t* dbm, cindex_t dim);
 
 /** Classical extrapolation based on maximal bounds,
  * formerly called k-normalization.
@@ -829,8 +737,7 @@ BOOL dbm_isRealPointIncluded(const double *pt, const raw_t *dbm, cindex_t dim);
  * - max[0] = 0 (reference clock)
  * @post DBM is closed
  */
-void dbm_extrapolateMaxBounds(raw_t *dbm, cindex_t dim, const int32_t *max);
-
+void dbm_extrapolateMaxBounds(raw_t* dbm, cindex_t dim, const int32_t* max);
 
 /** Diagonal extrapolation based on maximal bounds.
  *
@@ -850,8 +757,7 @@ void dbm_extrapolateMaxBounds(raw_t *dbm, cindex_t dim, const int32_t *max);
  * - max[0] = 0 (reference clock)
  * @post DBM is closed.
  */
-void dbm_diagonalExtrapolateMaxBounds(raw_t *dbm, cindex_t dim, const int32_t *max);
-
+void dbm_diagonalExtrapolateMaxBounds(raw_t* dbm, cindex_t dim, const int32_t* max);
 
 /** Extrapolation based on lower-upper bounds.
  *
@@ -868,9 +774,7 @@ void dbm_diagonalExtrapolateMaxBounds(raw_t *dbm, cindex_t dim, const int32_t *m
  * - lower[0] = upper[0] = 0 (reference clock)
  * @post DBM is closed.
  */
-void dbm_extrapolateLUBounds(raw_t *dbm, cindex_t dim,
-                             const int32_t *lower, const int32_t *upper);
-
+void dbm_extrapolateLUBounds(raw_t* dbm, cindex_t dim, const int32_t* lower, const int32_t* upper);
 
 /** Diagonal extrapolation based on lower-upper bounds.
  * Most general approximation.
@@ -892,9 +796,8 @@ void dbm_extrapolateLUBounds(raw_t *dbm, cindex_t dim,
  * - lower[0] = upper[0] = 0 (reference clock)
  * @post DBM is closed.
  */
-void dbm_diagonalExtrapolateLUBounds(raw_t *dbm, cindex_t dim,
-                                     const int32_t *lower, const int32_t *upper);
-
+void dbm_diagonalExtrapolateLUBounds(raw_t* dbm, cindex_t dim, const int32_t* lower,
+                                     const int32_t* upper);
 
 /** Shrink and expand a DBM:
  * - takes 2 bit arrays: the source array marks which
@@ -942,14 +845,9 @@ void dbm_diagonalExtrapolateLUBounds(raw_t *dbm, cindex_t dim,
  *   indirection ; for other bits, table[i] is
  *   untouched.
  */
-cindex_t dbm_shrinkExpand(const raw_t *dbmSrc,
-                         raw_t *dbmDst,
-                         cindex_t dimSrc,
-                         const uint32_t *bitSrc,
-                         const uint32_t *bitDst,
-                         size_t bitSize,
-                         cindex_t *table);
-
+cindex_t dbm_shrinkExpand(const raw_t* dbmSrc, raw_t* dbmDst, cindex_t dimSrc,
+                          const uint32_t* bitSrc, const uint32_t* bitDst, size_t bitSize,
+                          cindex_t* table);
 
 /** Variant of dbm_shrinkExpand: Instead of giving
  * bit arrays, you provide one array of the clocks
@@ -963,17 +861,14 @@ cindex_t dbm_shrinkExpand(const raw_t *dbmSrc,
  * since the ref clock is always at 0, and
  * for all i < dimDst: cols[i] < dimSrc.
  */
-void dbm_updateDBM(raw_t *dbmDst, const raw_t *dbmSrc,
-                   cindex_t dimDst, cindex_t dimSrc,
-                   const cindex_t *cols);
-
+void dbm_updateDBM(raw_t* dbmDst, const raw_t* dbmSrc, cindex_t dimDst, cindex_t dimSrc,
+                   const cindex_t* cols);
 
 /** Swap clocks.
  * @param dbm,dim: DBM of dimension dim.
  * @param x,y: clocks to swap.
  */
-void dbm_swapClocks(raw_t *dbm, cindex_t dim, cindex_t x, cindex_t y);
-
+void dbm_swapClocks(raw_t* dbm, cindex_t dim, cindex_t x, cindex_t y);
 
 /** Test if the diagonal is correct.
  * Constraints on the diagonal should be <0 if the
@@ -982,18 +877,16 @@ void dbm_swapClocks(raw_t *dbm, cindex_t dim, cindex_t x, cindex_t y);
  * are not canonical.
  * @param dbm: DBM.
  * @param dim: dimension.
- * @return TRUE if the diagonal <=0.
+ * @return true if the diagonal <=0.
  */
-BOOL dbm_isDiagonalOK(const raw_t *dbm, cindex_t dim);
-
+bool dbm_isDiagonalOK(const raw_t* dbm, cindex_t dim);
 
 /** Test if
  * - dbm is closed
  * - dbm is not empty
  * - constraints in the 1st row are at most <=0
  */
-BOOL dbm_isValid(const raw_t *dbm, cindex_t dim);
-
+bool dbm_isValid(const raw_t* dbm, cindex_t dim);
 
 /** Convert code to string.
  * @param rel: relation result to translate.
@@ -1002,7 +895,6 @@ BOOL dbm_isValid(const raw_t *dbm, cindex_t dim);
  */
 const char* dbm_relation2string(relation_t rel);
 
-
 /** Go through a DBM (dim*dim) and
  * compute the max range needed to store
  * the constraints, excluding infinity.
@@ -1010,12 +902,10 @@ const char* dbm_relation2string(relation_t rel);
  * @param dim: dimension.
  * @return max range, positive value.
  */
-raw_t dbm_getMaxRange(const raw_t *dbm, cindex_t dim);
-
+raw_t dbm_getMaxRange(const raw_t* dbm, cindex_t dim);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* INCLUDE_DBM_DBM_H */
-

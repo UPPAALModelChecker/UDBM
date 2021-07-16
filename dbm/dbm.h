@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 /* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 /*********************************************************************
  *
@@ -52,12 +32,8 @@ extern "C" {
  * @param table, cols: tables to compute
  * @return dimension of the new DBM
  */
-cindex_t dbm_computeTables(const uint32_t *bitSrc,
-                          const uint32_t *bitDst,
-                          size_t bitSize,
-                          cindex_t *table,
-                          cindex_t *cols);
-
+cindex_t dbm_computeTables(const uint32_t* bitSrc, const uint32_t* bitDst, size_t bitSize,
+                           cindex_t* table, cindex_t* cols);
 
 /** Internal function: update a DBM (copy & and insert new rows).
  * @param dbmDst, dimDst: destination DBM of dimension dimDst
@@ -67,17 +43,15 @@ cindex_t dbm_computeTables(const uint32_t *bitSrc,
  * @pre cols computed from ext_computeTables, 1st element
  * of dbmDst is written
  */
-void dbm_updateDBM(raw_t *dbmDst, const raw_t *dbmSrc,
-                   cindex_t dimDst, cindex_t dimSrc,
-                   const cindex_t *cols);
-
+void dbm_updateDBM(raw_t* dbmDst, const raw_t* dbmSrc, cindex_t dimDst, cindex_t dimSrc,
+                   const cindex_t* cols);
 
 #ifndef NCLOSELU
 
 /** Specialized close for extrapolation: can skip
  * outer loop k if lower[k] == upper[k] == infinity.
  */
-void dbm_closeLU(raw_t *dbm, cindex_t dim, const int32_t *lower, const int32_t *upper);
+void dbm_closeLU(raw_t* dbm, cindex_t dim, const int32_t* lower, const int32_t* upper);
 
 #endif
 
@@ -85,11 +59,10 @@ void dbm_closeLU(raw_t *dbm, cindex_t dim, const int32_t *lower, const int32_t *
  * case of infinity. Used to compute the
  * range of bits needed (32/16 bits).
  */
-#define ADD_BITS(BITS, VALUE)   \
-if ((VALUE) != dbm_LS_INFINITY) \
-{                               \
-    BITS |= base_absNot(VALUE); \
-}
+#define ADD_BITS(BITS, VALUE)         \
+    if ((VALUE) != dbm_LS_INFINITY) { \
+        BITS |= base_absNot(VALUE);   \
+    }
 
 #ifdef __cplusplus
 }

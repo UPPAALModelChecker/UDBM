@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 /* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 /*********************************************************************
  *
@@ -62,69 +42,60 @@ typedef struct
 class Cache
 {
 public:
-    Cache()
+    Cache() { std::fill(entries, entires + MINGRAPH_CACHE_SIZE, nullptr); }
+
+    ~Cache()
     {
-        base_resetSmall(entries, MINGRAPH_CACHE_SIZE*(sizeof(void*)/sizeof(int)));
-    }
-
-    ~Cache() {
-        // One static object, no need for deallocation.
-#ifdef ENABLE_MONITOR
-        for(uint32_t i = 0; i < MINGRAPH_CACHE_SIZE; ++i) {
-            delete [] (uint32_t*) entries[i];
+        // cleanup properly even if it is just one instance
+        for (uint32_t i = 0; i < MINGRAPH_CACHE_SIZE; ++i) {
+            delete[](uint32_t*) entries[i];
         }
-#endif
     }
 
-    cache_t* get(uint32_t hashValue) {
-        return entries[hashValue % MINGRAPH_CACHE_SIZE];
-    }
+    cache_t* get(uint32_t hashValue) { return entries[hashValue % MINGRAPH_CACHE_SIZE]; }
 
-    void set(cache_t *entry) {
-        entries[entry->hashValue % MINGRAPH_CACHE_SIZE] = entry;
-    }
+    void set(cache_t* entry) { entries[entry->hashValue % MINGRAPH_CACHE_SIZE] = entry; }
 
 private:
-    cache_t *entries[MINGRAPH_CACHE_SIZE];
+    cache_t* entries[MINGRAPH_CACHE_SIZE];
 };
 
 static Cache cache;
 
-size_t mingraph_getCachedResult(const raw_t *dbm, cindex_t dim, uint32_t *bitMatrix, uint32_t hashValue)
+size_t mingraph_getCachedResult(const raw_t* dbm, cindex_t dim, uint32_t* bitMatrix,
+                                uint32_t hashValue)
 {
     cache_t* entry = cache.get(hashValue);
     uint32_t dim2;
-    if (entry &&
-        entry->hashValue == hashValue &&
-        entry->dim == dim &&
-        base_areEqual(entry->data, dbm, dim2 = dim*dim)) /* hit! */
+    if (entry && entry->hashValue == hashValue && entry->dim == dim &&
+        base_areEqual(entry->data, dbm, dim2 = dim * dim)) /* hit! */
     {
-        RECORD_NSTAT(MAGENTA(BOLD)"DBM: Mingraph cache","hit");
-        base_copySmall(bitMatrix, &entry->data[dim2], bits2intsize(dim2)); /* write result */
+        RECORD_NSTAT(MAGENTA(BOLD) "DBM: Mingraph cache", "hit");
+        std::copy(&entry->data[dim2], &entry->data[dim2] + bits2intsize(dim2),
+                  bitMatrix); /* write result */
         assert(base_countBitsN(bitMatrix, bits2intsize(dim2)) == entry->cnt);
         return entry->cnt;
-    }
-    else /* miss! */
+    } else /* miss! */
     {
-        RECORD_NSTAT(MAGENTA(BOLD)"DBM: Mingraph cache","miss");
+        RECORD_NSTAT(MAGENTA(BOLD) "DBM: Mingraph cache", "miss");
         return 0xffffffff;
     }
 }
 
-void mingraph_putCachedResult(const raw_t *dbm, cindex_t dim, const uint32_t *bitMatrix, uint32_t hashValue, size_t cnt)
+void mingraph_putCachedResult(const raw_t* dbm, cindex_t dim, const uint32_t* bitMatrix,
+                              uint32_t hashValue, size_t cnt)
 {
-    uint32_t dim2 = dim*dim;
+    uint32_t dim2 = dim * dim;
     cache_t* entry = cache.get(hashValue);
-    if (!entry || entry->dim != dim)
-    {
-        delete [] (uint32_t*) entry;
-        entry = (cache_t*) new uint32_t[intsizeof(cache_t)+dim2+bits2intsize(dim2)];
+    if (!entry || entry->dim != dim) {
+        delete[](uint32_t*) entry;
+        entry = (cache_t*)new uint32_t[intsizeof(cache_t) + dim2 + bits2intsize(dim2)];
     }
     entry->hashValue = hashValue;
     entry->dim = dim;
     entry->cnt = cnt;
-    base_copyBest(entry->data, dbm, dim2);
-    base_copySmall(&entry->data[dim2], bitMatrix, bits2intsize(dim2));
+    std::copy(dbm, dbm + dim2, entry->data);
+    std::copy(&entry->data[dim2], bitMatrix, bits2intsize(dim2));
     cache.set(entry);
 
     assert(base_countBitsN(&entry->data[dim2], bits2intsize(dim2)) == entry->cnt);
