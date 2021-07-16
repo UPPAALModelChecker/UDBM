@@ -1,5 +1,5 @@
-FILE(GLOB udebug_source "*.c" "*.cpp" "*.h")
+file(GLOB udebug_source "*.c" "*.cpp" "*.h")
 
-ADD_LIBRARY(udebug ${udebug_source})
+add_library(udebug ${udebug_source} )
 
-ADD_SUBDIRECTORY(tests)
+add_subdirectory(tests)

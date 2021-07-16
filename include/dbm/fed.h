@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 // -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 ////////////////////////////////////////////////////////////////////
 //
@@ -26,23 +6,21 @@
 // C++ federation & DBMs
 //
 // This file is a part of the UPPAAL toolkit.
-// Copyright (c) 1995 - 2003, Uppsala University and Aalborg University.
+// Copyright (c) 1995 - 2018, Uppsala University and Aalborg University.
 // All right reserved.
-//
-// $Id: fed.h,v 1.37 2005/10/17 17:11:13 adavid Exp $
 //
 ///////////////////////////////////////////////////////////////////
 
 #ifndef INCLUDE_DBM_FED_H
 #define INCLUDE_DBM_FED_H
 
-#include <stdexcept>
-#include <vector>
 #include "base/pointer.h"
 #include "dbm/dbm.h"
 #include "dbm/mingraph.h"
-#include "dbm/Valuation.h"
 #include "dbm/ClockAccessor.h"
+
+#include <stdexcept>
+#include <vector>
 
 /** @file
  * This API offers access to DBMs and federations
@@ -63,38 +41,38 @@ namespace dbm
     class fed_t;
 
     /// Wrapper class for clock operations, @see dbm_t
-    template<class TYPE>
+    template <class TYPE>
     class ClockOperation
     {
     public:
         /// Clock increment and decrement.
-        ClockOperation& operator + (int32_t val);
-        ClockOperation& operator - (int32_t val);
-        ClockOperation& operator += (int32_t val);
-        ClockOperation& operator -= (int32_t val);
+        ClockOperation& operator+(int32_t val);
+        ClockOperation& operator-(int32_t val);
+        ClockOperation& operator+=(int32_t val);
+        ClockOperation& operator-=(int32_t val);
 
         /// Execute(update) clock (+value ignored) = clock + value.
         /// @pre this->dbm == op.dbm
-        ClockOperation& operator = (const ClockOperation& op);
+        ClockOperation& operator=(const ClockOperation& op);
 
         /// Execute(updateValue) clock = value.
-        ClockOperation& operator = (int32_t val);
+        ClockOperation& operator=(int32_t val);
 
         /// Check if clock constraints are satisfied.
         /// Semantics: does there exist a point such that it
         /// satisfies the constraint.
         /// @pre we are using the same dbm_t (or fed_t)
 
-        bool operator <  (const ClockOperation& x) const;
-        bool operator <= (const ClockOperation& x) const;
-        bool operator >  (const ClockOperation& x) const;
-        bool operator >= (const ClockOperation& x) const;
-        bool operator == (const ClockOperation& x) const;
-        bool operator <  (int32_t v) const;
-        bool operator <= (int32_t v) const;
-        bool operator >  (int32_t v) const;
-        bool operator >= (int32_t v) const;
-        bool operator == (int32_t v) const;
+        bool operator<(const ClockOperation& x) const;
+        bool operator<=(const ClockOperation& x) const;
+        bool operator>(const ClockOperation& x) const;
+        bool operator>=(const ClockOperation& x) const;
+        bool operator==(const ClockOperation& x) const;
+        bool operator<(int32_t v) const;
+        bool operator<=(int32_t v) const;
+        bool operator>(int32_t v) const;
+        bool operator>=(int32_t v) const;
+        bool operator==(int32_t v) const;
 
         /// The constructor should be used only by dbm_t or fed_t
         /// since ClockOperation is a convenience class.
@@ -102,18 +80,17 @@ namespace dbm
         /// @param c: index of the clock to manipulate.
         /// @pre c < d->getDimension()
         ClockOperation(TYPE* d, cindex_t c);
-            
+
         /// Access to the arguments of the operation.
-        TYPE* getPtr()     const { return ptr; }
+        TYPE* getPtr() const { return ptr; }
         cindex_t getClock() const { return clock; }
-        int32_t getVal()   const { return incVal; }
+        int32_t getVal() const { return incVal; }
 
     private:
-        TYPE* ptr;      /// related dbm_t or fed_t, no reference count
+        TYPE* ptr;       /// related dbm_t or fed_t, no reference count
         cindex_t clock;  /// clock to read/write
-        int32_t incVal; /// increment value to apply
+        int32_t incVal;  /// increment value to apply
     };
-
 
     /***********************************************************************
      * dbm_t: DBM type. A DBM is basically a matrix of dimension >= 1,
@@ -185,11 +162,11 @@ namespace dbm
     {
         friend class fed_t;
         friend class dbmlist_t;
+
     public:
         // Define maximal dimension as a bit mask.
         // 2^15-1 means trouble anyway (2^15-1)^2 bytes per DBM!
-        enum
-        {
+        enum {
             MAX_DIM_POWER = 15,
             MAX_DIM = ((1 << MAX_DIM_POWER) - 1),
         };
@@ -215,18 +192,18 @@ namespace dbm
         /// constraints of this DBM. A clock
         /// is always positive, so "true" simply means
         /// all clocks positive.
-        std::string toString(const ClockAccessor&) const;
+        std::string toString(const ClockAccessor&, bool full = false) const;
 
         /** Make an unbounded DBM with the lower bounds set to low
          * (strict constraints).
          */
-        static dbm_t makeUnbounded(const int32_t *low, cindex_t dim);
+        static dbm_t makeUnbounded(const int32_t* low, cindex_t dim);
 
         /** Wrapper for dbm_getSizeOfMinDBM. Here for other compatibility reasons.
          * @pre dimension == getDimension()
          */
         static size_t getSizeOfMinDBM(cindex_t dim, mingraph_t);
-        
+
         /** Construct a dbm_t from a mingraph_t. Not as a constructor
          * for other compatibility reasons.
          * @pre dimension == getDimension()
@@ -245,9 +222,12 @@ namespace dbm
 
         /// Short for setDimension(1), has the effect of deallocating the DBM.
         void nil();
-        
+
         /// @return true if this DBM contains the zero point.
         bool hasZero() const;
+
+        /// @return true if a point in the DBM can delay.
+        bool canDelay() const;
 
         /// @return a hash value.
         uint32_t hash(uint32_t seed = 0) const;
@@ -259,12 +239,12 @@ namespace dbm
         void intern();
 
         /// Copy from a DBM.
-        void copyFrom(const raw_t *src, cindex_t dim);
+        void copyFrom(const raw_t* src, cindex_t dim);
 
         /// Copy to a DBM.
         /// @pre dbm_isValid(dst, dim) and dim == getDimension()
-        void copyTo(raw_t *dst, cindex_t dim) const;
-        
+        void copyTo(raw_t* dst, cindex_t dim) const;
+
         // Overload of operators () and []:
         // dbm_t::()    -> DBM matrix
         // dbm_t::(i)   -> Clock access for clock i
@@ -273,15 +253,15 @@ namespace dbm
 
         /// @return read-only pointer to the internal DBM matrix.
         /// @post non null pointer iff !isEmpty()
-        const raw_t* operator () () const;
-        
+        const raw_t* operator()() const;
+
         /// @return DBM[i,j]
         /// @pre !isEmpty() && i < getDimension() && j < getDimension() otherwise segfault.
-        raw_t operator () (cindex_t i, cindex_t j) const;
+        raw_t operator()(cindex_t i, cindex_t j) const;
 
         /// @return row DBM[i]
         /// @pre !isEmpty() && i < getDimension()
-        const raw_t* operator [] (cindex_t i) const;
+        const raw_t* operator[](cindex_t i) const;
 
         /// @return a read-write access pointer to the internal DBM.
         /// @post return non null pointer iff getDimension() > 0
@@ -293,7 +273,7 @@ namespace dbm
          * @return the number of constraints of the set.
          * @pre bitMatrix is a uint32_t[bits2intsize(dim*dim)] and !isEmpty()
          */
-        size_t analyzeForMinDBM(uint32_t *bitMatrix) const;
+        size_t analyzeForMinDBM(uint32_t* bitMatrix) const;
 
         /** Compute & save the minimal set of constraints.
          * @param tryConstraints16: flag to try to save
@@ -303,10 +283,8 @@ namespace dbm
          * @return allocated memory.
          * @pre !isEmpty().
          */
-        int32_t* writeToMinDBMWithOffset(bool minimizeGraph,
-                                         bool tryConstraints16,
-                                         allocator_t c_alloc,
-                                         size_t offset) const;
+        int32_t* writeToMinDBMWithOffset(bool minimizeGraph, bool tryConstraints16,
+                                         allocator_t c_alloc, size_t offset) const;
 
         /** Similar to writeToMinDBMWithOffset but works with
          * a pre-analyzed DBM.
@@ -315,11 +293,8 @@ namespace dbm
          * @see dbm_writeAnalyzedDBM.
          * @post bitMatrix is cleaned from the constraints xi>=0.
          */
-        int32_t* writeAnalyzedDBM(uint32_t *bitMatrix,
-                                  size_t nbConstraints,
-                                  BOOL tryConstraints16,
-                                  allocator_t c_alloc,
-                                  size_t offset) const;
+        int32_t* writeAnalyzedDBM(uint32_t* bitMatrix, size_t nbConstraints, bool tryConstraints16,
+                                  allocator_t c_alloc, size_t offset) const;
 
 #ifdef ENABLE_STORE_MINGRAPH
         /** @return its minimal set of constraints.
@@ -331,7 +306,7 @@ namespace dbm
          * @param size is the number of constraints in the graph.
          * @pre !isEmpty()
          */
-        const uint32_t* getMinDBM(size_t *size) const;
+        const uint32_t* getMinDBM(size_t* size) const;
 #endif
 
         /** Relation with a mingraph_t, @see dbm_relationWithMinDBM.
@@ -343,32 +318,32 @@ namespace dbm
         /// The raw_t* arguments are assumed to be matrices of the same
         /// dimension of this dbm_t (and dbm_isValid also holds).
 
-        dbm_t& operator = (const dbm_t&);
-        dbm_t& operator = (const raw_t*);
+        dbm_t& operator=(const dbm_t&);
+        dbm_t& operator=(const raw_t*);
 
         /// Comparisons have the semantics of set inclusion.
         /// Equality of dimensions is checked.
         /// Comparisons agains fed_t are approximate and cheap
         /// since done between DBMs pair-wise. See the header.
 
-        bool operator == (const dbm_t&) const;
-        bool operator == (const fed_t&) const;
-        bool operator == (const raw_t*) const;
-        bool operator != (const dbm_t&) const;
-        bool operator != (const fed_t&) const;
-        bool operator != (const raw_t*) const;
-        bool operator <  (const dbm_t&) const;
-        bool operator <  (const fed_t&) const;
-        bool operator <  (const raw_t*) const;
-        bool operator >  (const dbm_t&) const;
-        bool operator >  (const fed_t&) const;
-        bool operator >  (const raw_t*) const;
-        bool operator <= (const dbm_t&) const;
-        bool operator <= (const fed_t&) const;
-        bool operator <= (const raw_t*) const;
-        bool operator >= (const dbm_t&) const;
-        bool operator >= (const fed_t&) const; // exact
-        bool operator >= (const raw_t*) const;
+        bool operator==(const dbm_t&) const;
+        bool operator==(const fed_t&) const;
+        bool operator==(const raw_t*) const;
+        bool operator!=(const dbm_t&) const;
+        bool operator!=(const fed_t&) const;
+        bool operator!=(const raw_t*) const;
+        bool operator<(const dbm_t&) const;
+        bool operator<(const fed_t&) const;
+        bool operator<(const raw_t*) const;
+        bool operator>(const dbm_t&) const;
+        bool operator>(const fed_t&) const;
+        bool operator>(const raw_t*) const;
+        bool operator<=(const dbm_t&) const;
+        bool operator<=(const fed_t&) const;
+        bool operator<=(const raw_t*) const;
+        bool operator>=(const dbm_t&) const;
+        bool operator>=(const fed_t&) const;  // exact
+        bool operator>=(const raw_t*) const;
 
         /// Relation (wrt inclusion, approximate only for fed_t).
         /// @return this (relation) arg.
@@ -379,11 +354,11 @@ namespace dbm
 
         /// Exact (expensive) relations (for fed_t only).
 
-        bool lt(const fed_t& arg) const; // this less than arg
-        bool gt(const fed_t& arg) const; // this greater than arg
-        bool le(const fed_t& arg) const; // this less (than) or equal arg
-        bool ge(const fed_t& arg) const; // this greater (than) or equal arg
-        bool eq(const fed_t& arg) const; // this equal arg
+        bool lt(const fed_t& arg) const;  // this less than arg
+        bool gt(const fed_t& arg) const;  // this greater than arg
+        bool le(const fed_t& arg) const;  // this less (than) or equal arg
+        bool ge(const fed_t& arg) const;  // this greater (than) or equal arg
+        bool eq(const fed_t& arg) const;  // this equal arg
         relation_t exactRelation(const fed_t& arg) const;
 
         /// Set this zone to zero (origin).
@@ -414,19 +389,19 @@ namespace dbm
         /// Convex union operator (+).
         /// @pre same dimension.
 
-        dbm_t& operator += (const dbm_t&);
-        dbm_t& operator += (const fed_t&); // += argument.convexHull()
-        dbm_t& operator += (const raw_t*);
+        dbm_t& operator+=(const dbm_t&);
+        dbm_t& operator+=(const fed_t&);  // += argument.convexHull()
+        dbm_t& operator+=(const raw_t*);
 
         /// Intersection and constraint operator (&).
         /// @pre same dimension, compatible indices,
         /// and i != j for the constraints.
 
-        dbm_t& operator &= (const dbm_t&);
-        dbm_t& operator &= (const raw_t*);
-        dbm_t& operator &= (const constraint_t&);
-        dbm_t& operator &= (const base::pointer_t<constraint_t>&);
-        dbm_t& operator &= (const std::vector<constraint_t>&);
+        dbm_t& operator&=(const dbm_t&);
+        dbm_t& operator&=(const raw_t*);
+        dbm_t& operator&=(const constraint_t&);
+        dbm_t& operator&=(const base::pointer_t<constraint_t>&);
+        dbm_t& operator&=(const std::vector<constraint_t>&);
 
         /// Compute the intersection with the axis of a given clock.
         /// @return !isEmpty()
@@ -447,10 +422,10 @@ namespace dbm
         bool constrain(cindex_t i, cindex_t j, int32_t b, strictness_t s);
         bool constrain(cindex_t i, cindex_t j, int32_t b, bool isStrict);
         bool constrain(const constraint_t& c);
-        bool constrain(const constraint_t *c, size_t n);
-        bool constrain(const cindex_t *table, const constraint_t *c, size_t n);
-        bool constrain(const cindex_t *table, const base::pointer_t<constraint_t>&);
-        bool constrain(const cindex_t *table, const std::vector<constraint_t>&);
+        bool constrain(const constraint_t* c, size_t n);
+        bool constrain(const cindex_t* table, const constraint_t* c, size_t n);
+        bool constrain(const cindex_t* table, const base::pointer_t<constraint_t>&);
+        bool constrain(const cindex_t* table, const std::vector<constraint_t>&);
 
         /// @return false if there is no intersection with the argument
         /// or true if there *may* be an intersection.
@@ -458,7 +433,7 @@ namespace dbm
 
         bool intersects(const dbm_t&) const;
         bool intersects(const fed_t&) const;
-        bool intersects(const raw_t*, cindex_t dim) const; // dim here for safety check
+        bool intersects(const raw_t*, cindex_t dim) const;  // dim here for safety check
 
         /// Delay (strongest post-condition). Remove upper bounds.
         /// @return this
@@ -508,7 +483,7 @@ namespace dbm
 
         bool satisfies(cindex_t i, cindex_t j, raw_t c) const;
         bool satisfies(const constraint_t& c) const;
-        bool operator && (const constraint_t& c) const;
+        bool operator&&(const constraint_t& c) const;
 
         /// @return true if this DBM contains points that can delay arbitrarily.
         bool isUnbounded() const;
@@ -539,9 +514,7 @@ namespace dbm
         /// Test point inclusion.
         /// @pre same dimension.
 
-        bool contains(const IntValuation& point) const;
         bool contains(const int32_t* point, cindex_t dim) const;
-        bool contains(const DoubleValuation& point) const;
         bool contains(const double* point, cindex_t dim) const;
 
         /** Compute the 'almost min' necessary delay from
@@ -562,30 +535,21 @@ namespace dbm
          * wait >= 2.1 or wait > 2.1.
          * @pre minVal and minStrict are both NULL or non NULL.
          */
-        bool getMinDelay(const DoubleValuation& point, double* t,
-                         double *minVal = NULL, bool *minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
-        bool getMinDelay(const double* point, cindex_t dim, double* t,
-                         double *minVal = NULL, bool *minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
+        bool getMinDelay(const double* point, cindex_t dim, double* t, double* minVal = NULL,
+                         bool* minStrict = NULL, const uint32_t* stopped = NULL) const;
 
         /**
          * Compute the max delay from a point such that it respects the
          * upper bound constraints of the DBM.
          * @return true if the delay is possible, false otherwise.
          */
-        bool getMaxDelay(const DoubleValuation& point, double* t,
-                         double *minVal = NULL, bool *minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
-        bool getMaxDelay(const double* point, cindex_t dim, double* t,
-                         double *minVal = NULL, bool *minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
+        bool getMaxDelay(const double* point, cindex_t dim, double* t, double* minVal = NULL,
+                         bool* minStrict = NULL, const uint32_t* stopped = NULL) const;
 
         /** Similarly for the past.
          *  The returned value (in t) is <= max.
          *  @pre max > 0 otherwise this is meaningless.
          */
-        bool getMaxBackDelay(const DoubleValuation& point, double* t, double max) const;
         bool getMaxBackDelay(const double* point, cindex_t dim, double* t, double max) const;
 
         bool isConstrainedBy(cindex_t, cindex_t, raw_t) const;
@@ -593,10 +557,10 @@ namespace dbm
         /// Extrapolations: @see dbm_##method functions in dbm.h.
         /// @pre max, lower, and upper are int32_t[getDimension()]
 
-        void extrapolateMaxBounds(const int32_t *max);
-        void diagonalExtrapolateMaxBounds(const int32_t *max);
-        void extrapolateLUBounds(const int32_t *lower, const int32_t *upper);
-        void diagonalExtrapolateLUBounds(const int32_t *lower, const int32_t *upper);
+        void extrapolateMaxBounds(const int32_t* max);
+        void diagonalExtrapolateMaxBounds(const int32_t* max);
+        void extrapolateLUBounds(const int32_t* lower, const int32_t* upper);
+        void diagonalExtrapolateLUBounds(const int32_t* lower, const int32_t* upper);
 
         /** Resize this DBM: bitSrc marks the subset of clocks (out from
          * a larger total set) that are in this DBM and bitDst marks the
@@ -612,8 +576,8 @@ namespace dbm
          * table is a uint32_t[32*bitSize]
          * @post the indirection table is written.
          */
-        void resize(const uint32_t *bitSrc, const uint32_t *bitDst,
-                    size_t bitSize, cindex_t *table);
+        void resize(const uint32_t* bitSrc, const uint32_t* bitDst, size_t bitSize,
+                    cindex_t* table);
 
         /** Resize and change clocks of this DBM.
          * The updated DBM will have its clocks i coming from target[i]
@@ -624,7 +588,7 @@ namespace dbm
          * @pre newDim > 0, target is a cindex_t[newDim], and
          * for all i < newDim, target[i] < getDimension().
          */
-        void changeClocks(const cindex_t *target, cindex_t newDim);
+        void changeClocks(const cindex_t* target, cindex_t newDim);
 
         /// Swap clocks x and y.
         void swapClocks(cindex_t x, cindex_t y);
@@ -639,9 +603,8 @@ namespace dbm
          * if isEmpty() or cval too constrained.
          * @post if freeC != NULL, forall i < dim: freeC[i] = false
          */
-        DoubleValuation& getValuation(DoubleValuation& cval, bool *freeC = NULL) const 
-            throw(std::out_of_range);
-        
+        void getValuation(double* cval, cindex_t dimen, bool* freeC = NULL) const;
+
         /// Special constructor to copy the result of a pending operation.
         /// @param op: clock operation.
         dbm_t(const ClockOperation<dbm_t>& op);
@@ -649,7 +612,7 @@ namespace dbm
         /// @see ClockOperation for more details.
         /// @pre clk > 0 except for clock constraint tests
         /// and clk < getDimension()
-        ClockOperation<dbm_t> operator () (cindex_t clk);
+        ClockOperation<dbm_t> operator()(cindex_t clk);
 
         /** @return (this-arg).isEmpty() but it is able to
          * stop the subtraction early if it is not empty and
@@ -665,7 +628,7 @@ namespace dbm
          ************************/
 
         /// Simplified copy with @pre isEmpty()
-        void newCopy(const raw_t *arg, cindex_t dim);
+        void newCopy(const raw_t* arg, cindex_t dim);
 
         /// Simplified copy with @pre isEmpty() && !arg.isEmpty()
         void newCopy(const dbm_t& arg);
@@ -696,7 +659,7 @@ namespace dbm
 
         /// @return dimension with @pre !isEmpty()
         cindex_t pdim() const;
-        
+
         /// @return true if this fed_t can be modified, @pre isPointer()
         bool isMutable() const;
 
@@ -704,10 +667,9 @@ namespace dbm
         raw_t* getNew();
 
         /// Set and return a writable copy of this DBM, @pre !isEmpty()
-        raw_t* getCopy();
-        
-    private:
+	raw_t* getCopy();
 
+    private:
         /// @return idbmPtr as an int.
         uintptr_t uval() const;
 
@@ -753,22 +715,22 @@ namespace dbm
         /// no empty dbm_t in fed_t.
 
         void ptr_intern();
-        dbm_t& ptr_convexUnion(const raw_t *arg, cindex_t dim);
-        bool ptr_intersectionIsArg(const raw_t *arg, cindex_t dim);
-        bool ptr_constrain(cindex_t i, cindex_t j, raw_t c); // pre i != j
-        bool ptr_constrain(cindex_t k, int32_t value);  // pre k != 0
-        bool ptr_constrain(const constraint_t *cnstr, size_t n);
-        bool ptr_constrain(const cindex_t *table, const constraint_t *cnstr, size_t n);
+        dbm_t& ptr_convexUnion(const raw_t* arg, cindex_t dim);
+        bool ptr_intersectionIsArg(const raw_t* arg, cindex_t dim);
+        bool ptr_constrain(cindex_t i, cindex_t j, raw_t c);  // pre i != j
+        bool ptr_constrain(cindex_t k, int32_t value);        // pre k != 0
+        bool ptr_constrain(const constraint_t* cnstr, size_t n);
+        bool ptr_constrain(const cindex_t* table, const constraint_t* cnstr, size_t n);
         void ptr_up();
-        void ptr_upStop(const uint32_t *stopped);
-        void ptr_downStop(const uint32_t *stopped);
+        void ptr_upStop(const uint32_t* stopped);
+        void ptr_downStop(const uint32_t* stopped);
         void ptr_down();
-        void ptr_freeClock(cindex_t k); // pre k != 0
-        void ptr_updateValue(cindex_t i, int32_t v); // pre i != 0
-        void ptr_updateClock(cindex_t i, cindex_t j); // pre i != j, i !=0, j != 0
-        void ptr_update(cindex_t i, cindex_t j, int32_t v); // pre i != 0, j != 0
-        void ptr_freeUp(cindex_t k); // pre k != 0
-        void ptr_freeDown(cindex_t k); // pre k != 0
+        void ptr_freeClock(cindex_t k);                      // pre k != 0
+        void ptr_updateValue(cindex_t i, int32_t v);         // pre i != 0
+        void ptr_updateClock(cindex_t i, cindex_t j);        // pre i != j, i !=0, j != 0
+        void ptr_update(cindex_t i, cindex_t j, int32_t v);  // pre i != 0, j != 0
+        void ptr_freeUp(cindex_t k);                         // pre k != 0
+        void ptr_freeDown(cindex_t k);                       // pre k != 0
         void ptr_freeAllUp();
         void ptr_freeAllDown();
         void ptr_relaxDownClock(cindex_t k);
@@ -776,17 +738,16 @@ namespace dbm
         void ptr_relaxAll();
         void ptr_tightenDown();
         void ptr_tightenUp();
-        bool ptr_getValuation(DoubleValuation& cval, bool *freeC) const;
+        bool ptr_getValuation(double* cval, cindex_t dimen, bool* freeC) const;
         void ptr_swapClocks(cindex_t x, cindex_t y);
 
         // Coding of dimPtr:
         // - if dbm_t is empty, idbmPtr = (dim << 1) | 1
         // - if dbm_t is not empty idbmPtr = pointer to idbm_t and (idbmPtr & 3) == 0
 
-    /// Internal pointer or special coding for empty.
+        /// Internal pointer or special coding for empty.
         idbm_t* idbmPtr;
     };
-
 
     /***************************************************************
      * fed_t: federation type.
@@ -851,15 +812,18 @@ namespace dbm
 
         /// Short for setDimension(1), has the effect of deallocating the DBMs.
         void nil();
-        
+
         /// @return true if this DBM contains the zero point.
         bool hasZero() const;
+
+        /// @return true if a point in the federation can delay.
+        bool canDelay() const;
 
         /// @return string representation of the
         /// constraints of this federation. A clock
         /// is always positive, so "true" simply means
         /// all clocks positive.
-        std::string toString(const ClockAccessor&) const;
+        std::string toString(const ClockAccessor&, bool full = false) const;
 
         /** Computes the biggest lower cost in the zone.
          *  This corresponds to the value
@@ -888,10 +852,10 @@ namespace dbm
         /// Overload of standard operators.
         /// The raw_t* arguments are assumed to be matrices of the same
         /// dimension of this dbm_t (and dbm_isValid also holds).
-        
-        fed_t& operator = (const fed_t&);
-        fed_t& operator = (const dbm_t&);
-        fed_t& operator = (const raw_t*);
+
+        fed_t& operator=(const fed_t&);
+        fed_t& operator=(const dbm_t&);
+        fed_t& operator=(const raw_t*);
 
         /// Comparisons have the semantics of set inclusion.
         /// Comparisons agains fed_t are approximate and cheap
@@ -899,25 +863,25 @@ namespace dbm
         /// @pre same dimension for the operators < > <= >=, use
         /// relation if you don't know.
 
-        bool operator == (const fed_t&) const;
-        bool operator == (const dbm_t&) const;
-        bool operator == (const raw_t*) const;
-        bool operator != (const fed_t&) const;
-        bool operator != (const dbm_t&) const;
-        bool operator != (const raw_t*) const;
-        bool operator <  (const fed_t&) const;
-        bool operator <  (const dbm_t&) const;
-        bool operator <  (const raw_t*) const;
-        bool operator >  (const fed_t&) const;
-        bool operator >  (const dbm_t&) const;
-        bool operator >  (const raw_t*) const;
-        bool operator <= (const fed_t&) const;
-        bool operator <= (const dbm_t&) const; // exact
-        bool operator <= (const raw_t*) const; // exact
-        bool operator >= (const fed_t&) const;
-        bool operator >= (const dbm_t&) const;
-        bool operator >= (const raw_t*) const;
-        
+        bool operator==(const fed_t&) const;
+        bool operator==(const dbm_t&) const;
+        bool operator==(const raw_t*) const;
+        bool operator!=(const fed_t&) const;
+        bool operator!=(const dbm_t&) const;
+        bool operator!=(const raw_t*) const;
+        bool operator<(const fed_t&) const;
+        bool operator<(const dbm_t&) const;
+        bool operator<(const raw_t*) const;
+        bool operator>(const fed_t&) const;
+        bool operator>(const dbm_t&) const;
+        bool operator>(const raw_t*) const;
+        bool operator<=(const fed_t&) const;
+        bool operator<=(const dbm_t&) const;  // exact
+        bool operator<=(const raw_t*) const;  // exact
+        bool operator>=(const fed_t&) const;
+        bool operator>=(const dbm_t&) const;
+        bool operator>=(const raw_t*) const;
+
         /// Relation (wrt inclusion, approximate).
         /// @return this (relation) arg.
 
@@ -959,10 +923,10 @@ namespace dbm
         /// (re-)initialize the federation with no constraint.
         /// @post size() == 1 if dim > 1, 0 otherwise.
         fed_t& setInit();
-        
+
         /// Convex union of its DBMs.
         fed_t& convexHull();
-        
+
         /** Similar to dbm_t::makeUnbounded but only w.r.t. the future
          * of this DBM, i.e., take max(c[i],max all lower bounds[i])
          * as lower bounds (and keep strictness).
@@ -982,14 +946,14 @@ namespace dbm
         /// (Set) union operator (|). Inclusion is checked and the
         /// operation has the effect of reduce() on the argument.
         /// @pre same dimension.
-        
-        fed_t& operator |= (const fed_t&);
-        fed_t& operator |= (const dbm_t&);
-        fed_t& operator |= (const raw_t*);
+
+        fed_t& operator|=(const fed_t&);
+        fed_t& operator|=(const dbm_t&);
+        fed_t& operator|=(const raw_t*);
 
         /// Union of 2 fed_t. @post arg.isEmpty()
         fed_t& unionWith(fed_t& arg);
-        fed_t& unionWithC(fed_t arg); // dummy wrapper
+        fed_t& unionWithC(fed_t arg);  // dummy wrapper
 
         /// Simply add (list concatenation) DBMs to this federation.
         /// @pre same dimension.
@@ -1000,17 +964,17 @@ namespace dbm
 
         /// Append arg to 'this', @post arg.isEmpty()
         fed_t& append(fed_t& arg);
-        fed_t& appendC(fed_t arg); // dummy wrapper
-        void append(fdbm_t* arg); // low level
+        fed_t& appendC(fed_t arg);  // dummy wrapper
+        void append(fdbm_t* arg);   // low level
 
         /// Like append but guarantee where the argument is
         /// inserted (beginning or end).
-        fed_t& appendBegin(fed_t &arg);
-        fed_t& appendEnd(fed_t &arg);
+        fed_t& appendBegin(fed_t& arg);
+        fed_t& appendEnd(fed_t& arg);
 
         /// Combination of appendEnd + incremental mergeReduce.
-        fed_t& steal(fed_t &arg);
-        fed_t& stealC(fed_t arg); // dummy wrapper
+        fed_t& steal(fed_t& arg);
+        fed_t& stealC(fed_t arg);  // dummy wrapper
 
         /// Swap this federation with another.
         void swap(fed_t&);
@@ -1020,27 +984,27 @@ namespace dbm
         /// everything, call this->convexHull() += arg;
         /// @pre same dimension.
 
-        fed_t& operator += (const fed_t&);
-        fed_t& operator += (const dbm_t&);
-        fed_t& operator += (const raw_t*);
+        fed_t& operator+=(const fed_t&);
+        fed_t& operator+=(const dbm_t&);
+        fed_t& operator+=(const raw_t*);
 
         /// Intersection and constraint operator (&).
         /// @pre same dimension, compatible indices,
         /// and i != j for the constraints.
 
-        fed_t& operator &= (const fed_t&);
-        fed_t& operator &= (const dbm_t&);
-        fed_t& operator &= (const raw_t*);
-        fed_t& operator &= (const constraint_t&);
-        fed_t& operator &= (const base::pointer_t<constraint_t>&);
-        fed_t& operator &= (const std::vector<constraint_t>&);
+        fed_t& operator&=(const fed_t&);
+        fed_t& operator&=(const dbm_t&);
+        fed_t& operator&=(const raw_t*);
+        fed_t& operator&=(const constraint_t&);
+        fed_t& operator&=(const base::pointer_t<constraint_t>&);
+        fed_t& operator&=(const std::vector<constraint_t>&);
 
         /// (Set) subtraction operator (-).
         /// @pre same dimension.
 
-        fed_t& operator -= (const fed_t&);
-        fed_t& operator -= (const dbm_t&);
-        fed_t& operator -= (const raw_t*);
+        fed_t& operator-=(const fed_t&);
+        fed_t& operator-=(const dbm_t&);
+        fed_t& operator-=(const raw_t*);
 
         /// Compute (*this -= arg).down(). The interest of this
         /// call is that some subtractions can be avoided if the
@@ -1060,11 +1024,11 @@ namespace dbm
         bool constrain(cindex_t i, cindex_t j, int32_t b, strictness_t s);
         bool constrain(cindex_t i, cindex_t j, int32_t b, bool isStrict);
         bool constrain(const constraint_t& c);
-        bool constrain(const constraint_t *c, size_t n);
-        bool constrain(const cindex_t *table, const constraint_t *c, size_t n);
-        bool constrain(const cindex_t *table, const base::pointer_t<constraint_t>&);
-        bool constrain(const cindex_t *table, const std::vector<constraint_t>&);
-        
+        bool constrain(const constraint_t* c, size_t n);
+        bool constrain(const cindex_t* table, const constraint_t* c, size_t n);
+        bool constrain(const cindex_t* table, const base::pointer_t<constraint_t>&);
+        bool constrain(const cindex_t* table, const std::vector<constraint_t>&);
+
         /// @return false if there is no intersection with the argument
         /// or true if there *may* be an intersection.
         /// @pre same dimensions.
@@ -1072,7 +1036,7 @@ namespace dbm
         bool intersects(const fed_t&) const;
         bool intersects(const dbm_t&) const;
         bool intersects(const raw_t*, cindex_t dim) const;
-        
+
         /// Delay (strongest post-condition) for all the DBMs.
         fed_t& up();
 
@@ -1111,17 +1075,17 @@ namespace dbm
         void updateClock(cindex_t x, cindex_t y);
         void updateIncrement(cindex_t x, int32_t v);
         void update(cindex_t x, cindex_t y, int32_t v);
-        
+
         /// @return true if this federation satisfies a constraint c_ij.
         /// @pre i != j, i and j < getDimension()
-        
+
         bool satisfies(cindex_t i, cindex_t j, raw_t c) const;
         bool satisfies(const constraint_t& c) const;
-        bool operator && (const constraint_t& c) const;
+        bool operator&&(const constraint_t& c) const;
 
         /// @return true if this federation has points that can delay infinitely.
         bool isUnbounded() const;
-        
+
         /// @return the part of the federation that is unbounded (maybe empty).
         fed_t getUnbounded() const;
 
@@ -1133,6 +1097,8 @@ namespace dbm
         /// @return this.
         fed_t& relaxUp();
         fed_t& relaxDown();
+
+        fed_t& enlargeUp();
 
         /// Make lower bounds strict.
         /// @return this.
@@ -1199,9 +1165,7 @@ namespace dbm
         /// in this federation (ie in one of its DBMs).
         /// @pre same dimension.
 
-        bool contains(const IntValuation& point) const;
         bool contains(const int32_t* point, cindex_t dim) const;
-        bool contains(const DoubleValuation& point) const;
         bool contains(const double* point, cindex_t dim) const;
 
         /** @return the 'almost max' possible delay backward from
@@ -1213,7 +1177,6 @@ namespace dbm
          * @param point: the point to go backward from.
          * @pre dim = getDimension() && contains(point)
          */
-        double possibleBackDelay(const DoubleValuation& point) const;
         double possibleBackDelay(const double* point, cindex_t dim) const;
 
         /** Compute the 'almost min' necessary delay from
@@ -1234,18 +1197,13 @@ namespace dbm
          * wait >= 2.1 or wait > 2.1.
          * @pre minVal and minStrict are both NULL or non NULL.
          */
-        bool getMinDelay(const DoubleValuation& point, double* t,
-                         double *minVal = NULL, bool *minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
-        bool getMinDelay(const double* point, cindex_t dim, double* t,
-                         double *minVal = NULL, bool *minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
+        bool getMinDelay(const double* point, cindex_t dim, double* t, double* minVal = NULL,
+                         bool* minStrict = NULL, const uint32_t* stopped = NULL) const;
 
         /** Similarly for the past.
          *  The returned value (in t) is <= max, where max.
          *  @pre max > 0 otherwise this is meaningless.
          */
-        bool getMaxBackDelay(const DoubleValuation& point, double* t, double max) const;
         bool getMaxBackDelay(const double* point, cindex_t dim, double* t, double max) const;
 
         /** Compute the approximate interval delay from
@@ -1256,25 +1214,20 @@ namespace dbm
          * @param min and max give the interval, max can be
          * HUGE_VAL to mean infinity.
          */
-        bool getDelay(const DoubleValuation& point, double* min, double* max,
-                      double *minVal = NULL, bool *minStrict = NULL,
-                      double *maxVal = NULL, bool *maxStrict = NULL,
-                      const uint32_t* stopped = NULL) const;
         bool getDelay(const double* point, cindex_t dim, double* min, double* max,
-                      double *minVal = NULL, bool *minStrict = NULL,
-                      double *maxVal = NULL, bool *maxStrict = NULL,
-                      const uint32_t* stopped = NULL) const;
+                      double* minVal = NULL, bool* minStrict = NULL, double* maxVal = NULL,
+                      bool* maxStrict = NULL, const uint32_t* stopped = NULL) const;
 
         bool isConstrainedBy(cindex_t, cindex_t, raw_t) const;
 
         /// Extrapolations: @see dbm_##method functions in dbm.h.
         /// @pre max, lower, and upper are int32_t[getDimension()]
 
-        void extrapolateMaxBounds(const int32_t *max);
-        void diagonalExtrapolateMaxBounds(const int32_t *max);
-        void extrapolateLUBounds(const int32_t *lower, const int32_t *upper);
-        void diagonalExtrapolateLUBounds(const int32_t *lower, const int32_t *upper);
-        
+        void extrapolateMaxBounds(const int32_t* max);
+        void diagonalExtrapolateMaxBounds(const int32_t* max);
+        void extrapolateLUBounds(const int32_t* lower, const int32_t* upper);
+        void diagonalExtrapolateLUBounds(const int32_t* lower, const int32_t* upper);
+
         /** "Split-extrapolation". Split the DBMs with the diagonal
          * constraints given in argument, apply extrapolateMaxBounds
          * on the result, and make sure that the resulting DBMs are
@@ -1283,9 +1236,9 @@ namespace dbm
          * splitting (from begin (inclusive) to end (exclusive)).
          * @param max is the array of maximal bounds.
          */
-        void splitExtrapolate(const constraint_t *begin, const constraint_t *end,
-                              const int32_t *max);
-        
+        void splitExtrapolate(const constraint_t* begin, const constraint_t* end,
+                              const int32_t* max);
+
         /** Resize all the DBMs of this federation, @see dbm_t.
          * @see dbm_shrinkExpand in dbm.h.
          * @param bitSrc,bitDst,bitSize: bit strings of (int) size bitSize
@@ -1295,8 +1248,8 @@ namespace dbm
          * table is a uint32_t[32*bitSize]
          * @post the indirection table is written.
          */
-        void resize(const uint32_t *bitSrc, const uint32_t *bitDst,
-                    size_t bitSize, cindex_t *table);
+        void resize(const uint32_t* bitSrc, const uint32_t* bitDst, size_t bitSize,
+                    cindex_t* table);
 
         /** Resize and change clocks of all the DBMs of this federation.
          * The updated DBMs will have its clocks i coming from target[i]
@@ -1307,7 +1260,7 @@ namespace dbm
          * @pre newDim > 0, target is a cindex_t[newDim], and
          * for all i < newDim, target[i] < getDimension().
          */
-        void changeClocks(const cindex_t *target, cindex_t newDim);
+        void changeClocks(const cindex_t* target, cindex_t newDim);
 
         /// Swap clocks x and y.
         void swapClocks(cindex_t x, cindex_t y);
@@ -1324,8 +1277,7 @@ namespace dbm
          * @post if freeC != NULL, forall i < dim: freeC[i] = false
          * @pre same dimension.
          */
-        DoubleValuation& getValuation(DoubleValuation& cval, bool *freeC = NULL) const 
-            throw(std::out_of_range);
+        void getValuation(double* cval, cindex_t dimen, bool* freeC = NULL) const;
 
         /** predt operation: temporal predecessor of this federation
          * avoiding 'bad'. The extra argument 'restrict' is to apply
@@ -1340,6 +1292,13 @@ namespace dbm
         fed_t& predt(const fed_t& bad, const raw_t* restrict = NULL);
         fed_t& predt(const dbm_t& bad, const raw_t* restrict = NULL);
         fed_t& predt(const raw_t* bad, cindex_t dim, const raw_t* restrict = NULL);
+
+        /** succt operation: symmetric to predt except that lower2upper(bad) is
+         * added to the result (this is used for urgent action in strategies).
+         * Furthermore if lower2upper(bad) fails when needed then false is
+         * returned and this federation is undefined.
+         */
+        bool succt(const fed_t& bad);
 
         /// @return true if this fed_t is included in predt(good,bad)
         /// This test may terminate earlier than calling le(predt(good,bad))
@@ -1367,7 +1326,7 @@ namespace dbm
         void removeIncludedIn(const fed_t& arg);
         bool removeIncludedIn(const dbm_t& arg);
         bool removeIncludedIn(const raw_t* arg, cindex_t dim);
-        
+
         /// Special constructor to copy the result of a pending operation.
         /// @param op: clock operation.
         fed_t(const ClockOperation<fed_t>& op);
@@ -1378,7 +1337,7 @@ namespace dbm
          * @pre clk > 0 except for clock constraint tests
          * and clk < getDimension().
          */
-        ClockOperation<fed_t> operator () (cindex_t clk);
+        ClockOperation<fed_t> operator()(cindex_t clk);
 
         /** @return (this-arg).isEmpty() but it is able to
          * stop the subtraction early if it is not empty and
@@ -1403,10 +1362,17 @@ namespace dbm
         /// Similar but for upper bounds.
         fed_t toUpperBounds() const;
 
+        /** @return a new fed_t made of upper bounds derived from the
+         * lower bounds from the original federation. If some lower
+         * bounds are strict, then this cannot be done and an empty
+         * federation is returned. Result = union down(this intersec weakNegRaw(dbm[i]))
+         */
+        fed_t lower2upper() const;
+
         /** @return the max upper bound (raw) of a clock.
          */
         raw_t getMaxUpper(cindex_t) const;
-        
+
         /** @return the max lower bound (raw) of a clock.
          */
         raw_t getMaxLower(cindex_t) const;
@@ -1428,7 +1394,7 @@ namespace dbm
         {
         public:
             /// End of list.
-            static const fdbm_t *ENDF;
+            static const fdbm_t* ENDF;
 
             /// Special constructor to end iterations.
             iterator();
@@ -1438,17 +1404,17 @@ namespace dbm
             iterator(ifed_t* fed);
 
             /// Dereference to dbm_t, @pre !null()
-            dbm_t& operator *() const;
+            dbm_t& operator*() const;
 
             /// Dereference to dbm_t*, @pre !null()
-            dbm_t* operator ->() const;
-            
+            dbm_t* operator->() const;
+
             /// Mutable access to the matrix as for fed_t, @pre !null()
-            raw_t* operator () () const;
-            raw_t operator () (cindex_t i, cindex_t j) const;
+            raw_t* operator()() const;
+            raw_t operator()(cindex_t i, cindex_t j) const;
 
             /// Increment iterator, @pre !null()
-            iterator& operator ++();
+            iterator& operator++();
 
             /// Test if there are DBMs left on the list.
             bool null() const;
@@ -1457,8 +1423,8 @@ namespace dbm
             bool hasNext() const;
 
             /// Equality test of the internal fdbm_t*
-            bool operator == (const iterator& arg) const;
-            bool operator != (const iterator& arg) const;
+            bool operator==(const iterator& arg) const;
+            bool operator!=(const iterator& arg) const;
 
             /// Remove (and deallocate) current dbm_t.
             void remove();
@@ -1474,8 +1440,8 @@ namespace dbm
             void insert(fdbm_t* dbm);
 
         private:
-            fdbm_t **fdbm; /// list of DBMs
-            ifed_t *ifed;  /// to update the size
+            fdbm_t** fdbm;  /// list of DBMs
+            ifed_t* ifed;   /// to update the size
         };
 
         /// Const iterator -> iterate though dbm_t
@@ -1484,24 +1450,24 @@ namespace dbm
         public:
             /// Const iterator for end of list.
             static const const_iterator ENDI;
-            
+
             /// Constructor: @param fed: federation.
             const_iterator(const fdbm_t* fed);
             const_iterator(const fed_t& fed);
             const_iterator();
 
             /// Dereference to dbm_t
-            const dbm_t& operator *() const;
+            const dbm_t& operator*() const;
 
             /// Dereference to dbm_t*, @pre !null()
-            const dbm_t* operator ->() const;
+            const dbm_t* operator->() const;
 
             /// Access to the matrix as for fed_t
-            const raw_t* operator () () const;
-            raw_t operator () (cindex_t i, cindex_t j) const;
+            const raw_t* operator()() const;
+            raw_t operator()(cindex_t i, cindex_t j) const;
 
             /// Increment iterator, @pre !null()
-            const_iterator& operator ++();
+            const_iterator& operator++();
 
             /// Test if there are DBMs left on the list.
             bool null() const;
@@ -1510,11 +1476,11 @@ namespace dbm
             bool hasNext() const;
 
             /// Equality test of the internal fdbm_t*
-            bool operator == (const const_iterator& arg) const;
-            bool operator != (const const_iterator& arg) const;
+            bool operator==(const const_iterator& arg) const;
+            bool operator!=(const const_iterator& arg) const;
 
         private:
-            const fdbm_t *fdbm; /// list of DBMs
+            const fdbm_t* fdbm;  /// list of DBMs
         };
 
         /// Access to iterators. Limitation: you cannot modify the original
@@ -1555,7 +1521,7 @@ namespace dbm
 
         /// Remove a dbm_t from this fed_t. The match uses dbm_t::sameAs(..)
         /// @return true if arg was removed, false otherwise.
-        bool removeThisDBM(const dbm_t &dbm);
+        bool removeThisDBM(const dbm_t& dbm);
 
         /// Ensure this ifed_t is mutable.
         void setMutable();
@@ -1584,7 +1550,7 @@ namespace dbm
         /// Internal subtraction implemention (*this - arg).
         /// @pre !isEmpty() && isMutable()
         void ptr_subtract(const raw_t* arg, cindex_t dim);
-        
+
 #ifdef ENABLE_STORE_MINGRAPH
         /// Internal subtraction implemention (*this - arg).
         /// @pre !isEmpty() && isMutable() && !arg.isEmpty()
@@ -1597,9 +1563,8 @@ namespace dbm
         /// @return true if this DBM can be ignored in subtractDown.
         bool canSkipSubtract(const raw_t*, cindex_t) const;
 
-        ifed_t *ifedPtr;
+        ifed_t* ifedPtr;
     };
-
 
     /**********************************************
      * Operator overloads with const arguments.
@@ -1610,52 +1575,52 @@ namespace dbm
      * @pre same dimension for the arguments!
      * @see dbm_t and fed_t
      **********************************************/
-    
-    dbm_t operator + (const dbm_t& a, const raw_t* b);
-    dbm_t operator + (const fed_t& a, const raw_t* b);
-    dbm_t operator + (const dbm_t& a, const dbm_t& b);
-    dbm_t operator + (const dbm_t& a, const fed_t& b);
-    dbm_t operator + (const fed_t& a, const dbm_t& b);
-    dbm_t operator + (const fed_t& a, const fed_t& b);
 
-    dbm_t operator & (const dbm_t& a, const raw_t* b);
-    fed_t operator & (const fed_t& a, const raw_t* b);
-    dbm_t operator & (const dbm_t& a, const dbm_t& b);
-    fed_t operator & (const dbm_t& a, const fed_t& b);
-    fed_t operator & (const fed_t& a, const dbm_t& b);
-    fed_t operator & (const fed_t& a, const fed_t& b);
+    dbm_t operator+(const dbm_t& a, const raw_t* b);
+    dbm_t operator+(const fed_t& a, const raw_t* b);
+    dbm_t operator+(const dbm_t& a, const dbm_t& b);
+    dbm_t operator+(const dbm_t& a, const fed_t& b);
+    dbm_t operator+(const fed_t& a, const dbm_t& b);
+    dbm_t operator+(const fed_t& a, const fed_t& b);
 
-    dbm_t operator & (const dbm_t& a, const constraint_t& c);
-    dbm_t operator & (const constraint_t& c, const dbm_t& a);
-    fed_t operator & (const fed_t& a, const constraint_t& c);
-    fed_t operator & (const constraint_t& c, const fed_t& a);
+    dbm_t operator&(const dbm_t& a, const raw_t* b);
+    fed_t operator&(const fed_t& a, const raw_t* b);
+    dbm_t operator&(const dbm_t& a, const dbm_t& b);
+    fed_t operator&(const dbm_t& a, const fed_t& b);
+    fed_t operator&(const fed_t& a, const dbm_t& b);
+    fed_t operator&(const fed_t& a, const fed_t& b);
 
-    dbm_t operator & (const dbm_t& a, const base::pointer_t<constraint_t>& c);
-    dbm_t operator & (const base::pointer_t<constraint_t>& c, const dbm_t& a);
-    fed_t operator & (const fed_t& a, const base::pointer_t<constraint_t>& c);
-    fed_t operator & (const base::pointer_t<constraint_t>& c, const fed_t& a);
+    dbm_t operator&(const dbm_t& a, const constraint_t& c);
+    dbm_t operator&(const constraint_t& c, const dbm_t& a);
+    fed_t operator&(const fed_t& a, const constraint_t& c);
+    fed_t operator&(const constraint_t& c, const fed_t& a);
 
-    dbm_t operator & (const dbm_t& a, const std::vector<constraint_t>& vec);
-    dbm_t operator & (const std::vector<constraint_t>& vec, const dbm_t& a);
-    fed_t operator & (const fed_t& a, const std::vector<constraint_t>& vec);
-    fed_t operator & (const std::vector<constraint_t>& vec, const fed_t& a);
+    dbm_t operator&(const dbm_t& a, const base::pointer_t<constraint_t>& c);
+    dbm_t operator&(const base::pointer_t<constraint_t>& c, const dbm_t& a);
+    fed_t operator&(const fed_t& a, const base::pointer_t<constraint_t>& c);
+    fed_t operator&(const base::pointer_t<constraint_t>& c, const fed_t& a);
 
-    fed_t operator | (const dbm_t& a, const raw_t* b);
-    fed_t operator | (const fed_t& a, const raw_t* b);
-    fed_t operator | (const dbm_t& a, const dbm_t& b);
-    fed_t operator | (const fed_t& a, const dbm_t& b);
-    fed_t operator | (const dbm_t& a, const fed_t& b);
-    fed_t operator | (const fed_t& a, const fed_t& b);
+    dbm_t operator&(const dbm_t& a, const std::vector<constraint_t>& vec);
+    dbm_t operator&(const std::vector<constraint_t>& vec, const dbm_t& a);
+    fed_t operator&(const fed_t& a, const std::vector<constraint_t>& vec);
+    fed_t operator&(const std::vector<constraint_t>& vec, const fed_t& a);
 
-    fed_t operator - (const dbm_t& a, const raw_t* b);
-    fed_t operator - (const fed_t& a, const raw_t* b);
-    fed_t operator - (const dbm_t& a, const dbm_t& b);
-    fed_t operator - (const fed_t& a, const dbm_t& b);
-    fed_t operator - (const dbm_t& a, const fed_t& b);
-    fed_t operator - (const fed_t& a, const fed_t& b);
+    fed_t operator|(const dbm_t& a, const raw_t* b);
+    fed_t operator|(const fed_t& a, const raw_t* b);
+    fed_t operator|(const dbm_t& a, const dbm_t& b);
+    fed_t operator|(const fed_t& a, const dbm_t& b);
+    fed_t operator|(const dbm_t& a, const fed_t& b);
+    fed_t operator|(const fed_t& a, const fed_t& b);
 
-    fed_t operator ! (const dbm_t&);
-    fed_t operator ! (const fed_t&);
+    fed_t operator-(const dbm_t& a, const raw_t* b);
+    fed_t operator-(const fed_t& a, const raw_t* b);
+    fed_t operator-(const dbm_t& a, const dbm_t& b);
+    fed_t operator-(const fed_t& a, const dbm_t& b);
+    fed_t operator-(const dbm_t& a, const fed_t& b);
+    fed_t operator-(const fed_t& a, const fed_t& b);
+
+    fed_t operator!(const dbm_t&);
+    fed_t operator!(const fed_t&);
 
     /// Create zero or init dbm_t with a given dimension.
 
@@ -1706,8 +1671,8 @@ namespace dbm
     /// Clean-up function useful for testing. Deallocate internally
     /// allocated DBMs that are currently free.
     void cleanUp();
-}
+}  // namespace dbm
 
 #include "dbm/inline_fed.h"
 
-#endif // INCLUDE_DBM_FED_H
+#endif  // INCLUDE_DBM_FED_H

@@ -1,5 +1,5 @@
-FILE(GLOB hash_source "*.c" "*.cpp" "*.h")
+file(GLOB hash_source "*.c" "*.cpp" "*.h")
 
-ADD_LIBRARY(hash ${hash_source})
+add_library(hash ${hash_source})
 
-# ADD_SUBDIRECTORY(tests)
+add_subdirectory(tests)

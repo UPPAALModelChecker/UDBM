@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 // -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 ////////////////////////////////////////////////////////////////////
 //
@@ -25,18 +5,16 @@
 //
 // This file is a part of the UPPAAL toolkit.
 // Copyright (c) 1995 - 2003, Uppsala University and Aalborg University.
+// Copyright (c) 2020, Aalborg University.
 // All right reserved.
-//
-// $Id: ItemAllocator.h,v 1.8 2005/01/25 18:30:22 adavid Exp $
 //
 ///////////////////////////////////////////////////////////////////
 
 #ifndef INCLUDE_BASE_ITEMALLOCATOR_H
 #define INCLUDE_BASE_ITEMALLOCATOR_H
 
-#include <assert.h>
-#include <stdlib.h>
-#include <cstddef>
+#include <cstdint>
+#include <cassert>
 
 namespace base
 {
@@ -48,7 +26,7 @@ namespace base
      * stored.
      *
      * Working of ItemAllocator: it allocates a
-     * continuous chunk of numberOfItems items (=pool) and 
+     * continuous chunk of numberOfItems items (=pool) and
      * initializes the list of free items. Allocation
      * and deallocation just pop and push items on
      * this list. When the list is empty, a new pool
@@ -58,23 +36,20 @@ namespace base
      * Default = 128k items
      * @pre ITEM size is at least 1 int.
      */
-    template<class ITEM>
+    template <class ITEM>
     class ItemAllocator
     {
     public:
-
         /** Default number of items.
          */
         enum { NB_ITEMS = (1 << 17) };
 
-        /** Constructor: check precondition & init to NULL
+        /** Constructor: check precondition & init to nullptr
          * @param nbItems: number of items per pool.
          * @pre nbItems > 1
          */
-        ItemAllocator(size_t nbItems = NB_ITEMS)
-            : numberOfItems(nbItems),
-              pool(NULL),
-              freeItem(NULL)
+        ItemAllocator(std::uintptr_t nbItems = NB_ITEMS):
+            numberOfItems{nbItems}, pool{nullptr}, freeItem{nullptr}
         {
             assert(sizeof(ITEM) >= sizeof(void*));
             assert(nbItems > 1);
@@ -82,19 +57,17 @@ namespace base
 
         /** Destructor = reset
          */
-        ~ItemAllocator()
-        {
-            reset();
-        }
+        ~ItemAllocator() { reset(); }
 
         /** Allocate a new item.
          * @return new allocated item.
-         * @post result != NULL
+         * @post result != nullptr
          */
         ITEM* allocate()
         {
-            if (!freeItem) addPool();
-            AllocCell_t *cell = freeItem;
+            if (!freeItem)
+                addPool();
+            AllocCell_t* cell = freeItem;
             freeItem = cell->next;
             return &cell->item;
         }
@@ -103,12 +76,12 @@ namespace base
          * @param item: item to deallocate.
          * @pre
          * - item allocated with this allocator
-         * - item != NULL
+         * - item != nullptr
          */
-        void deallocate(ITEM *item)
+        void deallocate(ITEM* item)
         {
             assert(item);
-            AllocCell_t *cell = (AllocCell_t*) item;
+            AllocCell_t* cell = (AllocCell_t*)item;
             cell->next = freeItem;
             freeItem = cell;
         }
@@ -118,43 +91,41 @@ namespace base
          */
         void reset()
         {
-            AllocPool_t *p = pool;
-            pool = NULL;
-            freeItem = NULL;
-            while(p)
-            {
-                AllocPool_t *next = p->next;
-                delete [] (char*) p;
+            AllocPool_t* p = pool;
+            pool = nullptr;
+            freeItem = nullptr;
+            while (p) {
+                AllocPool_t* next = p->next;
+                delete[](char*) p;
                 p = next;
             }
         }
 
     private:
-        
         /** Add a new pool of items.
          */
         void addPool()
         {
             // Add new pool to list of pools
-            AllocPool_t *newPool = (AllocPool_t*)
-                new char[sizeof(AllocPool_t)+
-                         sizeof(AllocCell_t[numberOfItems])];
+            AllocPool_t* newPool =
+                (AllocPool_t*)new char[sizeof(AllocPool_t) + sizeof(AllocCell_t) * numberOfItems];
             newPool->next = pool;
             pool = newPool;
 
             // Init beginning of the list of free items
-            AllocCell_t *item = &newPool->items[0];
+            // Also, do not try this at home kids.
+            AllocCell_t* item = &(newPool->items);
             assert(!freeItem);
             freeItem = item;
 
             // Init list of free items
-            size_t n = numberOfItems - 1;
+            auto n = numberOfItems - 1;
             assert(numberOfItems > 1);
             do {
                 item[0].next = &item[1];
                 item++;
-            } while(--n);
-            item[0].next = NULL; // last item: no next
+            } while (--n);
+            item[0].next = nullptr;  // last item: no next
         }
 
         /** UNION to manage list of
@@ -165,7 +136,7 @@ namespace base
          */
         union AllocCell_t
         {
-            AllocCell_t *next;
+            AllocCell_t* next;
             ITEM item;
         };
 
@@ -173,15 +144,15 @@ namespace base
          */
         struct AllocPool_t
         {
-            AllocPool_t *next;
-            AllocCell_t items[];
+            AllocPool_t* next;
+            AllocCell_t items;
         };
 
-        size_t numberOfItems; /**< number of items per pool */
-        AllocPool_t *pool;         /**< allocated pools          */
-        AllocCell_t *freeItem;     /**< list of free items       */
+        std::uintptr_t numberOfItems; /**< number of items per pool */
+        AllocPool_t* pool;            /**< allocated pools          */
+        AllocCell_t* freeItem;        /**< list of free items       */
     };
 
-} // namespace base
+}  // namespace base
 
-#endif // INCLUDE_BASE_ITEMALLOCATOR_H
+#endif  // INCLUDE_BASE_ITEMALLOCATOR_H

@@ -3,7 +3,7 @@ ifeq (Cygwin,$(OS))
 EXTRALIBS += -liphlpapi
 endif
 
-ifeq (i586-mingw32msvc-gcc,$(CC))
+ifeq (i686-w64-mingw32-gcc,$(CC))
 EXTRALIBS += -liphlpapi
 endif
 

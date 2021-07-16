@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 // -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 ////////////////////////////////////////////////////////////////////
 //
@@ -36,10 +16,13 @@
 #ifndef INCLUDE_DBM_VALUATION_H
 #define INCLUDE_DBM_VALUATION_H
 
-#include <sstream>
-#include "base/pointer.h"
 #include "dbm/ClockAccessor.h"
+#include "base/pointer.h"
 #include "debug/utils.h"
+
+#include <sstream>
+#include <iomanip>
+#include <limits>
 
 namespace dbm
 {
@@ -48,36 +31,43 @@ namespace dbm
      * We don't use array_t because we don't want to
      * resize but we need basic memory alloc/dealloc.
      */
-    template<class S>
+    template <class S>
     class Valuation : public base::pointer_t<S>
     {
+    private:
+        size_t dynamicSize;
+        size_t staticSize;
+        // S* dynamic;
     public:
-
         /** Constructor
          * @param size: size of the S valuation vector,
          * or dimension.
          */
-        Valuation(size_t size)
-            : base::pointer_t<S>(new S[size], size)
-        { base::pointer_t<S>::reset(); }
-
+        Valuation(size_t size, size_t dyn = 0):
+            base::pointer_t<S>(new S[size + dyn], dyn + size), dynamicSize(dyn), staticSize(size)
+        {
+            base::pointer_t<S>::reset();
+        }
         /** Copy constructor
          * @param original: vector to copy
          */
-        Valuation(const Valuation<S>& original)
-            : base::pointer_t<S>(new S[original.size()], original.size())
+        Valuation(const Valuation<S>& original):
+            base::pointer_t<S>(new S[original.staticSize + original.dynamicSize],
+                               original.staticSize + original.dynamicSize),
+            dynamicSize(original.dynamicSize), staticSize(original.staticSize)
         {
-            copyFrom(original);
+            this->copyFrom(original);
         }
 
-        ~Valuation() { delete [] base::pointer_t<S>::data; }
+        ~Valuation() { delete[] this->data; }
 
         /**
          * Copy the elements of the original vector.
          * It is dangerous not to have this operator.
          * @pre original.size() == size().
          */
-        Valuation<S>& operator = (const Valuation<S>& original) {
+        Valuation<S>& operator=(const Valuation<S>& original)
+        {
             base::pointer_t<S>::copyFrom(original);
             return *this;
         }
@@ -86,32 +76,32 @@ namespace dbm
          * EXCEPT element 0 (reference clock).
          * @param value: element to add.
          */
-        Valuation<S>& operator += (S value)
+        Valuation<S>& operator+=(S value)
         {
-            if (value) 
-            { 
-                for(S *i = base::pointer_t<S>::begin()+1; i < base::pointer_t<S>::end(); ++i) 
-                {
+            if (value != 0) {
+                for (S* i = this->begin() + 1; i < this->end(); ++i) {
                     *i += value;
                 }
             }
             return *this;
         }
-
+        void reset() { std::fill(this->begin(), this->end(), 0); }
         S last() const
         {
             assert(base::pointer_t<S>::size() > 0);
-            return (*this)[base::pointer_t<S>::size()-1];
+            return (*this)[base::pointer_t<S>::size() - 1];
         }
-        
+
+        S lastStatic() const
+        {
+            assert(staticSize > 0);
+            return (*this)[staticSize - 1];
+        }
 
         /** Subtract value to all the elements of this vector.
          * @param value: element to subtract.
          */
-        Valuation<S>& operator -= (S value)
-        {
-            return *this += -value;
-        }
+        Valuation<S>& operator-=(S value) { return *this += -value; }
 
         /** @return the delay between this point and the
          * argument point. This has any sense iff
@@ -119,19 +109,29 @@ namespace dbm
          */
         S getDelayTo(const Valuation<S>& arg) const
         {
-            if (base::pointer_t<S>::size() <= 1)
-            {
-                return 0;                // Only ref clock.
+            if (base::pointer_t<S>::size() <= 1) {
+                return 0;  // Only ref clock.
             }
-            S delay = arg[1] - (*this)[1]; // Get delay.
-#ifndef NDEBUG                           // Check consistency.
+            S delay = arg[1] - (*this)[1];  // Get delay.
+#ifndef NDEBUG                              // Check consistency.
             size_t n = base::pointer_t<S>::size();
-            for(size_t i = 1; i < n; ++i)
-            {
+            for (size_t i = 1; i < n; ++i) {
                 assert(arg[i] - (*this)[i] == delay);
             }
 #endif
             return delay;
+        }
+
+        std::ostream& print(std::ostream& os, const ClockAccessor& a) const
+        {
+            os << "[ " << std::setprecision(std::numeric_limits<S>::digits10 + 1);
+            cindex_t id = 0;
+            for (auto& v : *this) {
+                auto name = a.getClockName(id++);
+                if (name[0] != '#')
+                    os << name << "=" << v << " ";
+            }
+            return os << "]";
         }
 
         /** String representation of the valuation in a more
@@ -140,34 +140,48 @@ namespace dbm
         std::string toString(const ClockAccessor& a) const
         {
             std::ostringstream os;
-            cindex_t id = 1;
-            os.precision(32);
-            os <<  "[ ";
-            for(const S *i = base::pointer_t<S>::begin()+1; i < base::pointer_t<S>::end(); ++id, ++i) 
-            {
-                os << a.getClockName(id) << "=" << *i << " ";
-            }
-            os << "]";
+            print(os, a);
             return os.str();
+        }
+
+        void copyFrom(const Valuation<S>& src)
+        {
+            assert(src.staticSize == staticSize);
+            assert(src.dynamicSize <= dynamicSize);
+            // Copy the dynamic parts in common
+            std::copy(src.begin(), src.end(), this->begin());
+            for (size_t i = src.dynamicSize; i < dynamicSize; ++i) {
+                (*this)[staticSize + i] = 0;
+            }
+        }
+
+        bool extend(size_t n)
+        {
+            S* buf = new S[n + dynamicSize + staticSize];
+
+            std::copy(base::pointer_t<S>::begin(), base::pointer_t<S>::end(), buf);
+            delete[] base::pointer_t<S>::data;
+            // dynamicSize += n;
+            std::fill_n(buf + staticSize + dynamicSize, n, 0);
+            dynamicSize += n;
+            this->setData(buf, dynamicSize + staticSize);
+            return true;
         }
     };
 
+    using IntValuation = Valuation<int32_t>;
+    using DoubleValuation = Valuation<double>;
 
-    /** IntValuation = Valuation<int32_t>
-     */
-    typedef Valuation<int32_t> IntValuation;
+    /** Overload += for automatic cast. */
+    /*    static inline
+        DoubleValuation& operator += (DoubleValuation& d, int32_t v) {
+            return d += (double)v;
+        }
 
+        static inline
+        DoubleValuation& operator += (DoubleValuation& d, double v) {
+            return d += v;
+        }*/
+}  // namespace dbm
 
-    /** DoubleValuation = Valuation<double>
-     */
-    typedef Valuation<double> DoubleValuation;
-
-
-    /** Overload += for automatic cast.
-     */
-    static inline
-    DoubleValuation& operator += (DoubleValuation& d, int32_t v)
-    { return d += (double) v; }
-}
-
-#endif // INCLUDE_DBM_VALUATION_H
+#endif  // INCLUDE_DBM_VALUATION_H

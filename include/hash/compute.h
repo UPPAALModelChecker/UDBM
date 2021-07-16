@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 /* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 /*********************************************************************
  *
@@ -38,9 +18,13 @@
 #ifndef INCLUDE_HASH_COMPUTE_H
 #define INCLUDE_HASH_COMPUTE_H
 
+#define MURMUR2_HASH1
+#define MURMUR2_HASH2
+
+#include "base/inttypes.h"
+
 #include <assert.h>
 #include <string.h>
-#include "base/inttypes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,18 +50,36 @@ extern "C" {
  * NOTE: the hash function based on this hash mix is much faster than
  * MD5 hashing and gives exactly the same results.
  */
-#define HASH_MIX(a,b,c)         \
-{                               \
-  a -= b; a -= c; a ^= (c>>13); \
-  b -= c; b -= a; b ^= (a<<8);  \
-  c -= a; c -= b; c ^= (b>>13); \
-  a -= b; a -= c; a ^= (c>>12); \
-  b -= c; b -= a; b ^= (a<<16); \
-  c -= a; c -= b; c ^= (b>>5);  \
-  a -= b; a -= c; a ^= (c>>3);  \
-  b -= c; b -= a; b ^= (a<<10); \
-  c -= a; c -= b; c ^= (b>>15); \
-}
+#define HASH_MIX(a, b, c) \
+    {                     \
+        a -= b;           \
+        a -= c;           \
+        a ^= (c >> 13);   \
+        b -= c;           \
+        b -= a;           \
+        b ^= (a << 8);    \
+        c -= a;           \
+        c -= b;           \
+        c ^= (b >> 13);   \
+        a -= b;           \
+        a -= c;           \
+        a ^= (c >> 12);   \
+        b -= c;           \
+        b -= a;           \
+        b ^= (a << 16);   \
+        c -= a;           \
+        c -= b;           \
+        c ^= (b >> 5);    \
+        a -= b;           \
+        a -= c;           \
+        a ^= (c >> 3);    \
+        b -= c;           \
+        b -= a;           \
+        b ^= (a << 10);   \
+        c -= a;           \
+        c -= b;           \
+        c ^= (b >> 15);   \
+    }
 
 /** Compute hash value for different data types.
  * @param data: data to read.
@@ -94,10 +96,20 @@ extern "C" {
  * hash_computeU16((uint16_t*)data, 64, initval)
  * hash_computeU8((uint8_t*)data, 128, initval)
  */
-uint32_t hash_computeU32(const uint32_t *data, size_t length, uint32_t initval);
-uint32_t hash_computeU16(const uint16_t *data, size_t length, uint32_t initval);
-uint32_t hash_computeU8( const uint8_t  *data, size_t length, uint32_t initval);
-
+uint32_t hash_computeU8(const uint8_t* data, size_t length, uint32_t initval);
+#ifdef MURMUR2_HASH1
+static inline uint32_t hash_computeU32(const uint32_t* data, size_t length, uint32_t initval)
+{
+    return hash_computeU8((uint8_t*)data, 4 * length, initval);
+}
+static inline uint32_t hash_computeU16(const uint16_t* data, size_t length, uint32_t initval)
+{
+    return hash_computeU8((uint8_t*)data, 2 * length, initval);
+}
+#else
+uint32_t hash_computeU32(const uint32_t* data, size_t length, uint32_t initval);
+uint32_t hash_computeU16(const uint16_t* data, size_t length, uint32_t initval);
+#endif
 
 /** Wrapper functions for convenience.
  * Wrap types of input data: support for
@@ -106,26 +118,22 @@ uint32_t hash_computeU8( const uint8_t  *data, size_t length, uint32_t initval);
  * int8_t => uint8_t
  * char[] => uint8_t
  */
-static inline
-uint32_t hash_computeI32(const int32_t *data, size_t length, uint32_t initval)
+static inline uint32_t hash_computeI32(const int32_t* data, size_t length, uint32_t initval)
 {
     return hash_computeU32((uint32_t*)data, length, initval);
 }
 
-static inline
-uint32_t hash_computeI16(const int16_t *data, size_t length, uint32_t initval)
+static inline uint32_t hash_computeI16(const int16_t* data, size_t length, uint32_t initval)
 {
     return hash_computeU16((uint16_t*)data, length, initval);
 }
 
-static inline
-uint32_t hash_computeI8(const int8_t  *data, size_t length, uint32_t initval)
+static inline uint32_t hash_computeI8(const int8_t* data, size_t length, uint32_t initval)
 {
     return hash_computeU8((uint8_t*)data, length, initval);
 }
 
-static inline
-uint32_t hash_computeStr(const char *str, uint32_t initval)
+static inline uint32_t hash_computeStr(const char* str, uint32_t initval)
 {
     assert(sizeof(char) == sizeof(uint8_t));
     return hash_computeU8((uint8_t*)str, strlen(str), initval);
@@ -135,8 +143,7 @@ uint32_t hash_computeStr(const char *str, uint32_t initval)
  * @param a,b,c: values to combine.
  * @return a mixed hashed value.
  */
-static inline
-uint32_t hash_compute(uint32_t a, uint32_t b, uint32_t c)
+static inline uint32_t hash_compute(uint32_t a, uint32_t b, uint32_t c)
 {
     HASH_MIX(a, b, c);
     return c;
@@ -146,4 +153,4 @@ uint32_t hash_compute(uint32_t a, uint32_t b, uint32_t c)
 }
 #endif
 
-#endif // INCLUDE_HASH_COMPUTE_H
+#endif  // INCLUDE_HASH_COMPUTE_H

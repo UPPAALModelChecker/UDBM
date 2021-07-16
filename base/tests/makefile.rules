@@ -1,23 +1,23 @@
 test: default
-	./testallocator 10000
-	./testallocator 30000
-	./testarray 10 0
-	./testarray 10 1 || echo "Abort is normal"
-	./testarray 10 2 || echo "Abort is normal"
-	./testarray 10 3 || echo "Abort is normal"
-	./testbitptr
-	./testbitstring
-	./testcppbitstring 10
-	./testcppbitstring 1000
-	./testcrashallocator 0 || echo "Abort is normal"
-	./testcrashallocator 1 || echo "Abort is normal"
-	./testcrashallocator 2 || echo "Abort is normal"
-	./testcrashallocator 3 || echo "Abort is normal"
-	./testcrashallocator 4
-	./testintutils 10
-	./testintutils 10000
-	./testitemallocator 1
-	./testitemallocator 10
-	./testitemallocator 100000
-	./testobject
-	./testtimer 100
+	./test_allocator 10000
+	./test_allocator 30000
+	./test_array 10 0
+	./test_array 10 1 || echo "Abort is normal"
+	./test_array 10 2 || echo "Abort is normal"
+	./test_array 10 3 || echo "Abort is normal"
+	./test_bitptr
+	./test_bitstring
+	./test_cppbitstring 10
+	./test_cppbitstring 1000
+	./test_crash_allocator 0 || echo "Abort is normal"
+	./test_crash_allocator 1 || echo "Abort is normal"
+	./test_crash_allocator 2 || echo "Abort is normal"
+	./test_crash_allocator 3 || echo "Abort is normal"
+	./test_crash_allocator 4
+	./test_int_utils 10
+	./test_int_utils 10000
+	./test_item_allocator 1
+	./test_item_allocator 10
+	./test_item_allocator 100000
+	./test_object
+	./test_timer 100

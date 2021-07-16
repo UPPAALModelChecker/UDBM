@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 // -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 ////////////////////////////////////////////////////////////////////
 //
@@ -38,8 +18,9 @@ class UppaalException : public std::exception
 {
 protected:
     char _what[256];
+
 public:
-    virtual const char *what() const throw ();
+    const char* what() const noexcept override;
 };
 
 // Specialized exceptions. Unfortunately
@@ -50,19 +31,19 @@ public:
 class SystemException : public UppaalException
 {
 public:
-    SystemException(const char *fmt, ...);
+    SystemException(const char* fmt, ...);
 };
 
 class InvalidOptionsException : public UppaalException
 {
 public:
-    InvalidOptionsException(const char *fmt, ...);
+    InvalidOptionsException(const char* fmt, ...);
 };
 
 class RuntimeException : public UppaalException
 {
 public:
-    RuntimeException(const char *fmt, ...);
+    RuntimeException(const char* fmt, ...);
 };
 
 class SuccessorException : public RuntimeException
@@ -70,9 +51,8 @@ class SuccessorException : public RuntimeException
 public:
     const char* state;
     const char* channel;
-    SuccessorException(const char* state, const char* channel,
-                       const char* message);
-    virtual ~SuccessorException() throw();
+    SuccessorException(const char* state, const char* channel, const char* message);
+    virtual ~SuccessorException();
 };
 
-#endif // INCLUDE_BASE_EXCEPTIONS_H
+#endif  // INCLUDE_BASE_EXCEPTIONS_H

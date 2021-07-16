@@ -1,23 +1,3 @@
-/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; -*-
- *
- * This file is part of the UPPAAL DBM library.
- *
- * The UPPAAL DBM library is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
- *
- * The UPPAAL DBM library is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with the UPPAAL DBM library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA  02110-1301  USA.
- */
-
 // -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 ////////////////////////////////////////////////////////////////////
 //
@@ -65,21 +45,23 @@
 
 #ifndef NNEW_INFO
 
-void *operator new(size_t size,const char*,int,const char*) throw (std::bad_alloc);
-void *operator new[](size_t size,const char*,int,const char*) throw (std::bad_alloc);
+void* operator new(size_t size, const char*, int, const char*);
+void* operator new[](size_t size, const char*, int, const char*);
 
-#define new new(__FILE__,__LINE__,__FUNCTION__)
+#define new new (__FILE__, __LINE__, __FUNCTION__)
 
 // Don't need to overload these: they fail anyway!
-// void *operator new(size_t size, const std::nothrow_t&) throw();
-// void *operator new[](size_t size, const std::nothrow_t&) throw();
+// void *operator new(size_t size, const std::nothrow_t&) noexcept;
+// void *operator new[](size_t size, const std::nothrow_t&) noexcept;
 
-#endif // NNEW_INFO
+#endif  // NNEW_INFO
 
 #ifndef NDELETE_INFO
-#define delete debug_prepareDelete(__FILE__,__LINE__,__FUNCTION__); delete
+#define delete                                             \
+    debug_prepareDelete(__FILE__, __LINE__, __FUNCTION__); \
+    delete
 #endif
 
-#endif // ndef(_WIN32) && def(ENABLE_MONITOR)
+#endif  // ndef(_WIN32) && def(ENABLE_MONITOR)
 
-#endif // INCLUDE_DEBUG_NEW_H
+#endif  // INCLUDE_DEBUG_NEW_H

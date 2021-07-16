@@ -1,0 +1,255 @@
+*****************************
+* Quick Reference * udbm.rb *
+*****************************
+
+class Matrix
+      new([Constraint*]?) -> Matrix
+
+instance Matrix
+      < (int) -> Matrix
+      <= (int) -> Matrix
+      << (Constraint) -> Matrix
+      dim -> int
+      size -> int
+      to_s -> String
+      inspect -> String
+      to_a -> Array
+      [] (int,int) -> Constraint
+      set(int,int,Constraint) -> Matrix
+      each { |Constraint| .. }
+
+class Constraint
+      new(int,bool=false) -> Constraint
+
+instance Constraint
+      strict? -> bool
+      bound=(int) -> int
+      strict=(bool) -> bool
+      to_s -> String
+      raw -> int
+      <=> (Constraint) -> int
+      
+class Relation
+      ::Different
+      ::Subset
+      ::Superset
+      ::Equal
+      new(int) -> Relation
+
+instance Relation
+      to_i -> int
+      to_s -> String
+      == (Relation) -> bool
+
+class Fed
+      new(Fed) -> Fed
+      new(Matrix,([Matrix*]|Matrix)*) -> Fed
+      new(int,([Matrix*]|Matrix)*) -> Fed
+      zero(int) -> Fed
+      init(int) -> Fed
+      random(int) -> Fed
+
+instance Fed
+      to_s -> String
+      to_a -> Array
+      size -> int
+      dim -> int
+      copy -> Fed
+      empty? -> bool
+      intern! -> Fed
+      zero! -> Fed
+      init! -> Fed
+      relation(Fed) -> Relation
+      convex_hull -> Fed
+      convex_hull! -> Fed
+      + (Fed) -> Fed
+      convex_add!(Fed) -> Fed
+      constrain_clock!(int,int) 'clock,value' -> Fed
+      constrain!(int,int,(Constraint|int,int)) 'i,j,(constraint|bound,strict)' -> Fed
+      & (Fed) -> Fed
+      intersection!(Fed) -> Fed
+      intersects?(Fed) -> bool
+      up -> Fed
+      up! -> Fed
+      up_stop([int*]) -> Fed
+      up_stop!([int*]) -> Fed
+      down -> Fed
+      down! -> Fed
+      free_clock(int) -> Fed
+      free_clock!(int) -> Fed
+      free_up(int) -> Fed
+      free_up!(int) -> Fed
+      free_down(int) -> Fed
+      free_down!(int) -> Fed
+      free_all_up -> Fed
+      free_all_up! -> Fed
+      free_all_down -> Fed
+      free_all.down! -> Fed
+      update_value(int,int) 'clock,value' -> Fed
+      update_value!(int,int) 'clock,value' -> Fed
+      update_clock(int,int) 'clock,clock' -> Fed
+      update_clock!(int,int) 'clock,clock' -> Fed
+      update_increment(int,int) 'clock,inc' -> Fed
+      update_increment!(int,int) 'clock,inc' -> Fed
+      update(int,int,int) 'clock,clock,inc' -> Fed
+      update!(int,int,int) 'clock,clock,inc' -> Fed
+      satisfies?(int,int,(Constraint|bound,strict)) 'i,j,(Constraint|bound,strict)' -> Fed
+      relax_up -> Fed
+      relax_up! -> Fed
+      relax_down -> Fed
+      relax_down! -> Fed
+      relax_up_clock(int) -> Fed
+      relax_up_clock!(int) -> Fed
+      relax_down_clock(int) -> Fed
+      relax_down_clock!(int) -> Fed
+      relax_all -> Fed
+      relax_all! -> Fed
+      subtraction_empty?(Fed) -> bool
+      | (Fed) -> Fed
+      union!(Fed) -> Fed
+      - (Fed) -> Fed
+      subtract!(Fed) -> Fed
+      merge_reduce! -> Fed
+      convex_reduce! -> Fed
+      partition_reduce! -> Fed
+      expensive_reduce! -> Fed
+      expensive_convex_reduce! -> Fed
+      predt(Fed) -> Fed
+      predt!(Fed) -> Fed
+      remove_included_in(Fed) -> Fed
+      remove_included_in!(Fed) -> Fed
+      < (Fed) -> bool
+      > (Fed) -> bool
+      <= (Fed) -> bool
+      >= (Fed) -> bool
+      contains?([int*]|[float*]) -> bool
+      possible_back_delay([float*]) -> float
+      min_delay([float*]) -> float
+      max_back_delay([float*],float) -> float
+      delay([float*]) -> [ float,float ]
+      extrapolate_max_bounds([int*]) -> Fed
+      extrapolate_max_bounds!([int*]) -> Fed
+      diagonal_extrapolate_max_bounds([int*]) -> Fed
+      diagonal_extrapolate_max_bounds!([int*]) -> Fed
+      extrapolate_lu_bounds([int*],[int*]) -> Fed
+      extrapolate_lu_bounds!([int*],[int*]) -> Fed
+      diagonal_extrapolate_lu_bounds([int*],[int*]) -> Fed
+      diagonal_extrapolate_lu_bounds!([int*],[int*]) -> Fed
+      formula([String*]) -> String
+      change_clocks([int*]) -> Fed
+      change_clocks!([int*]) -> Fed
+      has_zero? -> bool
+      << (Fed) -> Fed
+      = (int) 'dim' -> int
+
+Fed(n) { matrix ... }
+
+*********************************
+* Quick Reference * udbm-sys.rb *
+*********************************
+
+class Context
+      create(String, symbols*) -> Context
+      get(String) -> Context
+
+instance Context
+      dim -> int
+      zero -> Set
+      true -> Set
+      false -> Set
+      random -> Set
+      to_s -> String
+
+instance Clock
+      to_s -> String
+      clock_id -> int
+
+instance Formula
+      to_s -> String
+      fed -> Fed
+      copy -> Formula
+      and!(Formula) -> Formula
+      or!(Formula) -> Formula
+      
+instance Clock | Formula
+      +,-,==,<,<=,>,>= (Clock | Formula) -> Formula
+      
+instance Set
+      fed -> Fed
+      context -> Context
+      to_s -> String
+      to_context(Context) -> Set
+      assign_clock!(Clock,int|Clock) -> Set
+      assign_clock_id!(int,int|Clock) -> Set
+      copy -> Set
+      zero! -> Set
+      and!(Set) -> Set
+      or!(Set) -> Set
+      & (Set) -> Set
+      | (Set) -> Set
+      union!(Set) -> Set
+      - (Set) -> Set
+      subtract!(Set) -> Set
+      + (Set) -> Set
+      convex_add!(Set) -> Set
+      satisfies?(Set) -> Set
+      intern! -> Set
+      reduce! -> Set
+      reduce1! -> Set
+      reduce2! -> Set
+      reduce3! -> Set
+      reduce4! -> Set
+      reduce5! -> Set
+      empty? -> bool
+      unbounded? -> bool
+      empty -> Set
+      empty! -> Set
+      convex_hull -> Set
+      convex_hull! -> Set
+      up -> Set
+      up! -> Set
+      up_stop([int*]) -> Set
+      up_stop!([int*]) -> Set
+      down -> Set
+      down! -> Set
+      free_all_up -> Set
+      free_all_up! -> Set
+      free_all_down -> Set
+      free_all_down! -> Set
+      relax_up -> Set
+      relax_up! -> Set
+      relax_down -> Set
+      relax_down! -> Set
+      relax_all -> Set
+      relax_all! -> Set
+      remove_included_in(Set) -> Set
+      remove_included_in!(Set) -> Set
+      predt(Set) -> Set
+      predt!(Set) -> Set
+      exact_relation(Set) -> Relation
+      relation(Set) -> Relation
+      < (Set) -> bool
+      > (Set) -> bool
+      <= (Set) -> bool
+      >= (Set) -> bool
+      == (Set) -> bool
+      free_clock(Clock) -> Set
+      free_clock!(Clock) -> Set
+      free_up(Clock) -> Set
+      free_up!(Clock) -> Set
+      free_down(Clock) -> Set
+      free_down!(Clock) -> Set
+      relax_up_clock(Clock) -> Set
+      relax_up_clock!(Clock) -> Set
+      relax_down_clock(Clock) -> Set
+      relax_down_clock!(Clock) -> Set
+      contains?([int*]|[float*]) -> bool
+      possible_back_delay([float*]) -> float
+      extrapolate_max_bounds([int*]) -> Set
+      extrapolate_max_bounds!([int*]) -> Set
+      diagonal_extrapolate_max_bounds([int*]) -> Set
+      diagonal_extrapolate_max_bounds!([int*]) -> Set
+      extrapolate_lu_bounds([int*],[int*]) -> Set
+      extrapolate_lu_bounds!([int*],[int*]) -> Set
+      diagonal_extrapolate_lu_bounds([int*],[int*]) -> Set
+      diagonal_extrapolate_lu_bounds!([int*],[int*]) -> Set
