@@ -1,4 +1,4 @@
-name: Build UDBM Linux
+name: Build UDBM MacOS
 
 on:
   push:
