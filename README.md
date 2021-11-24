@@ -1,6 +1,12 @@
 # UPPAAL DBM Library
 
-See details about the UPPAAL DBM Libary at the [wiki pages](https://github.com/UPPAALModelChecker/UDBM/wiki).
+UDBM is a DBM library developed in UPPAAL project.
+
+DBM stands for Difference Bound Matrix and used to capture and reason about clock constraints described in Timed Automata models.
+
+The general form of the constraints is the following: `x_i - x_j <=> c_ij`, where `x_i` and `x_j` are clocks (one of them can be "zero clock" which is always zero) and `<=` can be one of {`<`, `<=`, `=`, `>=`, `>`}.
+
+For more details please see [wiki pages](https://github.com/UPPAALModelChecker/UDBM/wiki).
 
 ## Build 
 The following packages need to be installed:
