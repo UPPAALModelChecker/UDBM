@@ -1,0 +1,15 @@
+1) Go to
+   http://ruby-gnome2.sourceforge.jp/hiki.cgi?Install+Guide+for+Windows
+   and follow the installation steps.
+
+2) If you have cygwin:
+   - make sure your path points to c:/ruby/bin (if you installed ruby there).
+   - run ./install.sh
+
+3) If you do not have cygwin:
+   copy the *.so and *.rb files in c:/ruby/lib/ruby/1.8/i386-mswin32/
+   (supposing you have installed ruby in c:/ruby).
+
+Known issue under Windows:
+The window is slow to update whenever a new tab appears or disappears.
+The update is fine.
