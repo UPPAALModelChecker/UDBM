@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
 
 cmake_policy(SET CMP0048 NEW) # project() command manages VERSION variables
 set(CMAKE_CXX_STANDARD 17)
@@ -9,7 +10,8 @@ set(ENABLE_STORE_MINGRAPH 1)
 CONFIGURE_FILE("src/config.h.cmake" "include/dbm/config.h")
 
 project(UDBM VERSION 2.0.8 LANGUAGES CXX C)
-find_package(UUtils 1.1.0 REQUIRED COMPONENTS base hash debug io)
+
+find_package(UUtils 1.1.0 REQUIRED COMPONENTS base hash debug PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libs/UUtils)
 
 add_library(UDBM src/DBMAllocator.cpp src/dbm.c src/fed_dbm.cpp src/mingraph.c src/mingraph_read.c src/partition.cpp src/print.cpp src/gen.c src/mingraph_cache.cpp src/mingraph_relation.c src/pfed.cpp src/fed.cpp src/infimum.cpp src/mingraph_equal.c src/mingraph_write.c src/priced.cpp)
 target_link_libraries(UDBM UUtils::base UUtils::udebug UUtils::hash)

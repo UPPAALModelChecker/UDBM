@@ -1,2 +1,3 @@
-build
+/build
+/libs
 src/config.h
