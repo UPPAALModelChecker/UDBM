@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.19)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
+option(TESTING OFF)
+
 cmake_policy(SET CMP0048 NEW) # project() command manages VERSION variables
 set(CMAKE_CXX_STANDARD 17)
 set(UDBM_PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
@@ -27,6 +29,13 @@ target_include_directories(UDBM
         # where external projects will look for the library's public headers
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+
+if(TESTING)
+    enable_testing()
+    add_subdirectory("test")
+endif(TESTING)
 
 write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/UDBMConfigVersion.cmake VERSION ${PACKAGE_VERSION} COMPATIBILITY SameMajorVersion)
 
