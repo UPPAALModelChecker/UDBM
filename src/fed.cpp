@@ -2729,11 +2729,11 @@ namespace dbm
         for (fdbm_t* fi = ifed()->head(); fi != nullptr; fi = fi->getNext()) {
             // a)
             std::forward_list<constraint_t> sat;
-            transform(begin, end, front_inserter(sat), bind(sat_collect, fi, _1));
+            transform(begin, end, front_inserter(sat), std::bind(sat_collect, fi, _1));
             // b)
             fi->dbmt().extrapolateMaxBounds(max);
             // c)
-            std::for_each(sat.begin(), sat.end(), bind(sat_assert, fi, _1));
+            std::for_each(sat.begin(), sat.end(), std::bind(sat_assert, fi, _1));
         }
 
         // 3) Try to merge back if possible.

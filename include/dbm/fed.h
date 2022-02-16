@@ -14,8 +14,8 @@
 #ifndef INCLUDE_DBM_FED_H
 #define INCLUDE_DBM_FED_H
 
-#include "dbm/config.h"
 #include "dbm/ClockAccessor.h"
+#include "dbm/config.h"
 #include "dbm/dbm.h"
 #include "dbm/mingraph.h"
 #include "base/pointer.h"
