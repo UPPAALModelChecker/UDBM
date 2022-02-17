@@ -676,7 +676,8 @@ static relation_t mingraph_relationWithMinCouplesij16(const raw_t* dbm, cindex_t
 static relation_t mingraph_relationError(const raw_t* dbm, cindex_t dim, const int32_t* mingraph, raw_t* unpackBuffer,
                                          bool* isExact)
 {
-    fprintf(stderr, RED(BOLD) UDBM_PACKAGE_STRING " fatal error: invalid encoded DBM to compute relation with" NORMAL "\n");
+    fprintf(stderr,
+            RED(BOLD) UDBM_PACKAGE_STRING " fatal error: invalid encoded DBM to compute relation with" NORMAL "\n");
     exit(2);
 
     return base_DIFFERENT; /* unreachable: compiler happy */

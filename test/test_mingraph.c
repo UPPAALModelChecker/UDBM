@@ -151,7 +151,7 @@ static void test(size_t dim, bool tryBest)
         mingraph_t ming;
         int32_t* ming2;
         uint32_t type, i;
-        allocator_t c_alloc = {allocData : &allocSize, allocFunction : test_alloc};
+        allocator_t c_alloc = {.allocData = &allocSize, .allocFunction = test_alloc};
 
         PROGRESS();
 
