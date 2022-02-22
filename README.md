@@ -1,8 +1,5 @@
 # UPPAAL DBM Library
-NOTICE: This repository is a Work in Progress, intended as a replacement for [UPPAALModelChecker/UDBM](https://github.com/UPPAALModelChecker/UDBM), with an improved inter-repository structure.
-
-
-UDBM is a DBM library developed in UPPAAL project.
+UDBM is a DBM library developed for the UPPAAL project.
 
 DBM stands for Difference Bound Matrix and used to capture and reason about clock constraints described in Timed Automata models.
 
@@ -11,12 +8,21 @@ The general form of the constraints is the following: `x_i - x_j <=> c_ij`, wher
 For more details please see [wiki pages](https://github.com/UPPAALModelChecker/UDBM/wiki).
 
 ## Build 
-The following packages need to be installed: `cmake gcc xxHash doctest boost`.
-Additionally, you need [UUtils](https://github.com/UPPAALModelChecker/UUtils), which you can install system-wide, or locally by using the script `getlibs.sh`.
+The following packages need to be installed: 
+  * cmake 
+  * gcc 
+  * xxHash
+  * [UUtils](https://github.com/UPPAALModelChecker/UUtils)
+  * doctest (test only)
+  * boost (test only)
 
 Compile source:
 ```sh
-./getlibs.sh # If not installed systemwide 
 cmake -B build/ -DCMAKE_BUILD_TYPE=Release
 cmake --build build/
+```
+
+You can also insall dependencies locally by running: 
+```
+./getlibs.sh 
 ```
