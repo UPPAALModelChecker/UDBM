@@ -13,25 +13,9 @@ set(UDBM_VERSION "${PACKAGE_VERSION}")
 set(ENABLE_STORE_MINGRAPH 1)
 CONFIGURE_FILE("src/config.h.cmake" "include/dbm/config.h")
 
-
-find_package(UUtils 1.1.0 REQUIRED COMPONENTS base hash debug PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libs/UUtils)
-
-# Bit of a hack. UUtils requires xxhash, but can fetch it like this.
-# But it can also find it in the system. If UDBM can find it in the system
-# we assume that UUtils found it in the system, and all is linked properly
-# If not, we also need to include it, such that we can find it when it's included
-# in include/hash/compute.h
-find_library(xxhash NAMES xxhash xxHash)
-if(NOT xxhash)
-    message("XXHash not found. Downloading via fetchContent")
-    include(FetchContent)
-    FetchContent_Declare(xxhashc
-        GIT_REPOSITORY https://github.com/Cyan4973/xxHash.git
-        GIT_TAG 35b0373c697b5f160d3db26b1cbb45a0d5ba788c
-        )
-    FetchContent_MakeAvailable(xxhashc)
-    include_directories("${xxhashc_SOURCE_DIR}")
-endif()
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${CMAKE_CURRENT_SOURCE_DIR}/libs")
+find_package(xxHash 0.8.0 CONFIG REQUIRED)
+find_package(UUtils 1.1.1 REQUIRED COMPONENTS base hash debug)
 
 add_library(UDBM src/DBMAllocator.cpp src/dbm.c src/fed_dbm.cpp src/mingraph.c src/mingraph_read.c src/partition.cpp src/print.cpp src/gen.c src/mingraph_cache.cpp src/mingraph_relation.c src/pfed.cpp src/fed.cpp src/infimum.cpp src/mingraph_equal.c src/mingraph_write.c src/priced.cpp)
 target_link_libraries(UDBM UUtils::base UUtils::udebug UUtils::hash)
