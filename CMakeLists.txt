@@ -39,8 +39,10 @@ if(STATIC)
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive")
 endif(STATIC)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=vla")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=vla")
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=vla")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=vla")
+endif()
 
 target_include_directories(UDBM
     PRIVATE
