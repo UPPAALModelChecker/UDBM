@@ -5,6 +5,7 @@ include(GNUInstallDirs)
 
 option(TESTING OFF)
 option(STATIC OFF)
+option(UBSAN OFF)
 option(ASAN OFF)
 
 cmake_policy(SET CMP0048 NEW) # project() command manages VERSION variables
@@ -26,6 +27,12 @@ if (ASAN)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
     set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
 endif()
+if (UBSAN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=undefined")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=undefined")
+    set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=undefined")
+endif()
+
 
 if(STATIC)
 	set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ -lwsock32 -lws2_32 ${CMAKE_CXX_STANDARD_LIBRARIES}")

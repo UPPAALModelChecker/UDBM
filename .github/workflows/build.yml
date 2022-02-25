@@ -19,8 +19,13 @@ jobs:
       matrix:
         target: [mingw, ubuntu]
         asan: [ON, OFF]
+        ubsan: [ON, OFF]
         exclude:
           - target: mingw
+            asan: ON
+          - target: mingw
+            ubsan: ON
+          - ubsan: ON
             asan: ON
     runs-on: ubuntu-latest
     steps:
@@ -51,7 +56,7 @@ jobs:
           export CTEST_OUTPUT_ON_FAILURE=1
           mkdir build
           cd build
-          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.asan }} ..
+          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} ..
           cmake --build .
           ctest
   build-macos:
