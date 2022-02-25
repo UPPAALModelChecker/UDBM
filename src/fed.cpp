@@ -254,7 +254,7 @@ namespace dbm
         assert(bits && fdbm1 && dbm2);
         assert(base_countBitsN(bits, bitsSize) == nbConstraints);
 
-        uint32_t indices[nbConstraints];
+        std::vector<uint32_t> indices(nbConstraints);
         raw_t* dbm1 = fdbm1->getMatrix();
         dbmlist_t result;
         bool isMutable = false;
@@ -797,15 +797,15 @@ namespace dbm
         // The problem is here to return the same hash for several
         // fed_t that have the same dbm_t in different order.
 
-        uint32_t hashValue[size()];
+        std::vector<uint32_t> hashValue(size());
         uint32_t ddim = getDimension();
         uint32_t i = 0;
         ddim *= ddim;
         for (const fdbm_t* fdbm = fhead; fdbm; fdbm = fdbm->getNext()) {
             hashValue[i++] = hash_computeI32(fdbm->const_dbmt().const_dbm(), ddim, ddim);
         }
-        std::sort(hashValue, hashValue + i);
-        return hash_computeU32(hashValue, i, seed);  // combine the hash values
+        std::sort(hashValue.data(), hashValue.data() + i);
+        return hash_computeU32(hashValue.data(), i, seed);  // combine the hash values
     }
 
     /***************
@@ -1057,8 +1057,7 @@ namespace dbm
             size_t thisSize = size();
             size_t argSize = arg.size();
             size_t maxSize = thisSize < argSize ? argSize : thisSize;
-            uint32_t crossRel[maxSize];
-            std::fill(crossRel, crossRel + maxSize, 0);
+            std::vector<uint32_t> crossRel(maxSize, 0);
             assert(thisSize && argSize);
 
             // const raw_t* argDBM[argSize];
@@ -1782,8 +1781,8 @@ namespace dbm
             return false;
         } else {
             size_t argSize = arg.size();
-            const raw_t* argDBM[argSize];
-            arg.toArray(argDBM);
+            std::vector<const raw_t*> argDBM(argSize);
+            arg.toArray(argDBM.data());
 
             // check cross-intersections
             cindex_t dim = getDimension();
@@ -2573,7 +2572,7 @@ namespace dbm
             }
         }
 
-        double pt[dim];
+        std::vector<double> pt(dim);
         pt[0] = point[0];
         double currentDelay = *min;
         double waitMaxValue = minVal && minStrict ? *minVal : *min;
@@ -2586,7 +2585,7 @@ namespace dbm
                 pt[i] = stopped && base_readOneBit(stopped, i) ? point[i] : point[i] + currentDelay;
             }
             const raw_t* dbm = k->const_dbm();
-            if (dbm != dbm1 && dbm_isRealPointIncluded(pt, dbm, dim)) {
+            if (dbm != dbm1 && dbm_isRealPointIncluded(pt.data(), dbm, dim)) {
                 // Then try to delay and stay inside k.
                 double d = HUGE_VAL;
                 double value = d;
@@ -2758,15 +2757,15 @@ namespace dbm
                 *this = DBMAllocator::instance().dbm1();
                 table[0] = 0;
             } else {
-                cindex_t cols[newDim];
+                std::vector<cindex_t> cols(newDim);
                 cindex_t oldDim = getDimension();
                 DODEBUG(cindex_t check =)
-                dbm_computeTables(bitSrc, bitDst, bitSize, table, cols);
+                dbm_computeTables(bitSrc, bitDst, bitSize, table, cols.data());
                 assert(check == newDim);
                 for (iterator i = beginMutable(); !i.null(); ++i) {
                     dbm_t old = *i;                 // *i is not mutable
                     dbm_updateDBM(i->inew(newDim),  // can call inew
-                                  old.const_dbm(), newDim, oldDim, cols);
+                                  old.const_dbm(), newDim, oldDim, cols.data());
                 }
                 ifed()->updateDimension(newDim);
             }
@@ -3283,14 +3282,15 @@ namespace dbm
             // it's not empty but that costs dim^3.
             if (dbm_haveIntersection(arg1, arg2, dim)) {
                 size_t minSize = bits2intsize(dim * dim);
-                uint32_t minDBM[minSize];
-                size_t nb = dbm_cleanBitMatrix(arg2, dim, minDBM, dbm_analyzeForMinDBM(arg2, dim, minDBM));
+                std::vector<uint32_t> minDBM(minSize);
+                size_t nb =
+                    dbm_cleanBitMatrix(arg2, dim, minDBM.data(), dbm_analyzeForMinDBM(arg2, dim, minDBM.data()));
                 if (nb == 0) {
                     // arg2 is unconstrained => result = empty
                     return fed_t(dim);
                 } else {
-                    return fed_t(
-                        ifed_t::create(dim, internSubtract(fdbm_t::create(arg1, dim), arg2, dim, minDBM, minSize, nb)));
+                    return fed_t(ifed_t::create(
+                        dim, internSubtract(fdbm_t::create(arg1, dim), arg2, dim, minDBM.data(), minSize, nb)));
                 }
             }
             // arg1 - arg2 = arg1
@@ -3336,14 +3336,15 @@ namespace dbm
             // it's not empty but that costs dim^3.
             if (dbm_haveIntersection(arg1.const_dbm(), arg2, dim)) {
                 size_t minSize = bits2intsize(dim * dim);
-                uint32_t minDBM[minSize];
-                size_t nb = dbm_cleanBitMatrix(arg2, dim, minDBM, dbm_analyzeForMinDBM(arg2, dim, minDBM));
+                std::vector<uint32_t> minDBM(minSize);
+                size_t nb =
+                    dbm_cleanBitMatrix(arg2, dim, minDBM.data(), dbm_analyzeForMinDBM(arg2, dim, minDBM.data()));
                 if (nb == 0) {
                     // arg2 is unconstrained => result = empty
                     return fed_t(dim);
                 } else {
-                    return fed_t(
-                        ifed_t::create(dim, internSubtract(fdbm_t::create(arg1), arg2, dim, minDBM, minSize, nb)));
+                    return fed_t(ifed_t::create(
+                        dim, internSubtract(fdbm_t::create(arg1), arg2, dim, minDBM.data(), minSize, nb)));
                 }
             }
             // arg1 - arg2 = arg1
@@ -3574,7 +3575,7 @@ namespace dbm
         assert(isMutable());
 
         size_t minSize = bits2intsize(dim * dim);
-        uint32_t minDBM[minSize];
+        std::vector<uint32_t> minDBM(minSize);
         size_t nb = 0;
         bool mingraph = false;  // Not computed.
 
@@ -3591,8 +3592,8 @@ namespace dbm
                     if (!mingraph)  // Then we need to compute it!
                     {
                         mingraph = true;  // Don't compute twice!
-                        nb = dbm_cleanBitMatrix(arg, dim, minDBM, dbm_analyzeForMinDBM(arg, dim, minDBM));
-                        assert(nb == base_countBitsN(minDBM, minSize));
+                        nb = dbm_cleanBitMatrix(arg, dim, minDBM.data(), dbm_analyzeForMinDBM(arg, dim, minDBM.data()));
+                        assert(nb == base_countBitsN(minDBM.data(), minSize));
                         if (!nb)  // That means we remove everything.
                         {
                             ifed()->setEmpty();
@@ -3600,7 +3601,7 @@ namespace dbm
                         }
                     }
                     // current "disappears" in internSubtract
-                    dbmlist_t partial = internSubtract(current, arg, dim, minDBM, minSize, nb);
+                    dbmlist_t partial = internSubtract(current, arg, dim, minDBM.data(), minSize, nb);
                     result.unionWith(partial);
                 } else  // current - arg = current
                 {

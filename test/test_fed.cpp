@@ -271,19 +271,19 @@ static void test_mix(fed_t& fed)
 {
     size_t size = fed.size();
     if (size > 0) {
-        fdbm_t* oldlist[size];
-        fdbm_t* newlist[size];
-        uint32_t index[size];
+        std::vector<fdbm_t*> oldlist(size);
+        std::vector<fdbm_t*> newlist(size);
+        std::vector<uint32_t> index(size);
         size_t i;
-        assert(fed.write(oldlist) == size);
+        assert(fed.write(oldlist.data()) == size);
         for (i = 0; i < size; ++i) {
             index[i] = i | (rand() << 16);
         }
-        std::sort(index, index + size);
+        std::sort(index.data(), index.data() + size);
         for (i = 0; i < size; ++i) {
             newlist[i] = oldlist[index[i] & 0xffff];
         }
-        fed.read(newlist, size);
+        fed.read(newlist.data(), size);
     }
     assert(!fed.hasEmpty());
 }
@@ -486,31 +486,31 @@ static void test_intersection(cindex_t dim, size_t size)
             assert(iter->le(fed1) && iter->le(dbm2));
         }
         if (fed3.isEmpty()) {
-            double pt[dim];
+            std::vector<double> pt(dim);
             for (int i = 0; i < 500; ++i) {
                 // pt in fed1 not in fed2
-                if (test_generateRealPoint(pt, fed1)) {
-                    assert(!fed2.contains(pt, dim));
-                    assert(!test_isRealPointIn(pt, fed2, dim));
+                if (test_generateRealPoint(pt.data(), fed1)) {
+                    assert(!fed2.contains(pt.data(), dim));
+                    assert(!test_isRealPointIn(pt.data(), fed2, dim));
                 }
                 // pt in fed2 not in fed1
-                if (test_generateRealPoint(pt, fed2)) {
-                    assert(!fed1.contains(pt, dim));
-                    assert(!test_isRealPointIn(pt, fed1, dim));
+                if (test_generateRealPoint(pt.data(), fed2)) {
+                    assert(!fed1.contains(pt.data(), dim));
+                    assert(!test_isRealPointIn(pt.data(), fed1, dim));
                 }
             }
         }
         if (fed4.isEmpty()) {
-            double pt[dim];
+            std::vector<double> pt(dim);
             for (int i = 0; i < 500; ++i) {
                 // pt in fed1 not in fed2
-                if (test_generateRealPoint(pt, fed1)) {
-                    assert(!dbm2.contains(pt, dim));
+                if (test_generateRealPoint(pt.data(), fed1)) {
+                    assert(!dbm2.contains(pt.data(), dim));
                 }
                 // pt in fed2 not in fed1
-                if (!dbm2.isEmpty() && dbm_generateRealPoint(pt, dbm2(), dim)) {
-                    assert(!fed1.contains(pt, dim));
-                    assert(!test_isRealPointIn(pt, fed1, dim));
+                if (!dbm2.isEmpty() && dbm_generateRealPoint(pt.data(), dbm2(), dim)) {
+                    assert(!fed1.contains(pt.data(), dim));
+                    assert(!test_isRealPointIn(pt.data(), fed1, dim));
                 }
             }
         }
@@ -527,13 +527,13 @@ static void test_constrain(cindex_t dim, size_t size)
         fed_t fed1(test_gen(dim, size));
         fed_t fed2 = fed1;
         uint32_t h = fed1.hash();
-        constraint_t constraints[3 * dim];
+        std::vector<constraint_t> constraints(3 * dim);
         constraint_t onec;
-        size_t nb = test_genConstraints(fed1, 3 * dim, constraints);
+        size_t nb = test_genConstraints(fed1, 3 * dim, constraints.data());
         size_t n1 = test_genConstraints(fed1, 1, &onec);
         if (n1)
             fed1 &= onec;
-        bool notEmpty = fed1.constrain(constraints, nb);
+        bool notEmpty = fed1.constrain(constraints.data(), nb);
         assert(notEmpty == !fed1.isEmpty());
         if (n1)
             assert(fed1.isEmpty() || (fed1 && onec));
@@ -547,7 +547,7 @@ static void test_constrain(cindex_t dim, size_t size)
         }
         assert(fed2.hash() == h);
         for (fed_t::iterator iter = fed2.beginMutable(); !iter.null(); ++iter) {
-            iter->constrain(constraints, nb);
+            iter->constrain(constraints.data(), nb);
             if (n1)
                 *iter &= onec;
         }
@@ -852,9 +852,9 @@ static void test_satisfies(cindex_t dim, size_t size)
         for (k = 0; k < NB_LOOPS; ++k) {
             PROGRESS();
             fed_t fed(test_gen(dim, size));
-            int32_t pt[dim];
+            std::vector<int32_t> pt(dim);
             for (int c = 0; c < 30; ++c) {
-                if (test_generatePoint(pt, fed)) {
+                if (test_generatePoint(pt.data(), fed)) {
                     // all the constraints derived from pt are satisfied
                     for (cindex_t i = 0; i < dim; ++i) {
                         for (cindex_t j = 0; j < dim; ++j)
@@ -880,14 +880,14 @@ static void test_constrainEmpty(cindex_t dim, size_t size)
         for (k = 0; k < NB_LOOPS; ++k) {
             PROGRESS();
             fed_t fed(test_gen(dim, size));
-            int32_t pt[dim];
+            std::vector<int32_t> pt(dim);
             cindex_t i, j;
             // dim > 1 & size > 0 -> possible to generate a non-empty fed
             while (fed.isEmpty())
                 fed = test_gen(dim, size);
-            if (test_generatePoint(pt, fed)) {
-                assert(fed.contains(pt, dim));
-                assert(test_isPointIn(pt, fed, dim));
+            if (test_generatePoint(pt.data(), fed)) {
+                assert(fed.contains(pt.data(), dim));
+                assert(test_isPointIn(pt.data(), fed, dim));
 
                 // constrain fed so that it contains only this point
                 for (i = 0; i < dim; ++i) {
@@ -899,14 +899,14 @@ static void test_constrainEmpty(cindex_t dim, size_t size)
                 }
                 fed.reduce();
                 ASSERT(fed.size() == 1,  // after reduce when fed has only 1 point!
-                       debug_cppPrintVector(cerr, pt, dim) << endl
-                                                           << fed << endl);
+                       debug_cppPrintVector(cerr, pt.data(), dim) << endl
+                                                                  << fed << endl);
                 // now empty the federation
                 do {
                     i = rand() % dim;
                     j = rand() % dim;
                 } while (i == j);
-                ASSERT(!fed.constrain(i, j, pt[i] - pt[j], dbm_STRICT), debug_cppPrintVector(cerr, pt, dim)
+                ASSERT(!fed.constrain(i, j, pt[i] - pt[j], dbm_STRICT), debug_cppPrintVector(cerr, pt.data(), dim)
                                                                             << endl
                                                                             << fed << endl);
                 assert(fed.isEmpty());
@@ -1123,10 +1123,10 @@ static void test_equal(cindex_t dim, size_t size)
         for (k = 0; k < NB_LOOPS; ++k) {
             PROGRESS();
             fed_t fed1(test_gen(dim, size));
-            int32_t pt[dim];
-            if (test_generatePoint(pt, fed1)) {
-                assert(fed1.contains(pt, dim));
-                assert(test_isPointIn(pt, fed1, dim));
+            std::vector<int32_t> pt(dim);
+            if (test_generatePoint(pt.data(), fed1)) {
+                assert(fed1.contains(pt.data(), dim));
+                assert(test_isPointIn(pt.data(), fed1, dim));
                 cindex_t i, j;
                 do {
                     i = rand() % dim;
@@ -1134,8 +1134,8 @@ static void test_equal(cindex_t dim, size_t size)
                 } while (i == j);  // will terminate if dim > 1
                 fed_t fed2 = fed1;
                 fed2.constrain(i, j, pt[i] - pt[j], dbm_STRICT);
-                assert(!test_isPointIn(pt, fed2, dim));
-                assert(!fed2.contains(pt, dim));
+                assert(!test_isPointIn(pt.data(), fed2, dim));
+                assert(!fed2.contains(pt.data(), dim));
                 assert(fed2 < fed1 && fed1 > fed2 && fed1 != fed2);
             }
             fed_t fed2 = fed1;
@@ -1171,7 +1171,7 @@ static void test_subtract(cindex_t dim, size_t size)
         uint32_t h1 = fed1.hash();
         uint32_t h2 = fed2.hash();
         fed_t fed4 = fed1 & fed2;
-        int pt[dim];
+        std::vector<int> pt(dim);
         assert(fed4.le(fed1) && fed4.le(fed2));
         assert((fed4 - fed1).isEmpty());
         assert((fed4 - fed2).isEmpty());
@@ -1199,26 +1199,26 @@ static void test_subtract(cindex_t dim, size_t size)
         }
         assert(fed3.eq(fed1));
         for (int count = 0; count < 500; ++count) {
-            if (test_generatePoint(pt, fed1))  // points in fed1 not in fed2
+            if (test_generatePoint(pt.data(), fed1))  // points in fed1 not in fed2
             {
-                assert(test_isPointIn(pt, fed1, dim));
-                assert(fed1.contains(pt, dim));
-                assert(!test_isPointIn(pt, fed2, dim));
-                assert(!fed2.contains(pt, dim));
+                assert(test_isPointIn(pt.data(), fed1, dim));
+                assert(fed1.contains(pt.data(), dim));
+                assert(!test_isPointIn(pt.data(), fed2, dim));
+                assert(!fed2.contains(pt.data(), dim));
             }
-            if (test_generatePoint(pt, fed2))  // points in fed2 not in fed1
+            if (test_generatePoint(pt.data(), fed2))  // points in fed2 not in fed1
             {
-                assert(test_isPointIn(pt, fed2, dim));
-                assert(fed2.contains(pt, dim));
-                assert(!test_isPointIn(pt, fed1, dim));
-                assert(!fed1.contains(pt, dim));
+                assert(test_isPointIn(pt.data(), fed2, dim));
+                assert(fed2.contains(pt.data(), dim));
+                assert(!test_isPointIn(pt.data(), fed1, dim));
+                assert(!fed1.contains(pt.data(), dim));
             }
-            if (test_generatePoint(pt, fed4))  // points in fed4 not in fed1
+            if (test_generatePoint(pt.data(), fed4))  // points in fed4 not in fed1
             {
-                assert(test_isPointIn(pt, fed4, dim));
-                assert(fed4.contains(pt, dim));
-                assert(!test_isPointIn(pt, fed1, dim));
-                assert(!fed1.contains(pt, dim));
+                assert(test_isPointIn(pt.data(), fed4, dim));
+                assert(fed4.contains(pt.data(), dim));
+                assert(!test_isPointIn(pt.data(), fed1, dim));
+                assert(!fed1.contains(pt.data(), dim));
             }
         }
     }

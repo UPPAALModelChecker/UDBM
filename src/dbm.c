@@ -241,9 +241,8 @@ bool dbm_intersection(raw_t* dst, const raw_t* src, cindex_t dim)
 
     if (dim > 1) {
         cindex_t i, j, ci = 0, cj = 0, count = 0;
-        uint32_t touched[bits2intsize(dim)]; /* to reduce final close */
+        uint32_t* touched = (uint32_t*)calloc(bits2intsize(dim), sizeof(uint32_t));
         DODEBUG(bool haveInter = dbm_haveIntersection(dst, src, dim));
-        base_resetBits(touched, bits2intsize(dim));
 
         i = 0;
         do {
@@ -255,6 +254,7 @@ bool dbm_intersection(raw_t* dst, const raw_t* src, cindex_t dim)
                     if (dbm_negRaw(SRC(i, j)) >= DST(j, i)) {
                         assert(!haveInter);
                         DST(0, 0) = -1; /* consistent with isEmpty */
+                        free(touched);
                         return false;
                     }
                     count++;
@@ -269,11 +269,14 @@ bool dbm_intersection(raw_t* dst, const raw_t* src, cindex_t dim)
 
         /* choose best close */
         if (count > 1) {
-            return dbm_closex(dst, dim, touched);
+            bool closex = dbm_closex(dst, dim, touched);
+            free(touched);
+            return closex;
         } else if (count == 1) {
             dbm_closeij(dst, dim, ci, cj);
         }
         ASSERT_NOT_EMPTY(dst, dim);
+        free(touched);
     }
 
     return true;
@@ -284,8 +287,7 @@ bool dbm_intersection(raw_t* dst, const raw_t* src, cindex_t dim)
 bool dbm_relaxedIntersection(raw_t* dst, const raw_t* dbm1, const raw_t* dbm2, cindex_t dim)
 {
     cindex_t i, j, ci = 0, cj = 0, count = 0;
-    uint32_t touched[bits2intsize(dim)]; /* to reduce final close */
-    base_resetBits(touched, bits2intsize(dim));
+    uint32_t* touched = (uint32_t*)calloc(bits2intsize(dim), sizeof(uint32_t));
 
     assert(dim && dst && dbm1 && dbm2);
     ASSERT_DIAG_OK(dbm1, dim);
@@ -305,6 +307,7 @@ bool dbm_relaxedIntersection(raw_t* dst, const raw_t* dbm1, const raw_t* dbm2, c
                 /* Again ok for the test */
                 if (dbm_negRaw(dij) >= (DBM1(j, i) | dbm_WEAK)) {
                     DST(0, 0) = -1; /* consistent with isEmpty */
+                    free(touched);
                     return false;
                 }
                 count++;
@@ -318,12 +321,15 @@ bool dbm_relaxedIntersection(raw_t* dst, const raw_t* dbm1, const raw_t* dbm2, c
 
     /* choose best close */
     if (count > 1) {
-        return dbm_closex(dst, dim, touched);
+        bool closex = dbm_closex(dst, dim, touched);
+        free(touched);
+        return closex;
     } else if (count == 1) {
         dbm_closeij(dst, dim, ci, cj);
     }
     ASSERT_NOT_EMPTY(dst, dim);
 
+    free(touched);
     return true;
 }
 
@@ -443,6 +449,7 @@ bool dbm_constrain1(raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j, raw_t cons
         DBM(i, j) = v;                       \
         if (dbm_negRaw(v) >= DBM(j, i)) {    \
             DBM(0, 0) = -1; /* mark empty */ \
+            free(touched);                   \
             return false;                    \
         }                                    \
         ++changed;                           \
@@ -468,8 +475,7 @@ bool dbm_constrainN(raw_t* dbm, cindex_t dim, const constraint_t* constraints, s
     if (n != 0) /* normally it is the case */
     {
         uint32_t changed = 0, ci = 0, cj = 0;
-        uint32_t touched[bits2intsize(dim)];
-        base_resetBits(touched, bits2intsize(dim));
+        uint32_t* touched = (uint32_t*)calloc(bits2intsize(dim), sizeof(uint32_t));
 
         do {
             DBM_CONSTRAIN(constraints->i, constraints->j, constraints->value);
@@ -479,8 +485,11 @@ bool dbm_constrainN(raw_t* dbm, cindex_t dim, const constraint_t* constraints, s
         if (changed == 1) {
             dbm_closeij(dbm, dim, ci, cj);
         } else if (changed > 1) {
-            return dbm_closex(dbm, dim, touched);
+            bool closex = dbm_closex(dbm, dim, touched);
+            free(touched);
+            return closex;
         }
+        free(touched);
     }
 
     return true;
@@ -499,8 +508,7 @@ bool dbm_constrainIndexedN(raw_t* dbm, cindex_t dim, const cindex_t* indexTable,
     if (n) /* normally it is the case */
     {
         uint32_t changed = 0, ci = 0, cj = 0;
-        uint32_t touched[bits2intsize(dim)];
-        base_resetBits(touched, bits2intsize(dim));
+        uint32_t* touched = (uint32_t*)calloc(bits2intsize(dim), sizeof(uint32_t));
 
         do {
             DBM_CONSTRAIN(indexTable[constraints->i], indexTable[constraints->j], constraints->value);
@@ -510,8 +518,11 @@ bool dbm_constrainIndexedN(raw_t* dbm, cindex_t dim, const cindex_t* indexTable,
         if (changed == 1) {
             dbm_closeij(dbm, dim, ci, cj);
         } else if (changed > 1) {
-            return dbm_closex(dbm, dim, touched);
+            bool closex = dbm_closex(dbm, dim, touched);
+            free(touched);
+            return closex;
         }
+        free(touched);
     }
 
     return true;
@@ -1563,8 +1574,7 @@ bool dbm_tightenDown(raw_t* dbm, cindex_t dim)
 
     if (dim > 1) {
         cindex_t j, count = 0, cj = 0;
-        uint32_t touched[bits2intsize(dim)];
-        base_resetBits(touched, bits2intsize(dim));
+        uint32_t* touched = (uint32_t*)calloc(bits2intsize(dim), sizeof(uint32_t));
 
         j = 1;
         do {
@@ -1572,6 +1582,7 @@ bool dbm_tightenDown(raw_t* dbm, cindex_t dim)
                 DBM(0, j) = dbm_strictRaw(DBM(0, j));
                 if (dbm_negRaw(DBM(0, j)) >= DBM(j, 0)) {
                     DBM(0, 0) = -1; /* mark empty */
+                    free(touched);
                     return false;
                 }
                 count++;
@@ -1583,11 +1594,14 @@ bool dbm_tightenDown(raw_t* dbm, cindex_t dim)
         /* choose best close */
         if (count > 1) {
             base_setOneBit(touched, 0);
-            return dbm_closex(dbm, dim, touched);
+            bool closex = dbm_closex(dbm, dim, touched);
+            free(touched);
+            return closex;
         } else if (count == 1) {
             dbm_closeij(dbm, dim, 0, cj);
         }
         ASSERT_NOT_EMPTY(dbm, dim);
+        free(touched);
     }
 
     return true;
@@ -1603,8 +1617,7 @@ bool dbm_tightenUp(raw_t* dbm, cindex_t dim)
 
     if (dim > 1) {
         cindex_t i, count = 0, ci = 0;
-        uint32_t touched[bits2intsize(dim)];
-        base_resetBits(touched, bits2intsize(dim));
+        uint32_t* touched = (uint32_t*)calloc(bits2intsize(dim), sizeof(uint32_t));
 
         i = 1;
         do {
@@ -1612,6 +1625,7 @@ bool dbm_tightenUp(raw_t* dbm, cindex_t dim)
                 DBM(i, 0) = dbm_strictRaw(DBM(i, 0));
                 if (dbm_negRaw(DBM(i, 0)) >= DBM(0, i)) {
                     DBM(0, 0) = -1; /* mark empty */
+                    free(touched);
                     return false;
                 }
                 count++;
@@ -1623,11 +1637,14 @@ bool dbm_tightenUp(raw_t* dbm, cindex_t dim)
         /* choose best close */
         if (count > 1) {
             base_setOneBit(touched, 0);
-            return dbm_closex(dbm, dim, touched);
+            bool closex = dbm_closex(dbm, dim, touched);
+            free(touched);
+            return closex;
         } else if (count == 1) {
             dbm_closeij(dbm, dim, ci, 0);
         }
         ASSERT_NOT_EMPTY(dbm, dim);
+        free(touched);
     }
 
     return true;
@@ -1817,7 +1834,7 @@ cindex_t dbm_shrinkExpand(const raw_t* dbmSrc, raw_t* dbmDst, cindex_t dimSrc, c
 {
     cindex_t maxDim = (cindex_t)(bitSize << 5); /* *32 = max # of bits */
     cindex_t dimDst;
-    cindex_t cols[maxDim]; /* index j to copy          */
+    cindex_t* cols = (cindex_t*)calloc(maxDim, sizeof(cindex_t));
 
     /* no null pointers */
     assert(dbmSrc && dbmDst);
@@ -1848,6 +1865,7 @@ cindex_t dbm_shrinkExpand(const raw_t* dbmSrc, raw_t* dbmDst, cindex_t dimSrc, c
      */
     dbm_updateDBM(dbmDst, dbmSrc, dimDst, dimSrc, cols);
 
+    free(cols);
     return dimDst;
 }
 

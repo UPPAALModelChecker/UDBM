@@ -75,7 +75,8 @@ static void test(cindex_t dim)
     NEW(dbm);
     NEW(dbm2);
     constraint_t* cnstr = new constraint_t[dim * dim];
-    int32_t lower[dim], upper[dim];
+    std::vector<int32_t> lower(dim);
+    std::vector<int32_t> upper(dim);
     IntValuation pt(dim);
     // coverage
     bool c1 = false, c2 = false, c4 = false;
@@ -455,20 +456,20 @@ static void test(cindex_t dim)
         a.copyTo(dbm, dim);
         switch (k) {
         case 0:
-            b.extrapolateMaxBounds(upper);
-            dbm_extrapolateMaxBounds(dbm, dim, upper);
+            b.extrapolateMaxBounds(upper.data());
+            dbm_extrapolateMaxBounds(dbm, dim, upper.data());
             break;
         case 1:
-            b.diagonalExtrapolateMaxBounds(upper);
-            dbm_diagonalExtrapolateMaxBounds(dbm, dim, upper);
+            b.diagonalExtrapolateMaxBounds(upper.data());
+            dbm_diagonalExtrapolateMaxBounds(dbm, dim, upper.data());
             break;
         case 2:
-            b.extrapolateLUBounds(lower, upper);
-            dbm_extrapolateLUBounds(dbm, dim, lower, upper);
+            b.extrapolateLUBounds(lower.data(), upper.data());
+            dbm_extrapolateLUBounds(dbm, dim, lower.data(), upper.data());
             break;
         case 3:
-            b.diagonalExtrapolateLUBounds(lower, upper);
-            dbm_diagonalExtrapolateLUBounds(dbm, dim, lower, upper);
+            b.diagonalExtrapolateLUBounds(lower.data(), upper.data());
+            dbm_diagonalExtrapolateLUBounds(dbm, dim, lower.data(), upper.data());
             break;
         }
         assert(b == dbm && a <= b);

@@ -127,7 +127,8 @@ static void test(size_t dim, bool tryBest)
     int32_t stats[dbm_MINDBM_ERROR + 1];
     uint32_t sizes[dbm_MINDBM_ERROR + 1];
     size_t testSize = bits2intsize(dim * dim), nbCons1, nbCons2;
-    uint32_t testMG1[testSize], testMG2[testSize];
+    uint32_t* testMG1 = (uint32_t*)calloc(testSize, sizeof(uint32_t));
+    uint32_t* testMG2 = (uint32_t*)calloc(testSize, sizeof(uint32_t));
 
     printf("** Testing size=%zu **\n", dim);
 
@@ -276,6 +277,8 @@ static void test(size_t dim, bool tryBest)
     free(dbm3);
     free(dbm2);
     free(dbm1);
+    free(testMG1);
+    free(testMG2);
 }
 
 int main(int argc, char* argv[])

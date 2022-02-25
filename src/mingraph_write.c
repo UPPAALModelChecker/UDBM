@@ -130,7 +130,7 @@ int32_t* dbm_writeToMinDBMWithOffset(const raw_t* dbm, cindex_t dim, bool minimi
     }
     /* dim > 2 ; apply reduction */
     else if (minimizeGraph) {
-        uint32_t bitMatrix[bits2intsize(dim * dim)];
+        uint32_t* bitMatrix = (uint32_t*)calloc(bits2intsize(dim * dim), sizeof(uint32_t));
         size_t cnt = mingraph_analyzeForMinDBM(dbm, dim, bitMatrix);
         cnt = dbm_cleanBitMatrix(dbm, dim, bitMatrix, cnt);
 
@@ -141,13 +141,18 @@ int32_t* dbm_writeToMinDBMWithOffset(const raw_t* dbm, cindex_t dim, bool minimi
             mingraph[offset] = dim | 0x00040000 | /* minimal reduction */
                                0x00020000;        /* couples i,j       */
                                                   /* and 0 constraint  */
+            free(bitMatrix);
             return mingraph;
         } else {
             /* choose the cheapest encoding
              */
-            return mingraph_encode(dbm, dim, bitMatrix, cnt,
-                                   tryConstraints16 && (dbm_getMaxRange(dbm, dim) < dbm_LS_INF16), c_alloc, offset);
+            uint32_t* retVal =
+                mingraph_encode(dbm, dim, bitMatrix, cnt,
+                                tryConstraints16 && (dbm_getMaxRange(dbm, dim) < dbm_LS_INF16), c_alloc, offset);
+            free(bitMatrix);
+            return retVal;
         }
+        free(bitMatrix);
     } else /* dim > 2 ; no reduction */
     {
         /* see which format for the constraints
@@ -348,8 +353,8 @@ static size_t mingraph_analyzeForMinDBM(const raw_t* dbm, cindex_t dim, uint32_t
         /* Data for analysis.
          * NOTE: in the original algorithm 'bitMatrix' was a bool[dim*dim].
          */
-        cindex_t first[dim + dim];    /* cindex_t[dim] */
-        cindex_t* next = first + dim; /* cindex_t[dim] */
+        cindex_t* first = (cindex_t*)calloc(dim + dim, sizeof(cindex_t)); /* cindex_t[dim] */
+        cindex_t* next = first + dim;                                     /* cindex_t[dim] */
         cindex_t *p, *q, *r, *end = first;
 
         /* pointer to avoid multiplication
@@ -534,9 +539,11 @@ static size_t mingraph_analyzeForMinDBM(const raw_t* dbm, cindex_t dim, uint32_t
 
 #ifdef ENABLE_MINGRAPH_CACHE
         mingraph_putCachedResult(dbm, dim, bitMatrix, hashValue, cnt);
+        free(first);
         return cnt;
     }
 #else
+    free(first);
     return cnt; /* # of constraints */
 #endif
 }

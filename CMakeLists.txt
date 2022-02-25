@@ -39,6 +39,9 @@ if(STATIC)
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive")
 endif(STATIC)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=vla")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=vla")
+
 target_include_directories(UDBM
     PRIVATE
         # where the library itself will look for its internal headers

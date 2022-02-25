@@ -21,13 +21,13 @@
 /*
  * Shortcuts to the Node structure
  */
-#define index(n)     ((n)-nodes)
-#define pred(i)      index(nodes[i].pred)
-#define depth(i)     nodes[i].depth
-#define thread(i)    index(nodes[i].thread)
-#define inbound(i)   nodes[i].inbound
-#define flow(i)      nodes[i].flow
-#define potential(i) nodes[i].potential
+#define index(n)        ((n)-nodes)
+#define pred(i)         index(nodes[i].pred)
+#define depth(i)        nodes[i].depth
+#define thread_MACRO(i) index(nodes[i].thread)
+#define inbound(i)      nodes[i].inbound
+#define flow(i)         nodes[i].flow
+#define potential(i)    nodes[i].potential
 
 /**
  * Tree structure:
@@ -57,7 +57,7 @@ struct arc_t
 #ifndef NDEBUG
 static void printSimpleNodeInfo(Node* nodes, uint32_t i)
 {
-    std::cerr << "Index: " << i << ", pred: " << pred(i) << ", depth: " << depth(i) << ", thread: " << thread(i)
+    std::cerr << "Index: " << i << ", pred: " << pred(i) << ", depth: " << depth(i) << ", thread: " << thread_MACRO(i)
               << ",  inbound: " << inbound(i) << ", flow: " << flow(i) << ", potential: " << potential(i);
 }
 
@@ -91,7 +91,8 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, Node* nod
 {
     bool treeOK = true;
     // Check that all nodes get their flow
-    int32_t sum[dim], total = 0;
+    std::vector<uint32_t> sum(dim);
+    uint32_t total = 0;
     uint32_t i;
     sum[0] = 0;
 
@@ -145,14 +146,13 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, Node* nod
     }
 
     // Check thread integrity
-    uint32_t allVisited[bits2intsize(dim)];
-    base_resetBits(allVisited, bits2intsize(dim));
-    base_setOneBit(allVisited, 0);
-    uint32_t j = thread(0);
+    std::vector<uint32_t> allVisited(bits2intsize(dim));
+    base_setOneBit(allVisited.data(), 0);
+    uint32_t j = thread_MACRO(0);
 
     for (i = 1; i < dim; i++) {
-        base_setOneBit(allVisited, j);
-        j = thread(j);
+        base_setOneBit(allVisited.data(), j);
+        j = thread_MACRO(j);
     }
     if (j != 0) {
         treeOK = false;
@@ -162,24 +162,22 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, Node* nod
     // For each node the subtree should match the thread.
     for (i = 1; i < dim; i++) {
         uint32_t size = bits2intsize(dim);
-        uint32_t thread[size];
-        uint32_t subtree[size];
-        base_resetBits(thread, size);
-        base_resetBits(subtree, size);
-        j = thread(i);
-        base_setOneBit(thread, i);
-        base_setOneBit(subtree, i);
+        std::vector<uint32_t> thread(size, 0);
+        std::vector<uint32_t> subtree(size, 0);
+        j = thread_MACRO(i);
+        base_setOneBit(thread.data(), i);
+        base_setOneBit(subtree.data(), i);
         // Getting the tread
         while (depth(j) > depth(i)) {
-            base_setOneBit(thread, j);
-            j = thread(j);
+            base_setOneBit(thread.data(), j);
+            j = thread_MACRO(j);
         }
         // getting the subtree
         for (j = 1; j < dim; j++) {
             uint32_t k = j;
             while (k != 0) {
                 if (k == i) {
-                    base_setOneBit(subtree, j);
+                    base_setOneBit(subtree.data(), j);
                 }
                 k = pred(k);
             }
@@ -191,7 +189,7 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, Node* nod
             }
         }
         for (i = 0; i < dim; i++) {
-            if (!base_getOneBit(allVisited, i)) {
+            if (!base_getOneBit(allVisited.data(), i)) {
                 treeOK = false;
                 std::cerr << "Node " << i << " not reach through thread!!" << std::endl;
             }
@@ -382,7 +380,7 @@ static void updateNonRootSubtree(Node* rootNode, Node* nonRootNode, Node* leave,
         i = lastOut->thread = i->pred;
 
         /*
-         * Determine the point where thread(i) moves out of
+         * Determine the point where thread_MACRO(i) moves out of
          * i's subtrees and store the node in myPreorderOut.
          */
         lastOut = findLastNodeBefore(i, prev);
@@ -709,13 +707,13 @@ static void infimumNetSimplex(const raw_t* dbm, uint32_t dim, const int32_t* rat
     /* Find and store the minimal set of arcs. The netsimplex
      * algorithm is polynomial in the number of arcs.
      */
-    uint32_t bitMatrix[bits2intsize(dim * dim)];
-    auto nbConstraints = dbm_analyzeForMinDBM(dbm, dim, bitMatrix);
-    arc_t arcs[nbConstraints];
+    std::vector<uint32_t> bitMatrix(bits2intsize(dim * dim));
+    auto nbConstraints = dbm_analyzeForMinDBM(dbm, dim, bitMatrix.data());
+    arc_t* arcs = (arc_t*)calloc(nbConstraints, sizeof(arc_t));
     arc_t* arc = arcs;
     for (uint32_t i = 0; i < dim; i++) {
         for (uint32_t j = 0; j < dim; j++) {
-            if (base_readOneBit(bitMatrix, i * dim + j)) {
+            if (base_readOneBit(bitMatrix.data(), i * dim + j)) {
                 arc->i = i;
                 arc->j = j;
                 arc++;
@@ -758,6 +756,7 @@ static void infimumNetSimplex(const raw_t* dbm, uint32_t dim, const int32_t* rat
      * Get rid of artificial arcs.
      */
     testAndRemoveArtificialArcs(dbm, rates, nodes, dim);
+    free(arcs);
 }
 
 /*
@@ -772,7 +771,7 @@ int32_t pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const 
         return offsetCost;
     }
 
-    Node nodes[dim];
+    Node* nodes = (Node*)calloc(dim, sizeof(Node));
     infimumNetSimplex(dbm, dim, rates, nodes);
 
     int32_t solution = offsetCost;
@@ -784,11 +783,13 @@ int32_t pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const 
          * if so, return minus infinity as the solution is unbounded.
          */
         if (potential(i) == dbm_INFINITY && pred(i) == 0 && flow(i) > 0) {
+            free(nodes);
             return -dbm_INFINITY;
         }
         solution += rates[i] * (potential(i) + constraintValue(0, i));
     }
 
+    free(nodes);
     return solution;
 }
 
@@ -800,7 +801,7 @@ void pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const int
             valuation[i] = -constraintValue(0, i);
         }
     } else {
-        Node nodes[dim];
+        Node* nodes = (Node*)calloc(dim, sizeof(Node));
         infimumNetSimplex(dbm, dim, rates, nodes);
 
         /*
@@ -821,5 +822,6 @@ void pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const int
 
             valuation[i] = potential(i);
         }
+        free(nodes);
     }
 }

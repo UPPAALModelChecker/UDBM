@@ -17,6 +17,7 @@
 #include "base/bitstring.h"
 #include "base/doubles.h"
 
+#include <vector>
 #include <cmath>
 
 // Macro for access to Constant and Mutable DBMs
@@ -97,10 +98,11 @@ namespace dbm
         }
 
         cindex_t dim = pdim();
-        uint32_t mingraph[bits2intsize(dim * dim)];
+        std::vector<uint32_t> mingraph = std::vector<uint32_t>(bits2intsize(dim * dim));
         const raw_t* dbm = const_dbm();
-        size_t n = full ? dbm_fillBitMatrix(dbm, dim, mingraph)
-                        : dbm_cleanBitMatrix(dbm, dim, mingraph, dbm_analyzeForMinDBM(dbm, dim, mingraph));
+        size_t n = full
+                       ? dbm_fillBitMatrix(dbm, dim, mingraph.data())
+                       : dbm_cleanBitMatrix(dbm, dim, mingraph.data(), dbm_analyzeForMinDBM(dbm, dim, mingraph.data()));
         if (n == 0) {
             return "true";
         }
@@ -112,7 +114,7 @@ namespace dbm
         str += "(";
         for (cindex_t i = 0; i < dim; ++i) {
             for (cindex_t j = 0; j < dim; ++j) {
-                if (base_readOneBit(mingraph, i * dim + j)) {
+                if (base_readOneBit(mingraph.data(), i * dim + j)) {
                     assert(i != j);  // Not part of mingraph.
 
                     // Conjunction of constraints.
@@ -126,8 +128,8 @@ namespace dbm
                         assert(j != 0);  // 0,0 never part of mingraph
                         if (dbm_addFiniteRaw(dbm[j], dbm[j * dim]) == dbm_LE_ZERO) {
                             assert(n);
-                            n -= base_getOneBit(mingraph, j * dim);
-                            base_resetOneBit(mingraph, j * dim);
+                            n -= base_getOneBit(mingraph.data(), j * dim);
+                            base_resetOneBit(mingraph.data(), j * dim);
 
                             // xj == b
                             snprintf(buffer, sizeof(buffer), "==%d", -dbm_raw2bound(dbm[j]));
@@ -144,8 +146,8 @@ namespace dbm
                         // xi-xj == b ?
                         if (dbm_addFiniteRaw(dbm[i * dim + j], dbm[j * dim + i]) == dbm_LE_ZERO) {
                             assert(n);
-                            n -= base_getOneBit(mingraph, j * dim + i);
-                            base_resetOneBit(mingraph, j * dim + i);
+                            n -= base_getOneBit(mingraph.data(), j * dim + i);
+                            base_resetOneBit(mingraph.data(), j * dim + i);
 
                             // xi == xj
                             if (j > 0 && dbm[i * dim + j] == dbm_LE_ZERO) {
@@ -586,10 +588,10 @@ namespace dbm
 
         cindex_t dim = pdim();
         raw_t* mdbm = getCopy();
-        uint32_t touched[bits2intsize(dim)];
+        std::vector<uint32_t> touched = std::vector<uint32_t>(bits2intsize(dim));
         uint32_t count = 0;
         cindex_t ci = 0, cj = 0;
-        base_resetBits(touched, bits2intsize(dim));
+        base_resetBits(touched.data(), bits2intsize(dim));
         for (cindex_t i = 0; i < dim; ++i)
             if (i != x) {
                 for (cindex_t j = 0; j < dim; ++j)
@@ -603,13 +605,13 @@ namespace dbm
                             count++;
                             ci = i;
                             cj = j;
-                            base_setOneBit(touched, i);
-                            base_setOneBit(touched, j);
+                            base_setOneBit(touched.data(), i);
+                            base_setOneBit(touched.data(), j);
                         }
                     }
             }
         if (count > 1) {
-            return dbm_closex(mdbm, dim, touched);
+            return dbm_closex(mdbm, dim, touched.data());
         } else if (count == 1) {
             dbm_closeij(mdbm, dim, ci, cj);
         }
@@ -735,7 +737,7 @@ namespace dbm
                 return false;
             }
         } else {
-            cindex_t ck[n];                   // to remember "good" constraints
+            std::vector<cindex_t> ck(n);      // to remember "good" constraints
             const raw_t* cdbm = const_dbm();  // const dbm
             cindex_t i, j, k, nk;
             raw_t c;
@@ -775,8 +777,7 @@ namespace dbm
                     dbm_closeij(mdbm, dim, i, j);
                 } else  // constrain them all!
                 {
-                    uint32_t touched[bits2intsize(dim)];
-                    base_resetBits(touched, bits2intsize(dim));
+                    std::vector<uint32_t> touched(bits2intsize(dim), 0);
                     k = 0;
                     do {
                         i = cnstr[ck[k]].i;
@@ -785,11 +786,11 @@ namespace dbm
                         if (MDBM(i, j) > cnstr[ck[k]].value) {
                             MDBM(i, j) = cnstr[ck[k]].value;
                         }
-                        base_setOneBit(touched, i);
-                        base_setOneBit(touched, j);
+                        base_setOneBit(touched.data(), i);
+                        base_setOneBit(touched.data(), j);
                     } while (++k < nk);
 
-                    if (!dbm_closex(mdbm, dim, touched)) {
+                    if (!dbm_closex(mdbm, dim, touched.data())) {
                         RECORD_SUBSTAT("emptied copy");
                         emptyMutable(dim);
                         return false;
@@ -814,7 +815,7 @@ namespace dbm
                 return false;
             }
         } else {
-            cindex_t ck[n];                   // to remember "good" constraints
+            std::vector<cindex_t> ck(n);      // to remember "good" constraints
             const raw_t* cdbm = const_dbm();  // const dbm
             cindex_t i, j, k, nk;
             raw_t c;
@@ -855,8 +856,7 @@ namespace dbm
                     assert(!dbm_isEmpty(mdbm, dim));
                 } else  // constrain them all!
                 {
-                    uint32_t touched[bits2intsize(dim)];
-                    base_resetBits(touched, bits2intsize(dim));
+                    std::vector<uint32_t> touched(bits2intsize(dim), 0);
                     k = 0;
                     do {
                         i = table[cnstr[ck[k]].i];
@@ -865,11 +865,11 @@ namespace dbm
                         if (MDBM(i, j) > cnstr[ck[k]].value) {
                             MDBM(i, j) = cnstr[ck[k]].value;
                         }
-                        base_setOneBit(touched, i);
-                        base_setOneBit(touched, j);
+                        base_setOneBit(touched.data(), i);
+                        base_setOneBit(touched.data(), j);
                     } while (++k < nk);
 
-                    if (!dbm_closex(mdbm, dim, touched)) {
+                    if (!dbm_closex(mdbm, dim, touched.data())) {
                         RECORD_SUBSTAT("emptied copy");
                         emptyMutable(dim);
                         return false;
@@ -1430,7 +1430,7 @@ namespace dbm
                 // Consider only better delays.
                 if (di < *t) {
                     // Copy point and apply delay, respecting stopped clocks.
-                    double pt[dim];
+                    std::vector<double> pt(dim);
                     double dt = isStrict ? base_addEpsilon(value, 1e-6 * base_EPSILON) : value;
                     pt[0] = point[0];
                     for (cindex_t i = 1; i < dim; ++i) {
@@ -1443,7 +1443,7 @@ namespace dbm
                     // to be correct but value (strict) may be incorrect, which is
                     // why we have two checks here.
                     // Validate value.
-                    if (dbm_isRealPointIncluded(pt, dbm, dim)) {
+                    if (dbm_isRealPointIncluded(pt.data(), dbm, dim)) {
                         // We know that value+small epsilon if fine
                         // so we must be able to find di+large epsilon.
                         double addEpsilon = base_EPSILON;
@@ -1452,7 +1452,7 @@ namespace dbm
                             for (cindex_t i = 1; i < dim; ++i) {
                                 pt[i] = stopped && base_readOneBit(stopped, i) ? point[i] : point[i] + di;
                             }
-                            if (dbm_isRealPointIncluded(pt, dbm, dim)) {
+                            if (dbm_isRealPointIncluded(pt.data(), dbm, dim)) {
                                 *t = di;
                                 if (minVal && minStrict) {
                                     *minVal = value;
@@ -1625,7 +1625,7 @@ namespace dbm
         }
 
         cindex_t dim = pdim();
-        bool freeClocks[dim];
+        bool* freeClocks = (bool*)calloc(dim, sizeof(bool));
 
         if (!freeC) {
             std::fill(freeClocks, freeClocks + dim, 1);

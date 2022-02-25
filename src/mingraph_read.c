@@ -337,11 +337,11 @@ static cindex_t mingraph_readFromMinBitMatrix32(raw_t* dbm, const int32_t* mingr
     cindex_t i = 0, j = 0;
 
 #ifdef EXPERIMENTAL
-    uint32_t indices[dim * (dim - 1)];
+    uint32_t* indices = (uint32_t*)calloc(dim * (dim - 1), sizeof(uint32_t));
     size_t ni = 0;
 #else
     /* keep track of touched clocks */
-    uint32_t touched[bits2intsize(dim)];
+    uint32_t* touched = (uint32_t*)calloc(bits2intsize(dim), sizeof(uint32_t));
     base_resetBits(touched, bits2intsize(dim));
 #endif
 
@@ -370,6 +370,7 @@ static cindex_t mingraph_readFromMinBitMatrix32(raw_t* dbm, const int32_t* mingr
             if (!--nbConstraints) {
                 if (ni)
                     mingraph_close(indices, ni, dbm, dim);
+                free(indices);
                 return dim;
             }
 #else
@@ -381,6 +382,7 @@ static cindex_t mingraph_readFromMinBitMatrix32(raw_t* dbm, const int32_t* mingr
             if (!--nbConstraints) /* no constraint left */
             {
                 dbm_closex(dbm, dim, touched);
+                free(touched);
                 return dim;
             }
 #endif
@@ -409,12 +411,11 @@ static cindex_t mingraph_readFromMinBitMatrix16(raw_t* dbm, const int32_t* mingr
     cindex_t i = 0, j = 0;
 
 #ifdef EXPERIMENTAL
-    uint32_t indices[dim * (dim - 1)];
+    uint32_t* indices = (uint32_t*)calloc(dim * (dim - 1), sizeof(uint32_t));
     size_t ni = 0;
 #else
     /* keep track of touched clocks */
-    uint32_t touched[bits2intsize(dim)];
-    base_resetBits(touched, bits2intsize(dim));
+    uint32_t* touched = (uint32_t*)calloc(bits2intsize(dim), sizeof(uint32_t));
 #endif
 
     assert(dbm && dim > 2);
@@ -442,6 +443,7 @@ static cindex_t mingraph_readFromMinBitMatrix16(raw_t* dbm, const int32_t* mingr
             if (!--nbConstraints) {
                 if (ni)
                     mingraph_close(indices, ni, dbm, dim);
+                free(indices);
                 return dim;
             }
 #else
@@ -453,6 +455,7 @@ static cindex_t mingraph_readFromMinBitMatrix16(raw_t* dbm, const int32_t* mingr
             if (!--nbConstraints) /* no constraint left */
             {
                 dbm_closex(dbm, dim, touched);
+                free(touched);
                 return dim;
             }
 #endif
@@ -495,12 +498,11 @@ static cindex_t mingraph_readFromMinCouplesij32(raw_t* dbm, const int32_t* mingr
         uint32_t val_ij = *couplesij;
 
 #ifdef EXPERIMENTAL
-        uint32_t indices[dim * (dim - 1)];
+        uint32_t* indices = (uint32_t*)calloc(dim * (dim - 1), sizeof(uint32_t));
         size_t ni = 0;
 #else
         /* keep track of touched clocks */
-        uint32_t touched[bits2intsize(dim)];
-        base_resetBits(touched, bits2intsize(dim));
+        uint32_t* touched = (uint32_t*)calloc(bits2intsize(dim), sizeof(uint32_t));
 #endif
 
         for (;;) {
@@ -552,8 +554,10 @@ static cindex_t mingraph_readFromMinCouplesij32(raw_t* dbm, const int32_t* mingr
 #ifdef EXPERIMENTAL
         if (ni)
             mingraph_close(indices, ni, dbm, dim);
+        free(indices);
 #else
         dbm_closex(dbm, dim, touched);
+        free(touched);
 #endif
     }
     return dim;
@@ -584,12 +588,11 @@ static cindex_t mingraph_readFromMinCouplesij16(raw_t* dbm, const int32_t* mingr
     uint32_t val_ij = *couplesij;
 
 #ifdef EXPERIMENTAL
-    uint32_t indices[dim * (dim - 1)];
+    uint32_t* indices = (uint32_t*)calloc(dim * (dim - 1), sizeof(uint32_t));
     size_t ni = 0;
 #else
     /* keep track of touched clocks */
-    uint32_t touched[bits2intsize(dim)];
-    base_resetBits(touched, bits2intsize(dim));
+    uint32_t* touched = (uint32_t*)calloc(bits2intsize(dim), sizeof(uint32_t));
 #endif
 
     assert(nbConstraints); /* can't be = 0 */
@@ -638,8 +641,10 @@ static cindex_t mingraph_readFromMinCouplesij16(raw_t* dbm, const int32_t* mingr
 #ifdef EXPERIMENTAL
     if (ni)
         mingraph_close(indices, ni, dbm, dim);
+    free(indices);
 #else
     dbm_closex(dbm, dim, touched);
+    free(touched);
 #endif
     return dim;
 }
@@ -693,8 +698,8 @@ static size_t mingraph_addMissingConstraints(uint32_t* matrix, const int32_t* mi
     }
 
     /* See analyseForMinDBM */
-    cindex_t first[dim + dim];    /* cindex_t[dim] */
-    cindex_t* next = first + dim; /* cindex_t[dim] */
+    cindex_t* first = (cindex_t*)calloc(dim + dim, sizeof(cindex_t)); /* cindex_t[dim] */
+    cindex_t* next = first + dim;                                     /* cindex_t[dim] */
     cindex_t *q, *r, *end = first;
     const raw_t* dbm_idim = dbm; /* dbm[i*dim] */
     cindex_t i, j, k;
@@ -746,6 +751,7 @@ static size_t mingraph_addMissingConstraints(uint32_t* matrix, const int32_t* mi
         nbConstraints += mingraph_ngetAndSetBit(matrix, next[0]);
     }
 
+    free(first);
     return nbConstraints;
 }
 

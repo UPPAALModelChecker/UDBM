@@ -114,15 +114,15 @@ namespace dbm
     {
         uint32_t dim = ptr->dim;
         int32_t infimum = INT_MAX;
-        int32_t copy[dim];
+        std::vector<int32_t> copy(dim);
 
         for_each_const(zone)
         {
-            std::copy(valuation.begin(), valuation.end(), copy);
-            int32_t inf = pdbm_getInfimumValuation(*zone, dim, copy, free);
+            std::copy(valuation.begin(), valuation.end(), copy.data());
+            int32_t inf = pdbm_getInfimumValuation(*zone, dim, copy.data(), free);
             if (inf < infimum) {
                 infimum = inf;
-                std::copy(copy, copy + dim, valuation.begin());
+                std::copy(copy.data(), copy.data() + dim, valuation.begin());
             }
         }
         return infimum;
@@ -175,8 +175,8 @@ namespace dbm
         cindex_t dim = ptr->dim;
         size_t size_a = a.size();
         size_t size_b = b.size();
-        bool a_s[size_a];
-        bool b_s[size_b];
+        bool* a_s = (bool*)calloc(size_a, sizeof(bool));
+        bool* b_s = (bool*)calloc(size_b, sizeof(bool));
         bool *p_a, *p_b;
         const_iterator i, j;
 
@@ -210,7 +210,10 @@ namespace dbm
         for (p_b = b_s; p_b < b_s + size_b && *p_b; ++p_b) {
         }
 
-        return (relation_t)((p_a == a_s + size_a ? base_SUBSET : 0) | (p_b == b_s + size_b ? base_SUPERSET : 0));
+        auto retVal = (relation_t)((p_a == a_s + size_a ? base_SUBSET : 0) | (p_b == b_s + size_b ? base_SUPERSET : 0));
+        free(a_s);
+        free(b_s);
+        return retVal;
     }
 
     relation_t pfed_t::exactRelation(const pfed_t& b) const
@@ -246,8 +249,8 @@ namespace dbm
                 /* New rate is smaller than old rate, so we delay from the
                  * lower facets
                  */
-                uint32_t facets[dim];
-                uint32_t count = pdbm_getLowerFacets(*zone, dim, facets);
+                std::vector<uint32_t> facets(dim);
+                uint32_t count = pdbm_getLowerFacets(*zone, dim, facets.data());
                 assert(count > 0 && count <= dim);
                 for (uint32_t j = 0; j < count - 1; j++) {
                     ptr->zones.push_front(*zone);
@@ -262,8 +265,8 @@ namespace dbm
                 /* New rate is bigger than old rate, so we delay from the
                  * upper facets. We also need the original zone.
                  */
-                uint32_t facets[dim];
-                uint32_t count = pdbm_getUpperFacets(*zone, dim, facets);
+                std::vector<uint32_t> facets(dim);
+                uint32_t count = pdbm_getUpperFacets(*zone, dim, facets.data());
                 assert(count > 0 && count <= dim);
                 for (uint32_t j = 0; j < count; j++) {
                     ptr->zones.push_front(*zone);
@@ -299,8 +302,8 @@ namespace dbm
             } else if (rate > 0) {
                 /* Find and reset lower facets when rate is positive.
                  */
-                uint32_t facets[dim];
-                int32_t count = pdbm_getLowerRelativeFacets(*zone, dim, clock, facets);
+                std::vector<uint32_t> facets(dim);
+                int32_t count = pdbm_getLowerRelativeFacets(*zone, dim, clock, facets.data());
 
                 assert(count >= 1);
                 for (int32_t j = 0; j < count - 1; j++) {
@@ -313,8 +316,8 @@ namespace dbm
             } else {
                 /* Find and reset upper facets when rate is negative.
                  */
-                uint32_t facets[dim];
-                int32_t count = pdbm_getUpperRelativeFacets(*zone, dim, clock, facets);
+                std::vector<uint32_t> facets(dim);
+                int32_t count = pdbm_getUpperRelativeFacets(*zone, dim, clock, facets.data());
 
                 assert(count >= 1);
                 for (int32_t j = 0; j < count - 1; j++) {
