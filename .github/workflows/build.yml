@@ -61,6 +61,14 @@ jobs:
           ctest
   build-macos:
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        asan: [ON, OFF]
+        ubsan: [ON, OFF]
+        exclude:
+          - asan: ON
+            ubsan: ON
     steps:
     - uses: actions/checkout@v2
     - name: Get dependencies
@@ -70,7 +78,7 @@ jobs:
           export CTEST_OUTPUT_ON_FAILURE=1
           mkdir build
           cd build
-          cmake -DTESTING=yes ..
+          cmake -DTESTING=yes -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} ..
           cmake --build .
           ctest
 
