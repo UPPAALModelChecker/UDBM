@@ -44,8 +44,7 @@ struct constraint_t
     constraint_t() = default;
     constraint_t(const constraint_t& c) = default;
     constraint_t(cindex_t ci, cindex_t cj, raw_t vij): i(ci), j(cj), value{vij} {}
-    constraint_t(cindex_t ci, cindex_t cj, int32_t bound, bool isStrict):
-        i(ci), j(cj), value{(bound * 2) | (not isStrict)}
+    constraint_t(cindex_t ci, cindex_t cj, int32_t bound, bool isStrict): i(ci), j(cj), value{(bound * 2) | (!isStrict)}
     {}
 
     bool operator==(const constraint_t& b) const;
