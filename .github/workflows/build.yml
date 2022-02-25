@@ -13,37 +13,45 @@ jobs:
     - uses: actions/checkout@v2
     - name: Format
       run: find src include test -iregex '.*\.\(c\|h\|cpp\|hpp\|cc\|hh\|cxx\|hxx\)$' | xargs clang-format -n -Werror
-  build-linux:
+  build-linux-win:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [mingw, ubuntu]
+        asan: [ON, OFF]
+        exclude:
+          - target: mingw
+            asan: ON
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Get dependencies
-      run: sudo apt-get update && sudo apt-get install libboost-all-dev doctest-dev && ./getlibs.sh
-    - name: Build and test
+    - name: Set default environment variables
+      run: echo "STATIC=OFF" >> "$GITHUB_ENV"
+    - name: Set mingw environment variables
+      if: matrix.target == 'mingw'
       run: |
-          export CTEST_OUTPUT_ON_FAILURE=1
-          mkdir build
-          cd build
-          cmake -DTESTING=yes ..
-          cmake --build .
-          ctest
-  build-win:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Get dependencies
+          echo "CMAKE_TOOLCHAIN_FILE=$(pwd)/toolchains/mingw.cmake" >> "$GITHUB_ENV"
+          echo "STATIC=ON" >> "$GITHUB_ENV"
+    - name: Get ubuntu dependencies
+      if: matrix.target == 'ubuntu'
+      run: |
+          sudo apt-get update
+          sudo apt-get install libboost-all-dev doctest-dev
+    - name: Get mingw dependencies
+      if: matrix.target == 'mingw'
       run: |
           sudo apt-get update
           sudo apt-get install cmake make g++-mingw-w64-x86-64 mingw-w64-x86-64-dev mingw-w64-tools wine wine-binfmt
           sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
           sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
-          CMAKE_TOOLCHAIN_FILE="$(pwd)/toolchains/mingw.cmake" ./getlibs.sh
+    - name: Getlibs
+      run: ./getlibs.sh
     - name: Build and test
       run: |
           export CTEST_OUTPUT_ON_FAILURE=1
           mkdir build
           cd build
-          cmake -DSTATIC=yes -DTESTING=yes "-DCMAKE_TOOLCHAIN_FILE=../toolchains/mingw.cmake" ..
+          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.asan }} ..
           cmake --build .
           ctest
   build-macos:
