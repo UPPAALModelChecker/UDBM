@@ -1,3 +1,11 @@
 /build
 /libs
 src/config.h
+compile_commands.json
+
+# Manual
+*.aux
+*.idx
+*.log
+*.pdf
+*.toc
