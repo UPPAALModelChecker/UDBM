@@ -1,0 +1,23 @@
+on: [push]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    name: Create document
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Get pdflatex
+      run: |
+          sudo apt-get -yq update
+          sudo apt-get -yq install texlive-full
+    - name: Compile docs
+      run: |
+          cd docs
+          latexmk -pdf manual.tex
+    - name: Store pdf
+      uses: actions/upload-artifact@v2
+      with:
+        name: manual.pdf
+        path: docs/manual.pdf
+        if-no-files-found: error
