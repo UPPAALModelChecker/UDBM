@@ -454,6 +454,12 @@ static void test_convexUnion(cindex_t dim, size_t size)
 // test &= intersection
 static void test_intersection(cindex_t dim, size_t size)
 {
+    /**
+     * This test was originally written using floating point clock valuations instead of integers
+     * This caused the issues described in tests/test_fp_intersection.cpp. For more information,
+     * git blame this comment
+     * TODO: Make intersection of DBMs behave properly with floating point numbers
+     */
     SHOW_TEST();
     uint32_t k;
     for (k = 0; k < NB_LOOPS; ++k) {
@@ -1165,7 +1171,7 @@ static void test_subtract(cindex_t dim, size_t size)
         uint32_t h1 = fed1.hash();
         uint32_t h2 = fed2.hash();
         fed_t fed4 = fed1 & fed2;
-        double pt[dim];
+        int pt[dim];
         assert(fed4.le(fed1) && fed4.le(fed2));
         assert((fed4 - fed1).isEmpty());
         assert((fed4 - fed2).isEmpty());
@@ -1193,25 +1199,25 @@ static void test_subtract(cindex_t dim, size_t size)
         }
         assert(fed3.eq(fed1));
         for (int count = 0; count < 500; ++count) {
-            if (test_generateRealPoint(pt, fed1))  // points in fed1 not in fed2
+            if (test_generatePoint(pt, fed1))  // points in fed1 not in fed2
             {
-                assert(test_isRealPointIn(pt, fed1, dim));
+                assert(test_isPointIn(pt, fed1, dim));
                 assert(fed1.contains(pt, dim));
-                assert(!test_isRealPointIn(pt, fed2, dim));
+                assert(!test_isPointIn(pt, fed2, dim));
                 assert(!fed2.contains(pt, dim));
             }
-            if (test_generateRealPoint(pt, fed2))  // points in fed2 not in fed1
+            if (test_generatePoint(pt, fed2))  // points in fed2 not in fed1
             {
-                assert(test_isRealPointIn(pt, fed2, dim));
+                assert(test_isPointIn(pt, fed2, dim));
                 assert(fed2.contains(pt, dim));
-                assert(!test_isRealPointIn(pt, fed1, dim));
+                assert(!test_isPointIn(pt, fed1, dim));
                 assert(!fed1.contains(pt, dim));
             }
-            if (test_generateRealPoint(pt, fed4))  // points in fed4 not in fed1
+            if (test_generatePoint(pt, fed4))  // points in fed4 not in fed1
             {
-                assert(test_isRealPointIn(pt, fed4, dim));
+                assert(test_isPointIn(pt, fed4, dim));
                 assert(fed4.contains(pt, dim));
-                assert(!test_isRealPointIn(pt, fed1, dim));
+                assert(!test_isPointIn(pt, fed1, dim));
                 assert(!fed1.contains(pt, dim));
             }
         }
