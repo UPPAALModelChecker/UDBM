@@ -1,6 +1,5 @@
 /build
 /libs
-src/config.h
 compile_commands.json
 
 # Manual
