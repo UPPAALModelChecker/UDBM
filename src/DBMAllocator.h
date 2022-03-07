@@ -99,7 +99,8 @@ namespace dbm
 
     ///< Allocator instance
 #else
-    inline dbm_t dbm1() {
+    inline dbm_t dbm1()
+    {
         dbm_t dbm1x1(1);
         raw_t lezero = dbm_LE_ZERO;
         dbm1x1.newCopy(&lezero, 1);

@@ -67,7 +67,6 @@ namespace dbm
     /// Clean-up function does nothing
     inline void cleanUp() {}
 
-
     /** Deallocate memory as allocated by dbm_new.
      * @param dbm: idbm_t to deallocate.
      * @pre dbm != NULL
@@ -78,7 +77,7 @@ namespace dbm
         delete[] reinterpret_cast<int32_t*>(dbm);
     }
 
-    static inline void *dbm_new(cindex_t dim);
+    static inline void* dbm_new(cindex_t dim);
 
 #else  // ifndef ENABLE_DBM_NEW
 
@@ -316,7 +315,7 @@ namespace dbm
         return new int32_t[sizeof(idbm_t) + dim * dim];
 #endif
     }
-#endif // ifdef ENABLE_DBM_NEW
+#endif  // ifdef ENABLE_DBM_NEW
 
     /*********************************
      * Allocation of fdbm_t & ifed_t *

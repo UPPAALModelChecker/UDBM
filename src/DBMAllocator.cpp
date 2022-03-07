@@ -13,7 +13,6 @@
 
 #include "DBMAllocator.h"
 
-
 namespace dbm
 {
 #ifndef ENABLE_DBM_NEW
@@ -52,5 +51,4 @@ namespace dbm
     base::ItemAllocator<alloc_ifed_t> ifed_allocator(200);
     base::ItemAllocator<alloc_fdbm_t> fdbm_allocator(600);
 
-}
-
+}  // namespace dbm

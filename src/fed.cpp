@@ -2785,9 +2785,9 @@ namespace dbm
             setDimension(newDim);
         } else if (newDim <= 1) {
 #ifndef ENABLE_DBM_NEW
-                *this = DBMAllocator::instance().dbm1();
+            *this = DBMAllocator::instance().dbm1();
 #else
-                *this = dbm1();
+            *this = dbm1();
 #endif
         } else {
             cindex_t oldDim = getDimension();

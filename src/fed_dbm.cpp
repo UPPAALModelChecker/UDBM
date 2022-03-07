@@ -13,8 +13,8 @@
 
 #include "DBMAllocator.h"
 #include "dbm.h"
-#include "dbm/config.h"
 
+#include "dbm/config.h"
 #include "base/bitstring.h"
 #include "base/doubles.h"
 
@@ -1611,9 +1611,9 @@ namespace dbm
             setEmpty(newDim);
         } else if (newDim <= 1) {
 #ifndef ENABLE_DBM_NEW
-                newCopy(DBMAllocator::instance().dbm1());
+            newCopy(DBMAllocator::instance().dbm1());
 #else
-                newCopy(dbm::dbm1());
+            newCopy(dbm::dbm1());
 #endif
         } else {
             idbm_t* old = idbmt();
