@@ -7,7 +7,8 @@ void fed_crash(cindex_t dim)
     fed.nil();
 }
 
-int main(){
+int main()
+{
     fed_crash(10);
     fed_crash(15);
     fed_crash(16);
