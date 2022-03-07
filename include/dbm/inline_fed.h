@@ -65,7 +65,7 @@ namespace dbm
 #ifdef ENABLE_DBM_NEW
 
     /// Clean-up function does nothing
-    static inline void cleanUp() {}
+    inline void cleanUp() {}
 
     /** Allocate memory with new.
      * @param dim: dimension of the idbm_t to allocate.
