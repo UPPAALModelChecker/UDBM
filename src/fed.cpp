@@ -15,6 +15,7 @@
 #include "dbm.h"
 #include "mingraph_coding.h"
 
+#include "dbm/config.h"
 #include "dbm/mingraph.h"
 #include "dbm/print.h"
 #include "base/bitstring.h"
@@ -2754,7 +2755,12 @@ namespace dbm
                 base_bits2indexTable(bitDst, bitSize, table);
                 setDimension(newDim);
             } else if (newDim <= 1) {
+#ifndef ENABLE_DBM_NEW
                 *this = DBMAllocator::instance().dbm1();
+#else
+                *this = dbm1();
+#endif
+
                 table[0] = 0;
             } else {
                 std::vector<cindex_t> cols(newDim);
@@ -2778,7 +2784,11 @@ namespace dbm
         if (isEmpty()) {
             setDimension(newDim);
         } else if (newDim <= 1) {
-            *this = DBMAllocator::instance().dbm1();
+#ifndef ENABLE_DBM_NEW
+                *this = DBMAllocator::instance().dbm1();
+#else
+                *this = dbm1();
+#endif
         } else {
             cindex_t oldDim = getDimension();
             for (iterator i = beginMutable(); !i.null(); ++i) {

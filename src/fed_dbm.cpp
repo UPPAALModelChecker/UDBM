@@ -13,6 +13,7 @@
 
 #include "DBMAllocator.h"
 #include "dbm.h"
+#include "dbm/config.h"
 
 #include "base/bitstring.h"
 #include "base/doubles.h"
@@ -366,7 +367,11 @@ namespace dbm
             RECORD_SUBSTAT("empty");
             dim = edim();
             if (dim == 1) {
+#ifndef ENABLE_DBM_NEW
                 newCopy(DBMAllocator::instance().dbm1());
+#else
+                newCopy(dbm::dbm1());
+#endif
                 return *this;
             }
         } else {
@@ -394,7 +399,11 @@ namespace dbm
             RECORD_SUBSTAT("empty");
             dim = edim();
             if (dim == 1) {
+#ifndef ENABLE_DBM_NEW
                 newCopy(DBMAllocator::instance().dbm1());
+#else
+                newCopy(dbm::dbm1());
+#endif
                 return *this;
             }
         } else {
@@ -1582,7 +1591,11 @@ namespace dbm
                 base_bits2indexTable(bitDst, bitSize, table);
                 setEmpty(newDim);
             } else if (newDim <= 1) {
-                updateCopy(DBMAllocator::instance().dbm1());
+#ifndef ENABLE_DBM_NEW
+                newCopy(DBMAllocator::instance().dbm1());
+#else
+                newCopy(dbm::dbm1());
+#endif
                 table[0] = 0;
             } else {
                 idbm_t* old = idbmt();
@@ -1597,7 +1610,11 @@ namespace dbm
         if (isEmpty()) {
             setEmpty(newDim);
         } else if (newDim <= 1) {
-            updateCopy(DBMAllocator::instance().dbm1());
+#ifndef ENABLE_DBM_NEW
+                newCopy(DBMAllocator::instance().dbm1());
+#else
+                newCopy(dbm::dbm1());
+#endif
         } else {
             idbm_t* old = idbmt();
             dbm_updateDBM(setNew(newDim), old->const_dbm(), newDim, old->getDimension(), cols);

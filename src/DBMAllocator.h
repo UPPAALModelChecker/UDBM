@@ -14,6 +14,7 @@
 #ifndef DBM_DBMALLOCATOR_H
 #define DBM_DBMALLOCATOR_H
 
+#include "dbm/config.h"
 #include "dbm/fed.h"
 #include "base/array_t.h"
 
@@ -24,9 +25,9 @@
  * Allocation of classes related to fed_t, dbm_t, etc.
  * Declaration of the DBM allocator and DBM table.
  */
-#ifndef ENABLE_DBM_NEW
 namespace dbm
 {
+#ifndef ENABLE_DBM_NEW
     ///< Allocator for DBMs, only if we don't use new for them.
     class DBMAllocator
     {
@@ -97,7 +98,15 @@ namespace dbm
     };
 
     ///< Allocator instance
-}  // namespace dbm
+#else
+    inline dbm_t dbm1() {
+        dbm_t dbm1x1(1);
+        raw_t lezero = dbm_LE_ZERO;
+        dbm1x1.newCopy(&lezero, 1);
+        dbm1x1.intern();
+        return dbm1x1;
+    }
 #endif  // ENABLE_DBM_NEW
+}  // namespace dbm
 
 #endif  // DBM_FED_ALLOC_H
