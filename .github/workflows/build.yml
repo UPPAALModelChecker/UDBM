@@ -20,6 +20,7 @@ jobs:
         target: [mingw, ubuntu]
         asan: [ON, OFF]
         ubsan: [ON, OFF]
+        newdbm: [ON, OFF]
         exclude:
           - target: mingw
             asan: ON
@@ -56,7 +57,7 @@ jobs:
           export CTEST_OUTPUT_ON_FAILURE=1
           mkdir build
           cd build
-          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} -DCMAKE_BUILD_TYPE=Release ..
+          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} -DCMAKE_BUILD_TYPE=Release -DENABLE_DBM_NEW=${{ matrix.newdbm }} ..
           cmake --build .
           ctest
   build-win-native:
