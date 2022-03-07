@@ -15,6 +15,11 @@
 
 namespace dbm
 {
+    // Instances.
+    DBMTable dbm_table;
+    base::ItemAllocator<alloc_ifed_t> ifed_allocator(200);
+    base::ItemAllocator<alloc_fdbm_t> fdbm_allocator(600);
+
 #ifndef ENABLE_DBM_NEW
     DBMAllocator& DBMAllocator::instance() { return DBMAllocator::dbm_allocator; }
 
@@ -46,9 +51,5 @@ namespace dbm
 
     DBMAllocator DBMAllocator::dbm_allocator;
 #endif  // ENABLE_DBM_NEW
-    // Instances.
-    DBMTable dbm_table;
-    base::ItemAllocator<alloc_ifed_t> ifed_allocator(200);
-    base::ItemAllocator<alloc_fdbm_t> fdbm_allocator(600);
 
 }  // namespace dbm
