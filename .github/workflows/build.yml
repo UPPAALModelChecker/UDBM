@@ -56,7 +56,7 @@ jobs:
           export CTEST_OUTPUT_ON_FAILURE=1
           mkdir build
           cd build
-          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} ..
+          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} -DCMAKE_BUILD_TYPE=Release ..
           cmake --build .
           ctest
   build-macos:
@@ -78,7 +78,7 @@ jobs:
           export CTEST_OUTPUT_ON_FAILURE=1
           mkdir build
           cd build
-          cmake -DTESTING=yes -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} ..
+          cmake -DTESTING=yes -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} -DCMAKE_BUILD_TYPE=Release ..
           cmake --build .
           ctest
 
