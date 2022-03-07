@@ -18,16 +18,11 @@ jobs:
       fail-fast: false
       matrix:
         target: [mingw, ubuntu]
-        asan: [ON, OFF]
-        ubsan: [ON, OFF]
+        sanitizers: [ON, OFF]
         newdbm: [ON, OFF]
         exclude:
           - target: mingw
-            asan: ON
-          - target: mingw
-            ubsan: ON
-          - ubsan: ON
-            asan: ON
+            sanitizers: ON
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -57,7 +52,7 @@ jobs:
           export CTEST_OUTPUT_ON_FAILURE=1
           mkdir build
           cd build
-          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} -DCMAKE_BUILD_TYPE=Release -DENABLE_DBM_NEW=${{ matrix.newdbm }} ..
+          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release -DENABLE_DBM_NEW=${{ matrix.newdbm }} ..
           cmake --build .
           ctest
   build-win-native:
@@ -81,11 +76,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        asan: [ON, OFF]
-        ubsan: [ON, OFF]
-        exclude:
-          - asan: ON
-            ubsan: ON
+        sanitizers: [ON, OFF]
     steps:
     - uses: actions/checkout@v2
     - name: Get dependencies
@@ -95,7 +86,7 @@ jobs:
           export CTEST_OUTPUT_ON_FAILURE=1
           mkdir build
           cd build
-          cmake -DTESTING=yes -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} -DCMAKE_BUILD_TYPE=Release ..
+          cmake -DTESTING=yes -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release ..
           cmake --build .
           ctest
 
