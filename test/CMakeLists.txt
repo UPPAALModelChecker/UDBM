@@ -24,6 +24,7 @@ if (TESTING)
   add_test(NAME dbm_mingraph_1_10_1 COMMAND test_mingraph 1 10 1) # failing test on L64-debug
   set_tests_properties(dbm_mingraph_1_10_1 PROPERTIES TIMEOUT 45) # 39s on Win64
   add_test(NAME dbm_valuation_20    COMMAND test_valuation 20)
+  add_test(NAME test_allocation COMMAND test_allocation)
 
   set_tests_properties(dbm_dbm_1_10 dbm_fed_1_7_7 PROPERTIES TIMEOUT 1200)
 endif()
