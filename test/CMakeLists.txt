@@ -25,7 +25,7 @@ if (TESTING)
   set_tests_properties(dbm_mingraph_1_10_1 PROPERTIES TIMEOUT 45) # 39s on Win64
   add_test(NAME dbm_valuation_20    COMMAND test_valuation 20)
 
-  set_tests_properties(dbm_dbm_1_10 PROPERTIES TIMEOUT 180)
+  set_tests_properties(dbm_dbm_1_10 dbm_fed_1_7_7 PROPERTIES TIMEOUT 1200)
 
   # disable failing tests:
   if (CMAKE_SYSTEM_NAME MATCHES "Linux")
