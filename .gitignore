@@ -1,6 +1,5 @@
 /build
 /libs
-src/config.h
 compile_commands.json
 
 # Manual
@@ -9,3 +8,7 @@ compile_commands.json
 *.log
 *.pdf
 *.toc
+
+# Flakes and direnv
+.direnv
+.envrc
