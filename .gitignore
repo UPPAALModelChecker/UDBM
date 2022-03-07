@@ -1,6 +1,9 @@
 /build
+/cmake-build-*
 /libs
 compile_commands.json
+
+/.idea
 
 # Manual
 *.aux
