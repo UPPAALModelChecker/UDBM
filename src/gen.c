@@ -190,13 +190,15 @@ bool dbm_generateConstrained(raw_t* dbm, cindex_t dim, raw_t range, const constr
     dbm_init(dbm, dim);
 
     if (dim > 1) {
-        uint32_t bitMatrix[bits2intsize(dim * dim)];
+        uint32_t* bitMatrix = (uint32_t*)calloc(bits2intsize(dim * dim), sizeof(uint32_t));
         size_t k;
         assert(dbm && dim && (n == 0 || constraints));
 
         /* should hold by pre-condition */
-        if (!dbm_constrainN(dbm, dim, constraints, n))
+        if (!dbm_constrainN(dbm, dim, constraints, n)) {
+            free(bitMatrix);
             return false;
+        }
 
         /* mark known constraints */
         memset(bitMatrix, 0, bits2intsize(dim * dim) * sizeof(uint32_t));
@@ -205,6 +207,7 @@ bool dbm_generateConstrained(raw_t* dbm, cindex_t dim, raw_t range, const constr
         }
 
         dbm_generatePreConstrained(dbm, dim, range, bitMatrix);
+        free(bitMatrix);
     }
 
     return true;
@@ -272,7 +275,7 @@ void dbm_generatePreConstrained(raw_t* dbm, cindex_t dim, raw_t range, const uin
  */
 void dbm_generateArgDBM(raw_t* arg, const raw_t* dbm, cindex_t dim)
 {
-    uint32_t bitMatrix[bits2intsize(dim * dim)];
+    uint32_t* bitMatrix = (uint32_t*)calloc(bits2intsize(dim * dim), sizeof(uint32_t));
     cindex_t i, j;
     size_t n = 1;
     uint32_t x = 0;
@@ -283,6 +286,7 @@ void dbm_generateArgDBM(raw_t* arg, const raw_t* dbm, cindex_t dim)
     {
         if (dim == 1)
             *arg = dbm_LE_ZERO;
+        free(bitMatrix);
         return;
     }
 
@@ -312,6 +316,7 @@ void dbm_generateArgDBM(raw_t* arg, const raw_t* dbm, cindex_t dim)
              */
             dbm_generate(arg, dim, maxRange);
         }
+        free(bitMatrix);
         return;
     }
 
@@ -341,6 +346,7 @@ void dbm_generateArgDBM(raw_t* arg, const raw_t* dbm, cindex_t dim)
                 }
             }
         }
+        free(bitMatrix);
         return;
 
     case 3: /* try with 1 constraint */ n = 1; break;
@@ -382,6 +388,7 @@ void dbm_generateArgDBM(raw_t* arg, const raw_t* dbm, cindex_t dim)
     }
 
     dbm_generatePreConstrained(arg, dim, maxRange, bitMatrix);
+    free(bitMatrix);
 }
 
 /* Algorithm:
@@ -486,19 +493,23 @@ bool dbm_generateSubset(raw_t* dst, const raw_t* src, cindex_t dim)
  */
 bool dbm_generatePoint(int32_t* pt, const raw_t* dbm, cindex_t dim)
 {
-    double dpt[dim];
+    double* dpt = calloc(dim, sizeof(double));
     cindex_t i;
     if (dim < 1) {
+        free(dpt);
         return false;
     } else if (dim == 1) {
         pt[0] = 0;
+        free(dpt);
         return true;
     }
     if (dbm_generateRealPoint(dpt, dbm, dim)) {
         for (i = 0; i < dim; ++i)
             pt[i] = (int32_t)dpt[i];
+        free(dpt);
         return dbm_isPointIncluded(pt, dbm, dim);
     }
+    free(dpt);
     return false;
 
     /*

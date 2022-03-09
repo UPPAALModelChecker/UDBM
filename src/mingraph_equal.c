@@ -291,9 +291,11 @@ static bool mingraph_isAnalyzedDBMEqualToMinBitMatrix32(const raw_t* dbm, cindex
  */
 static bool mingraph_isEqualToMinBitMatrix32(const raw_t* dbm, cindex_t dim, const int32_t* mingraph)
 {
-    uint32_t bitMatrix[bits2intsize(dim * dim)];
+    uint32_t* bitMatrix = (uint32_t*)calloc(bits2intsize(dim * dim), sizeof(uint32_t));
     size_t nbConstraints = dbm_analyzeForMinDBM(dbm, dim, bitMatrix);
-    return mingraph_isAnalyzedDBMEqualToMinBitMatrix32(dbm, dim, bitMatrix, &nbConstraints, mingraph);
+    bool retVal = mingraph_isAnalyzedDBMEqualToMinBitMatrix32(dbm, dim, bitMatrix, &nbConstraints, mingraph);
+    free(bitMatrix);
+    return retVal;
 }
 
 /* Compare a DBM with a stored DBM in the format
@@ -353,9 +355,11 @@ static bool mingraph_isAnalyzedDBMEqualToMinBitMatrix16(const raw_t* dbm, cindex
  */
 static bool mingraph_isEqualToMinBitMatrix16(const raw_t* dbm, cindex_t dim, const int32_t* mingraph)
 {
-    uint32_t bitMatrix[bits2intsize(dim * dim)];
+    uint32_t* bitMatrix = (uint32_t*)calloc(bits2intsize(dim * dim), sizeof(uint32_t));
     size_t nbConstraints = dbm_analyzeForMinDBM(dbm, dim, bitMatrix);
-    return mingraph_isAnalyzedDBMEqualToMinBitMatrix16(dbm, dim, bitMatrix, &nbConstraints, mingraph);
+    bool retVal = mingraph_isAnalyzedDBMEqualToMinBitMatrix16(dbm, dim, bitMatrix, &nbConstraints, mingraph);
+    free(bitMatrix);
+    return retVal;
 }
 
 /* Compare a DBM with a stored DBM in the format
@@ -442,9 +446,11 @@ static bool mingraph_isAnalyzedDBMEqualToMinCouplesij32(const raw_t* dbm, cindex
  */
 static bool mingraph_isEqualToMinCouplesij32(const raw_t* dbm, cindex_t dim, const int32_t* mingraph)
 {
-    uint32_t bitMatrix[bits2intsize(dim * dim)];
+    uint32_t* bitMatrix = (uint32_t*)calloc(bits2intsize(dim * dim), sizeof(uint32_t));
     size_t nbConstraints = dbm_analyzeForMinDBM(dbm, dim, bitMatrix);
-    return mingraph_isAnalyzedDBMEqualToMinCouplesij32(dbm, dim, bitMatrix, &nbConstraints, mingraph);
+    bool retVal = mingraph_isAnalyzedDBMEqualToMinCouplesij32(dbm, dim, bitMatrix, &nbConstraints, mingraph);
+    free(bitMatrix);
+    return retVal;
 }
 
 /* Compare a DBM with a stored DBM in the format
@@ -529,9 +535,11 @@ static bool mingraph_isAnalyzedDBMEqualToMinCouplesij16(const raw_t* dbm, cindex
  */
 static bool mingraph_isEqualToMinCouplesij16(const raw_t* dbm, cindex_t dim, const int32_t* mingraph)
 {
-    uint32_t bitMatrix[bits2intsize(dim * dim)];
+    uint32_t* bitMatrix = (uint32_t*)calloc(bits2intsize(dim * dim), sizeof(uint32_t));
     size_t nbConstraints = dbm_analyzeForMinDBM(dbm, dim, bitMatrix);
-    return mingraph_isAnalyzedDBMEqualToMinCouplesij16(dbm, dim, bitMatrix, &nbConstraints, mingraph);
+    bool retVal = mingraph_isAnalyzedDBMEqualToMinCouplesij16(dbm, dim, bitMatrix, &nbConstraints, mingraph);
+    free(bitMatrix);
+    return retVal;
 }
 
 /* Fatal error: should not be called.

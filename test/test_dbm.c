@@ -64,8 +64,6 @@
 /* Allocation of DBM, vector, bitstring
  */
 #define ADBM(NAME)  raw_t* NAME = allocDBM(size)
-#define AVECT(NAME) int32_t NAME[size]
-#define ABITS(NAME) uint32_t NAME[bits2intsize(size)]
 #define DVECT(NAME) double NAME[size]
 
 /* Random range
@@ -99,7 +97,7 @@ static uint32_t goodDBMs = 0;
 static void test_zero(uint32_t size)
 {
     ADBM(dbm);
-    AVECT(pt);
+    uint32_t* pt = (uint32_t*)calloc(size, sizeof(uint32_t));
     uint32_t k;
     PRINTF("zero");
     dbm_zero(dbm, size);
@@ -114,6 +112,7 @@ static void test_zero(uint32_t size)
     }
 
     ENDL;
+    free(pt);
     free(dbm);
 }
 
@@ -485,10 +484,10 @@ static void test_constrain(uint32_t size)
     ADBM(dbm3);
     ADBM(dbm4);
     ADBM(dbm5);
-    AVECT(pt);
-    ABITS(touched1);
-    ABITS(touched2);
-    ABITS(touched3);
+    uint32_t* pt = (uint32_t*)calloc(size, sizeof(uint32_t));
+    uint32_t* touched1 = (uint32_t*)calloc(bits2intsize(size), sizeof(uint32_t));
+    uint32_t* touched2 = (uint32_t*)calloc(bits2intsize(size), sizeof(uint32_t));
+    uint32_t* touched3 = (uint32_t*)calloc(bits2intsize(size), sizeof(uint32_t));
     constraint_t* constraints = (constraint_t*)malloc(size * size * sizeof(constraint_t));
     uint32_t k;
     PRINTF("constrain+constrain1+constrainN+satisfy+isEmpty+close+closex+close1");
@@ -588,7 +587,11 @@ static void test_constrain(uint32_t size)
     }
 
     ENDL;
+    free(touched1);
+    free(touched2);
+    free(touched3);
     free(constraints);
+    free(pt);
     free(dbm5);
     free(dbm4);
     free(dbm3);
@@ -601,7 +604,7 @@ static void test_constrain(uint32_t size)
 static void test_point(uint32_t size)
 {
     ADBM(dbm1);
-    AVECT(pt);
+    uint32_t* pt = (uint32_t*)calloc(size, sizeof(uint32_t));
     uint32_t i, k;
     PRINTF("discrete point");
 
@@ -618,6 +621,7 @@ static void test_point(uint32_t size)
     }
 
     ENDL;
+    free(pt);
     free(dbm1);
 }
 
@@ -626,7 +630,7 @@ static void test_point(uint32_t size)
 static void test_real_point(uint32_t size)
 {
     ADBM(dbm1);
-    DVECT(pt);
+    double* pt = (double*)calloc(size, sizeof(double));
     uint32_t i, k;
     PRINTF("real point");
 
@@ -644,6 +648,7 @@ static void test_real_point(uint32_t size)
     }
 
     ENDL;
+    free(pt);
     free(dbm1);
 }
 

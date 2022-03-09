@@ -352,10 +352,10 @@ static int32_t infOfDiff(const raw_t* dbm, uint32_t dim, int32_t cost1, const in
     assert(dbm && dim && rate1 && rate2);
 
     int32_t cost = cost1 - cost2;
-    int32_t rates[dim];
-    std::transform(rate1, rate1 + dim, rate2, rates, std::minus<int32_t>());
+    std::vector<int32_t> rates(dim);
+    std::transform(rate1, rate1 + dim, rate2, rates.data(), std::minus<int32_t>());
 
-    return pdbm_infimum(dbm, dim, cost, rates);
+    return pdbm_infimum(dbm, dim, cost, rates.data());
 }
 
 relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)
@@ -577,7 +577,7 @@ int32_t pdbm_getInfimumValuation(const PDBM pdbm, cindex_t dim, int32_t* valuati
     assert(pdbm && dim && valuation);
     assert(pdbm_isValid(pdbm, dim));
 
-    raw_t copy[dim * dim];
+    std::vector<raw_t> copy(dim * dim);
     raw_t* dbm = pdbm_matrix(pdbm);
     int32_t* rates = pdbm_rates(pdbm);
 
@@ -592,8 +592,8 @@ int32_t pdbm_getInfimumValuation(const PDBM pdbm, cindex_t dim, int32_t* valuati
      * according to the valuation given.
      */
     if (free) {
-        dbm_copy(copy, dbm, dim);
-        dbm = copy;
+        dbm_copy(copy.data(), dbm, dim);
+        dbm = copy.data();
 
         for (uint32_t i = 1; i < dim; i++) {
             if (!free[i]) {
@@ -1016,7 +1016,7 @@ uint32_t pdbm_getLowerRelativeFacets(PDBM& pdbm, cindex_t dim, cindex_t clock, c
 {
     assert(pdbm && dim && clock < dim);
 
-    cindex_t next[dim];
+    std::vector<cindex_t> next(dim);
     cindex_t i;
 
     pdbm_prepare(pdbm, dim);
@@ -1029,13 +1029,13 @@ uint32_t pdbm_getLowerRelativeFacets(PDBM& pdbm, cindex_t dim, cindex_t clock, c
 
     /* Identify zero cycles.
      */
-    dbm_findZeroCycles(dbm, dim, next);
+    dbm_findZeroCycles(dbm, dim, next.data());
 
     /* Find non-redundant facets.
      */
     uint32_t cnt = 0;
     for (i = 0; i < dim; i++) {
-        if (!next[i] && !isRedundant(dbm, dim, i, clock, next)) {
+        if (!next[i] && !isRedundant(dbm, dim, i, clock, next.data())) {
             *facets = i;
             facets++;
             cnt++;
@@ -1048,7 +1048,7 @@ uint32_t pdbm_getUpperRelativeFacets(PDBM& pdbm, cindex_t dim, cindex_t clock, c
 {
     assert(pdbm && dim && clock < dim && facets);
 
-    cindex_t next[dim];
+    std::vector<cindex_t> next(dim);
     cindex_t i;
 
     pdbm_prepare(pdbm, dim);
@@ -1061,13 +1061,13 @@ uint32_t pdbm_getUpperRelativeFacets(PDBM& pdbm, cindex_t dim, cindex_t clock, c
 
     /* Identify zero cycles.
      */
-    dbm_findZeroCycles(dbm, dim, next);
+    dbm_findZeroCycles(dbm, dim, next.data());
 
     /* Find non-redundant facets.
      */
     uint32_t cnt = 0;
     for (i = 0; i < dim; i++) {
-        if (!next[i] && !isRedundant(dbm, dim, clock, i, next)) {
+        if (!next[i] && !isRedundant(dbm, dim, clock, i, next.data())) {
             *facets = i;
             facets++;
             cnt++;
@@ -1080,7 +1080,7 @@ uint32_t pdbm_getLowerFacets(PDBM& pdbm, cindex_t dim, cindex_t* facets)
 {
     assert(pdbm && dim && facets);
 
-    cindex_t next[dim];
+    std::vector<cindex_t> next(dim);
     cindex_t i;
 
     pdbm_prepare(pdbm, dim);
@@ -1093,13 +1093,13 @@ uint32_t pdbm_getLowerFacets(PDBM& pdbm, cindex_t dim, cindex_t* facets)
 
     /* Identify zero cycles.
      */
-    dbm_findZeroCycles(dbm, dim, next);
+    dbm_findZeroCycles(dbm, dim, next.data());
 
     /* Find non-redundant facets.
      */
     uint32_t cnt = 0;
     for (i = 0; i < dim; i++) {
-        if (!next[i] && !isRedundant(dbm, dim, 0, i, next)) {
+        if (!next[i] && !isRedundant(dbm, dim, 0, i, next.data())) {
             *facets = i;
             facets++;
             cnt++;
@@ -1112,7 +1112,7 @@ uint32_t pdbm_getUpperFacets(PDBM& pdbm, cindex_t dim, cindex_t* facets)
 {
     assert(pdbm && dim && facets);
 
-    cindex_t next[dim];
+    std::vector<cindex_t> next(dim);
     cindex_t i;
 
     pdbm_prepare(pdbm, dim);
@@ -1125,13 +1125,13 @@ uint32_t pdbm_getUpperFacets(PDBM& pdbm, cindex_t dim, cindex_t* facets)
 
     /* Identify zero cycles.
      */
-    dbm_findZeroCycles(dbm, dim, next);
+    dbm_findZeroCycles(dbm, dim, next.data());
 
     /* Find non-redundant facets.
      */
     uint32_t cnt = 0;
     for (i = 0; i < dim; i++) {
-        if (!next[i] && !isRedundant(dbm, dim, i, 0, next)) {
+        if (!next[i] && !isRedundant(dbm, dim, i, 0, next.data())) {
             *facets = i;
             facets++;
             cnt++;
@@ -1305,11 +1305,11 @@ void pdbm_freeDown(PDBM& pdbm, cindex_t dim, cindex_t index)
 void pdbm_normalise(PDBM pdbm, cindex_t dim)
 {
     int32_t* rates = pdbm_rates(pdbm);
-    cindex_t next[dim];
+    std::vector<cindex_t> next(dim);
     cindex_t i;
 
     assert(dim > 0);
-    dbm_findZeroCycles(pdbm_matrix(pdbm), dim, next);
+    dbm_findZeroCycles(pdbm_matrix(pdbm), dim, next.data());
 
     /* Everything in the equivalence class of 0 will have rate 0.
      */
@@ -1331,11 +1331,11 @@ void pdbm_normalise(PDBM pdbm, cindex_t dim)
 bool pdbm_hasNormalForm(PDBM pdbm, cindex_t dim)
 {
     int32_t* rates = pdbm_rates(pdbm);
-    cindex_t next[dim];
+    std::vector<cindex_t> next(dim);
     cindex_t i;
 
     assert(dim > 0);
-    dbm_findZeroCycles(pdbm_matrix(pdbm), dim, next);
+    dbm_findZeroCycles(pdbm_matrix(pdbm), dim, next.data());
 
     /* Everything in the equivalence class of 0 will have rate 0.
      */

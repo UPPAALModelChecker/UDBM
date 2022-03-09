@@ -103,11 +103,11 @@ static void test_shrinkExpand(uint32_t dim)
 {
     uint32_t intSize = bits2intsize(dim);
     uint32_t tableSize = intSize * 32;
-    cindex_t srcTable[tableSize];
-    cindex_t dstTable[tableSize];
-    cindex_t checkTable[tableSize];
-    uint32_t bitString1[intSize];
-    uint32_t bitString2[intSize];
+    cindex_t* srcTable = (cindex_t*)calloc(tableSize, sizeof(cindex_t));
+    cindex_t* dstTable = (cindex_t*)calloc(tableSize, sizeof(cindex_t));
+    cindex_t* checkTable = (cindex_t*)calloc(tableSize, sizeof(cindex_t));
+    uint32_t* bitString1 = (uint32_t*)calloc(intSize, sizeof(uint32_t));
+    uint32_t* bitString2 = (uint32_t*)calloc(intSize, sizeof(uint32_t));
     raw_t* dbm1 = allocDBM(dim);
     raw_t* dbm2 = allocDBM(dim);
     uint32_t k;
@@ -147,7 +147,9 @@ static void test_shrinkExpand(uint32_t dim)
             assert(dbm_isValid(dbm2, dim2));
 
             /* check table */
-            assert(base_areEqual(dstTable, checkTable, intSizeOf(cindex_t[dim])));
+            cindex_t* someArray = (cindex_t*)calloc(dim, sizeof(cindex_t));
+            assert(base_areEqual(dstTable, checkTable, intSizeOf(someArray)));
+            free(someArray);
 
             for (i = 0; i < dim; ++i) {
                 for (j = 0; j < dim; ++j) {
@@ -181,7 +183,11 @@ static void test_shrinkExpand(uint32_t dim)
         }
         */
     }
-
+    free(srcTable);
+    free(dstTable);
+    free(checkTable);
+    free(bitString1);
+    free(bitString2);
     free(dbm2);
     free(dbm1);
 }
