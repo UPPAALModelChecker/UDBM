@@ -260,7 +260,7 @@ static void test(cindex_t dim)
         for (i = 0, k = 0; i < dim; ++i) {
             for (j = 0; j < dim; ++j) {
                 if (i != j) {
-                    cnstr[k] = constraint_t(i, j, dbm_bound2raw(pt[i] - pt[j], dbm_WEAK));
+                    cnstr[k] = constraint_t{i, j, dbm_bound2raw(pt[i] - pt[j], dbm_WEAK)};
                     assert(a && cnstr[k]);  // satisfies
                     a &= cnstr[k];
                     c = a;
@@ -296,7 +296,7 @@ static void test(cindex_t dim)
                 j = k;
             }
             // constrain too much now
-            constraint_t cij(i, j, dbm_bound2raw(pt[i] - pt[j], dbm_STRICT));
+            constraint_t cij{i, j, dbm_bound2raw(pt[i] - pt[j], dbm_STRICT)};
             a &= cij;
             assert(a.isEmpty() && !(b && cij));
         }

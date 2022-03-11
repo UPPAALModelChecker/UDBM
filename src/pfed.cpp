@@ -82,8 +82,8 @@ namespace dbm
 
     bool pfed_t::constrain(cindex_t i, uint32_t value)
     {
-        constraint_t c[2] = {constraint_t(i, 0, dbm_bound2raw(value, dbm_WEAK)),
-                             constraint_t(0, i, dbm_bound2raw(-value, dbm_WEAK))};
+        constraint_t c[2] = {constraint_t{i, 0, dbm_bound2raw(value, dbm_WEAK)},
+                             constraint_t{0, i, dbm_bound2raw(-value, dbm_WEAK)}};
         return constrain(c, 2);
     }
 
