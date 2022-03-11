@@ -19,3 +19,8 @@ compile_commands.json
 # Flakes and direnv
 .direnv
 .envrc
+
+# Visual Studio
+.vs/
+/CMakeSettings.json
+/out
