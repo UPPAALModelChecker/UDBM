@@ -251,7 +251,7 @@ static inline raw_t dbm_rawDec(raw_t c, raw_t d) { return c < dbm_LS_INFINITY ? 
  */
 static inline constraint_t dbm_constraint(cindex_t i, cindex_t j, int32_t bound, strictness_t strictness)
 {
-    constraint_t c = {.i = i, .j = j, .value = dbm_bound2raw(bound, strictness)};
+    constraint_t c = {i, j, dbm_bound2raw(bound, strictness)};
     return c;
 }
 
@@ -262,7 +262,7 @@ static inline constraint_t dbm_constraint(cindex_t i, cindex_t j, int32_t bound,
  */
 static inline constraint_t dbm_constraint2(cindex_t i, cindex_t j, int32_t bound, bool isStrict)
 {
-    constraint_t c = {.i = i, .j = j, .value = dbm_boundbool2raw(bound, isStrict)};
+    constraint_t c = {i, j, dbm_boundbool2raw(bound, isStrict)};
     return c;
 }
 
