@@ -27,7 +27,7 @@
     devShell = forAllSystems (system:
     let pkgs = nixpkgsFor.${system};
     in pkgs.mkShell {
-      buildInputs = with pkgs; [ cmake doctest boost ninja ];
+      buildInputs = with pkgs; [ cmake doctest boost ninja clang-tools ];
     });
   };
 }

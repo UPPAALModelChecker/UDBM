@@ -26,30 +26,4 @@ if (TESTING)
   add_test(NAME dbm_valuation_20    COMMAND test_valuation 20)
 
   set_tests_properties(dbm_dbm_1_10 dbm_fed_1_7_7 PROPERTIES TIMEOUT 1200)
-
-  # disable failing tests:
-  if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-	  set_tests_properties(
-	    dbm_mingraph_1_10 dbm_mingraph_1_10_1 # assertion fail
-	    PROPERTIES DISABLED TRUE)
-    elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-	  set_tests_properties(
-	    dbm_mingraph_1_10    # assertion fail
-	    dbm_mingraph_1_10_1  # assertion fail
-	    PROPERTIES DISABLED TRUE)
-    endif()
-  elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-	  set_tests_properties(
-	    dbm_mingraph_1_10 dbm_mingraph_1_10_1 # assertion fail
-	    PROPERTIES DISABLED TRUE)
-    endif()
-  elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
-    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-	  set_tests_properties(
-	    dbm_mingraph_1_10 dbm_mingraph_1_10_1 # assertion fail
-	    PROPERTIES DISABLED TRUE)
-    endif()
-  endif()
 endif()

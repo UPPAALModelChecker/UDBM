@@ -124,16 +124,13 @@ static void test(size_t dim, bool tryBest)
     raw_t* dbm2 = allocDBM(dim);
     raw_t* dbm3 = allocDBM(dim);
     uint32_t k;
-    int32_t stats[dbm_MINDBM_ERROR + 1];
-    uint32_t sizes[dbm_MINDBM_ERROR + 1];
+    int32_t* stats = (int32_t*)calloc(dbm_MINDBM_ERROR + 1, sizeof(int32_t));
+    uint32_t* sizes = (uint32_t*)calloc(dbm_MINDBM_ERROR + 1, sizeof(uint32_t));
     size_t testSize = bits2intsize(dim * dim), nbCons1, nbCons2;
     uint32_t* testMG1 = (uint32_t*)calloc(testSize, sizeof(uint32_t));
     uint32_t* testMG2 = (uint32_t*)calloc(testSize, sizeof(uint32_t));
 
     printf("** Testing size=%zu **\n", dim);
-
-    memset(stats, 0, (dbm_MINDBM_ERROR + 1 * sizeof(int32_t)));
-    memset(sizes, 0, (dbm_MINDBM_ERROR + 1 * sizeof(int32_t)));
 
     for (k = 0; k < LOOPS; ++k) {
         /* test 16/32 bit saving,
@@ -274,6 +271,8 @@ static void test(size_t dim, bool tryBest)
 
     test_printStats(stats, sizes, dim);
 
+    free(stats);
+    free(sizes);
     free(dbm3);
     free(dbm2);
     free(dbm1);
