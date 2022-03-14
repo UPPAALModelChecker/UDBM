@@ -40,8 +40,7 @@ if(STATIC)
 endif(STATIC)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=vla")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=vla")
+    add_compile_options(-Werror=vla)
 endif()
 
 target_include_directories(UDBM
