@@ -8,6 +8,13 @@ compile_commands.json
 *.log
 *.pdf
 *.toc
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.ilg
+*.ind
+*.out
 
 # Flakes and direnv
 .direnv
