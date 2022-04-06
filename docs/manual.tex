@@ -702,7 +702,7 @@ constraints $x_i-x_k$ weak $\forall i$.}
 calling {\tt dbm\_relaxUp(dbm, dim, 0)} for the reference clock!}
 
 
-\subsection{Extrapolation Operations}
+\subsection{Extrapolation Operations}\label{sec:dbmextra}
 
 Extrapolations are approximation techniques to make sure that
 exploration algorithms will terminate. Depending on the models (in
@@ -854,7 +854,13 @@ ordering has been chosen for sorting purposes. See {\tt constraint.h}
 for the implementation.}
 
 \section{Header file {\tt fed.h}}
-%TODO
+\subsection{Extrapolation Operations}
+
+To solve the untamable TA problem, UDBM supports the split extrapolation method described in \cite{bengtsson2003clock}.
+For more information on extrapolation operations, see section \ref{sec:dbmextra}
+
+\cfunc{\\void}{dbm::fed\_t::splitExtrapolate}{const constraint\_t *begin, const constraint\_t *end, const int32\_t *max}
+{Split extrapolation based on maximal bounds.}
 
 \section{Header file {\tt Valuation.h}}
 %TODO
