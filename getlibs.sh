@@ -17,7 +17,7 @@ fi
 
 
 cd $SOURCE_DIR/libs/sources;
-wget https://github.com/Cyan4973/xxHash/archive/refs/tags/v0.8.0.tar.gz
+curl -L https://github.com/Cyan4973/xxHash/archive/refs/tags/v0.8.0.tar.gz -o v0.8.0.tar.gz
 tar -xvf v0.8.0.tar.gz
 mkdir -p "$SOURCE_DIR/libs/sources/xxHash-0.8.0/build"
 cd "$SOURCE_DIR/libs/sources/xxHash-0.8.0/build"
@@ -27,7 +27,7 @@ cmake --install . --config Release
 
 #git clone https://github.com/UPPAALModelChecker/UUtils "$SOURCE_DIR/libs/sources/UUtils";
 cd $SOURCE_DIR/libs/sources;
-wget https://github.com/UPPAALModelChecker/UUtils/archive/refs/tags/v1.1.1.tar.gz
+curl -L https://github.com/UPPAALModelChecker/UUtils/archive/refs/tags/v1.1.1.tar.gz -o v1.1.1.tar.gz
 tar -xvf v1.1.1.tar.gz
 mkdir -p "$SOURCE_DIR/libs/sources/UUtils-1.1.1/build"
 cd "$SOURCE_DIR/libs/sources/UUtils-1.1.1"

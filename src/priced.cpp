@@ -16,6 +16,7 @@
 #include "dbm/print.h"
 #include "debug/macros.h"
 
+#include <algorithm>
 #include <functional>
 #include <iostream>
 #include <stdexcept>

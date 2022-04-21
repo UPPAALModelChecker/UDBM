@@ -1,6 +1,6 @@
 # dbm tests...
 
-set(libs UDBM UUtils::udebug UUtils::base UUtils::hash m)
+set(libs UDBM UUtils::udebug UUtils::base UUtils::hash)
 
 if (TESTING)
   file(GLOB test_sources "test_*.c" "test_*.cpp")

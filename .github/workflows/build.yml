@@ -59,6 +59,22 @@ jobs:
           cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.asan }} -DUBSAN=${{ matrix.ubsan }} -DCMAKE_BUILD_TYPE=Release ..
           cmake --build .
           ctest
+  build-win-native:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get dependencies
+      run: |
+          vcpkg integrate install
+          vcpkg install doctest --triplet x64-windows
+          bash ./getlibs.sh
+    - name: Build and test
+      run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release -DTESTING=yes "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" ..
+          cmake --build . --config Release
+          ctest --output-on-failure -C Release
   build-macos:
     runs-on: macos-latest
     strategy:

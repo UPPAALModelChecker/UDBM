@@ -37,29 +37,11 @@ typedef int32_t raw_t;
 /** Basic clock constraint representation.
  * xi-xj <= value (with the special encoding)
  */
-#ifdef __cplusplus
-// C++ version: constructors
-struct constraint_t
-{
-    constraint_t() = default;
-    constraint_t(const constraint_t& c) = default;
-    constraint_t(cindex_t ci, cindex_t cj, raw_t vij): i(ci), j(cj), value{vij} {}
-    constraint_t(cindex_t ci, cindex_t cj, int32_t bound, bool isStrict):
-        i(ci), j(cj), value{(bound * 2) | (not isStrict)}
-    {}
-
-    bool operator==(const constraint_t& b) const;
-
-    cindex_t i, j;
-    raw_t value;
-};
-#else
 typedef struct
 {
     cindex_t i, j; /**< indices for xi and xj */
     raw_t value;
 } constraint_t;
-#endif
 
 /** *Bound* constants.
  */
@@ -269,12 +251,8 @@ static inline raw_t dbm_rawDec(raw_t c, raw_t d) { return c < dbm_LS_INFINITY ? 
  */
 static inline constraint_t dbm_constraint(cindex_t i, cindex_t j, int32_t bound, strictness_t strictness)
 {
-#ifdef __cplusplus
-    return constraint_t(i, j, dbm_bound2raw(bound, strictness));
-#else
-    constraint_t c = {.i = i, .j = j, .value = dbm_bound2raw(bound, strictness)};
+    constraint_t c = {i, j, dbm_bound2raw(bound, strictness)};
     return c;
-#endif
 }
 
 /** 2nd convenience function to build a constraint.
@@ -284,12 +262,8 @@ static inline constraint_t dbm_constraint(cindex_t i, cindex_t j, int32_t bound,
  */
 static inline constraint_t dbm_constraint2(cindex_t i, cindex_t j, int32_t bound, bool isStrict)
 {
-#ifdef __cplusplus
-    return constraint_t(i, j, dbm_boundbool2raw(bound, isStrict));
-#else
-    constraint_t c = {.i = i, .j = j, .value = dbm_boundbool2raw(bound, isStrict)};
+    constraint_t c = {i, j, dbm_boundbool2raw(bound, isStrict)};
     return c;
-#endif
 }
 
 /** Negation of a constraint.
@@ -316,23 +290,6 @@ static inline bool dbm_areConstraintsEqual(constraint_t c1, constraint_t c2)
 }
 
 #ifdef __cplusplus
-
-/** Comparison operator < defined if C++
- * @param a,b: constraints to compare.
- * @return true: if a < b
- */
-static inline bool operator<(const constraint_t& a, const constraint_t& b)
-{
-    return (a.i < b.i) || (a.i == b.i && a.j < b.j) || (a.i == b.i && a.j == b.j && a.value < b.value);
-}
-
-/** Negation operator for constraint_t.
- */
-static inline constraint_t operator!(const constraint_t& c) { return constraint_t(c.j, c.i, dbm_negRaw(c.value)); }
-
-/** Equality operator for constraint_t.
- */
-inline bool constraint_t::operator==(const constraint_t& b) const { return i == b.i && j == b.j && value == b.value; }
 }
 #endif
 

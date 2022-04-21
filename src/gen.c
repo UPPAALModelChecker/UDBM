@@ -579,11 +579,7 @@ bool dbm_generateRealPoint(double* pt, const raw_t* dbm, cindex_t dim)
         }
 
         /* if retrying twice then try the middle */
-#ifdef __MINGW32__
         pt[i] = lower + (retries > 1 ? 0.5 : (rand() % 10000) / 10000.0) * (upper - lower);
-#else
-        pt[i] = lower + (retries > 1 ? 0.5 : drand48()) * (upper - lower);
-#endif
 
         /* if too much close to a corner then
          * we may have pt outside dbm */

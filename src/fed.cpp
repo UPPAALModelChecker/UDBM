@@ -2679,7 +2679,7 @@ namespace dbm
     // Helper function for std::transform.
     static inline constraint_t sat_collect(const fdbm_t* f, const constraint_t& c)
     {
-        return (f->const_dbmt().satisfies(c) ? c : !c);
+        return (f->const_dbmt().satisfies(c) ? c : dbm_negConstraint(c));
     }
 
     // Helper function for std::for_each.
