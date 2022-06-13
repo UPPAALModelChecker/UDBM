@@ -15,6 +15,8 @@ import gdb
 import gdb.printing
 import re
 
+dbm_INFINITY = 2**30 -1
+
 def print_table(table):
     dim = len(table)
     column_lens = [0 for _ in range(dim)]
@@ -59,6 +61,10 @@ class FederationPrinter:
                 for j in range(dim):
                     raw = int(gdb.parse_and_eval(f"((int32_t*) {dbm})[{i}*{dim}+{j}]"))
                     bound = raw >> 1
+                    if bound == dbm_INFINITY:
+                        bound = "INF"
+                    elif bound == -dbm_INFINITY:
+                        bound = "-INF"
                     strict = raw & 1
                     op = "< "
                     if strict:
