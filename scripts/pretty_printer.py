@@ -15,7 +15,8 @@ import gdb
 import gdb.printing
 import re
 
-dbm_INFINITY = 2**30 -1
+dbm_INFINITY = 2**30 - 1
+
 
 def print_table(table):
     dim = len(table)
@@ -32,6 +33,7 @@ def print_table(table):
             out += el + " " + (l-len(el))*" "
         out += "\n"
     return out
+
 
 class FederationPrinter:
     def __init__(self, val):
@@ -59,7 +61,8 @@ class FederationPrinter:
             for i in range(dim):
                 row = []
                 for j in range(dim):
-                    raw = int(gdb.parse_and_eval(f"((int32_t*) {dbm})[{i}*{dim}+{j}]"))
+                    raw = int(gdb.parse_and_eval(
+                        f"((int32_t*) {dbm})[{i}*{dim}+{j}]"))
                     bound = raw >> 1
                     if bound == dbm_INFINITY:
                         bound = "INF"
@@ -78,6 +81,7 @@ class FederationPrinter:
     def display_hint(self):
         print("Federation")
 
+
 def str_lookup_function(val):
     lookup_tag = val.type.tag
     if lookup_tag is None:
@@ -86,6 +90,7 @@ def str_lookup_function(val):
     if regex.match(lookup_tag):
         return FederationPrinter(val)
     return lookup_tag
+
 
 def build_pretty_printer():
     pp = gdb.printing.RegexpCollectionPrettyPrinter("UDBM")
