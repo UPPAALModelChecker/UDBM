@@ -26,12 +26,13 @@ def print_table(table):
             l = len(table[j][i])
             if l > column_lens[i]:
                 column_lens[i] = l
-    out = ""
+    out = "{\n"
     for row in table:
         for i, el in enumerate(row):
             l = column_lens[i]
             out += el + " " + (l-len(el))*" "
-        out += "\n"
+        out += " \\\n"
+    out += "}"
     return out
 
 
@@ -76,10 +77,13 @@ class FederationPrinter:
                 arr.append(row)
             head = head['next']
             fed.append(arr)
-        return "and: \n".join([print_table(x) for x in fed])
+        return out + "\n" + "\n".join([print_table(x) for x in fed])
 
     def display_hint(self):
-        print("Federation")
+        s = self.size()
+        if s == 0:
+            return "Empty Federation"
+        return f"{s}x{s} Federation"
 
 
 def str_lookup_function(val):
