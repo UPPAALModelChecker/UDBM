@@ -15,6 +15,12 @@ set(UDBM_VERSION "${PACKAGE_VERSION}")
 set(ENABLE_STORE_MINGRAPH 1)
 CONFIGURE_FILE("src/config.h.cmake" "include/dbm/config.h")
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wpedantic -Wall -Wextra)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    add_compile_options(/W4)
+endif()
+
 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${CMAKE_CURRENT_SOURCE_DIR}/libs")
 find_package(xxHash 0.8.0 CONFIG REQUIRED)
 find_package(UUtils 1.1.1 REQUIRED COMPONENTS base hash debug)

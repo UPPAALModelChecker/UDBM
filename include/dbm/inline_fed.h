@@ -65,19 +65,7 @@ namespace dbm
 #ifdef ENABLE_DBM_NEW
 
     /// Clean-up function does nothing
-    static inline void cleanUp() {}
-
-    /** Allocate memory with new.
-     * @param dim: dimension of the idbm_t to allocate.
-     */
-    static inline void* dbm_new(cindex_t dim)
-    {
-#ifdef ENABLE_STORE_MINGRAPH
-        return new int32_t[intsizeof(idbm_t) + dim * dim + bits2intsize(dim * dim)];
-#else
-        return new int32_t[intsizeof(idbm_t) + dim * dim];
-#endif
-    }
+    inline void cleanUp() {}
 
     /** Deallocate memory as allocated by dbm_new.
      * @param dbm: idbm_t to deallocate.
@@ -88,6 +76,8 @@ namespace dbm
         assert(dbm);
         delete[] reinterpret_cast<int32_t*>(dbm);
     }
+
+    static inline void* dbm_new(cindex_t dim);
 
 #else  // ifndef ENABLE_DBM_NEW
 
@@ -312,6 +302,20 @@ namespace dbm
 #endif
         raw_t matrix[];  //< DBM matrix
     };
+
+#ifdef ENABLE_DBM_NEW
+    /** Allocate memory with new.
+     * @param dim: dimension of the idbm_t to allocate.
+     */
+    static inline void* dbm_new(cindex_t dim)
+    {
+#ifdef ENABLE_STORE_MINGRAPH
+        return new int32_t[sizeof(idbm_t) + dim * dim + bits2intsize(dim * dim)];
+#else
+        return new int32_t[sizeof(idbm_t) + dim * dim];
+#endif
+    }
+#endif  // ifdef ENABLE_DBM_NEW
 
     /*********************************
      * Allocation of fdbm_t & ifed_t *
