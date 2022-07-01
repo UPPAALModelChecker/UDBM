@@ -2,22 +2,56 @@
   "nodes": {
     "nixpkgs": {
       "locked": {
-        "lastModified": 1646011258,
-        "narHash": "sha256-+aen4zu5uVp52arEcgL2maCS0zQDuG1t+Azwd/O1gN4=",
+        "lastModified": 1655707439,
+        "narHash": "sha256-pLQHpTFguAtlpKA/iXw4EYKvTUKj4pAa3I/XYf8Yi1U=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "a25df4c2b79c4343bcc72ad671200e5a3e286c41",
+        "rev": "c8f6b47ac9ed1e9b7f4672ef108299c8d4046a3f",
         "type": "github"
       },
       "original": {
         "id": "nixpkgs",
-        "ref": "nixos-21.11",
+        "ref": "master",
+        "type": "indirect"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1655707439,
+        "narHash": "sha256-pLQHpTFguAtlpKA/iXw4EYKvTUKj4pAa3I/XYf8Yi1U=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "c8f6b47ac9ed1e9b7f4672ef108299c8d4046a3f",
+        "type": "github"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "ref": "master",
         "type": "indirect"
       }
     },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "uutils": "uutils"
+      }
+    },
+    "uutils": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_2"
+      },
+      "locked": {
+        "lastModified": 1656658058,
+        "narHash": "sha256-URCYXr+pwdqEh12pfjZ0K0KTom0pT4nXUB3HV9lBFyA=",
+        "owner": "UPPAALModelChecker",
+        "repo": "UUtils",
+        "rev": "4b9af0c1c4b630dcf24e4516c27766b84e9866d7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "UPPAALModelChecker",
+        "repo": "UUtils",
+        "type": "github"
       }
     }
   },
