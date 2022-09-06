@@ -14,11 +14,3 @@ target_include_directories(UDBM
         # where external projects will look for the library's public headers
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-
-write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/UDBMConfigVersion.cmake VERSION ${PACKAGE_VERSION} COMPATIBILITY SameMajorVersion)
-
-install(DIRECTORY include DESTINATION .)
-install(TARGETS UDBM EXPORT UDBMConfig LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(EXPORT UDBMConfig DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UDBM/)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/UDBMConfigVersion.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UDBM )
-install(FILES ${CMAKE_BINARY_DIR}/include/dbm/config.h DESTINATION include/dbm/)
