@@ -52,7 +52,7 @@ jobs:
           export CTEST_OUTPUT_ON_FAILURE=1
           mkdir build
           cd build
-          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release -DENABLE_DBM_NEW=${{ matrix.newdbm }} ..
+          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release -DENABLE_DBM_NEW=${{ matrix.newdbm }} -DCMAKE_PREFIX_PATH=$PWD/local ..
           cmake --build .
           ctest
   build-win-native:
@@ -68,7 +68,7 @@ jobs:
       run: |
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -DTESTING=yes "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DTESTING=yes "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_PREFIX_PATH=$PWD/local ..
           cmake --build . --config Release
           ctest --output-on-failure -C Release
   build-macos:
@@ -86,7 +86,7 @@ jobs:
           export CTEST_OUTPUT_ON_FAILURE=1
           mkdir build
           cd build
-          cmake -DTESTING=yes -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release ..
+          cmake -DTESTING=yes -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PWD/local ..
           cmake --build .
           ctest
   build-nix:
