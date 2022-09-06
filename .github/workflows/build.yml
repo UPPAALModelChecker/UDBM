@@ -67,7 +67,6 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Release -DTESTING=yes "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_PREFIX_PATH=$(pwd)/local -B build -S .
           cmake --build build --config Release
           cd build
-          cd test
           ctest --output-on-failure -C Release
   build-macos:
     runs-on: macos-latest
