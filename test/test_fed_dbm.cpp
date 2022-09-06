@@ -250,13 +250,13 @@ static void test(cindex_t dim)
 
     // constrain
     assert(a == dbm);
-    for (k = 7; k > 0 && !dbm_generatePoint(pt.begin(), dbm, dim); --k)
+    for (k = 7; k > 0 && !dbm_generatePoint(pt.data(), dbm, dim); --k)
         ;
     if (k > 0) {
         bool stop = rand() & 1;
         c5 = true;
         b = a;
-        assert(b.contains(pt.begin(), dim));
+        assert(b.contains(pt.data(), dim));
         for (i = 0, k = 0; i < dim; ++i) {
             for (j = 0; j < dim; ++j) {
                 if (i != j) {
@@ -282,7 +282,7 @@ static void test(cindex_t dim)
         b &= pointer_t<constraint_t>(cnstr, k);
         assert(b() == c());
         c.nil();
-        assert(a.contains(pt.begin(), dim));
+        assert(a.contains(pt.data(), dim));
         if (!stop && dim > 1 && k > 0) {
             c6 = true;
             assert(!a.isUnbounded());
