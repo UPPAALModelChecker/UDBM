@@ -146,7 +146,7 @@ int32_t* dbm_writeToMinDBMWithOffset(const raw_t* dbm, cindex_t dim, bool minimi
         } else {
             /* choose the cheapest encoding
              */
-            uint32_t* retVal =
+            int32_t* retVal =
                 mingraph_encode(dbm, dim, bitMatrix, cnt,
                                 tryConstraints16 && (dbm_getMaxRange(dbm, dim) < dbm_LS_INF16), c_alloc, offset);
             free(bitMatrix);

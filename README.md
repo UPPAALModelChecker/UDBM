@@ -16,13 +16,27 @@ The following packages need to be installed:
   * doctest (test only)
   * boost (test only)
 
-Compile source:
+The dependencies can be installed locally into `local` directory by running:
 ```sh
-cmake -B build/ -DCMAKE_BUILD_TYPE=Release
-cmake --build build/
+./getlibs.sh 
 ```
 
-You can also insall dependencies locally by running: 
+Compile source with release optimizations:
+```sh
+cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PWD/local
+cmake --build build-release
 ```
-./getlibs.sh 
+
+Compile source with release optimizations and unit tests:
+```sh
+cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PWD/local -DTESTING=ON
+cmake --build build-release
+(cd build-release/test ; ctest)
+```
+
+Compile source with debug, sanitizers and unit tests:
+```sh
+cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$PWD/local -DTESTING=ON -DSSP=ON -DUBSAN=ON -DASAN=ON
+cmake --build build-debug
+(cd build-debug/test ; ctest)
 ```

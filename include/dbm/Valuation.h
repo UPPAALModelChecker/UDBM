@@ -26,21 +26,21 @@
 
 namespace dbm
 {
-    /** Valuation: similar to valarray, except it treats reference and dynamic clocks specially. */
+    /** Valuation: similar to std::valarray, except it treats reference and dynamic values (clocks) specially. */
     template <class S>
     class Valuation
     {
     private:
-        size_t dynamicSize;
         size_t staticSize;
+        size_t dynamicSize;
         std::vector<S> values;
 
     public:
         /** Constructor
          * @param size: size of the S valuation vector (number of dimensions).
-         * @param dyn: number of dynamic clocks.
+         * @param dyn: number of dynamic values.
          */
-        Valuation(size_t size, size_t dyn = 0): values(size + dyn, S{}), dynamicSize{dyn}, staticSize{size} {}
+        Valuation(size_t size, size_t dyn = 0): staticSize{size}, dynamicSize{dyn}, values(size + dyn, S{}) {}
 
         /** Add an amount to all the elements of this vector EXCEPT #0 (reference clock).
          * @param value: amount to add.

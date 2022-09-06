@@ -27,6 +27,7 @@
 
 #include <algorithm>  // sort
 #include <iostream>
+#include <random>
 #include <ctime>
 
 using namespace std;
@@ -48,6 +49,17 @@ using namespace dbm;
 
 // Skip too expensive tests
 #define CHEAP dim <= 100 && size <= 100
+
+static auto gen = std::mt19937{};
+
+template <typename T>
+T rand_int(T mx)
+{
+    if (mx < 2)
+        return 0;
+    auto dist = std::uniform_int_distribution<T>{0, mx - 1};
+    return dist(gen);
+}
 
 /** Test that a discrete point is in a DBM list
  * @param pt: point
@@ -109,7 +121,7 @@ static fed_t test_gen(cindex_t dim, size_t n)
 static const dbm_t& test_getDBM(const fed_t& fed)
 {
     fed_t::const_iterator iter(fed);
-    for (size_t size = rand() % fed.size(); size != 0; --size, ++iter)
+    for (size_t size = rand_int(fed.size()); size != 0; --size, ++iter)
         ;
     return *iter;
 }
@@ -145,7 +157,7 @@ static void test_addDBMs(fed_t& fed, size_t nb)
         for (cindex_t dim = fed.getDimension(); nb; --nb) {
             const raw_t* inList = test_getDBM(fed)();
             dbm_t dbm(dim);
-            if (rand() & 1) {
+            if (rand_int(2) & 1) {
                 dbm_generateSuperset(dbm.getDBM(), inList, dim);
             } else {
                 dbm_generateSubset(dbm.getDBM(), inList, dim);
@@ -163,14 +175,14 @@ static fed_t test_genArg(size_t n, const fed_t& fed)
 {
     cindex_t dim = fed.getDimension();
     fed_t result(dim);
-    n = rand() % (n + 1);
+    n = rand_int(n + 1);
     if (fed.isEmpty()) {
         return test_gen(dim, n);
     }
     for (; n; --n) {
         const dbm_t& inList = test_getDBM(fed);
         dbm_t dbm(dim);
-        switch (rand() % 4) {
+        switch (rand_int(4)) {
         case 0:  // diff
             dbm_generate(dbm.getDBM(), dim, 1000);
             break;
@@ -205,19 +217,19 @@ static size_t test_genConstraints(const fed_t& fed, size_t n, constraint_t* cons
 
     if (listSize && n && dim > 1) {
         const raw_t* dbm = test_getDBM(fed)();  // pick a DBM
-        uint32_t easy = rand() % (n + 1);       // nb of easy constraints 0..n
+        uint32_t easy = rand_int(n + 1);        // nb of easy constraints 0..n
         uint32_t i, j, k = 0;
 
         do {      // generate non tightening constraints
             do {  // pick a constraint
-                i = rand() % dim;
-                j = rand() % dim;
+                i = rand_int(dim);
+                j = rand_int(dim);
             } while (i == j);
 
             if (dbm[i * dim + j] != dbm_LS_INFINITY) {
                 constraints[nb].i = i;
                 constraints[nb].j = j;
-                constraints[nb].value = dbm[i * dim + j] + rand() % 4; /* loosen a bit */
+                constraints[nb].value = dbm[i * dim + j] + rand_int(4); /* loosen a bit */
                 nb++;
             }
 
@@ -227,8 +239,8 @@ static size_t test_genConstraints(const fed_t& fed, size_t n, constraint_t* cons
         while (nb < n) {
             // pick a constraint
             do {
-                i = rand() % dim;
-                j = rand() % dim;
+                i = rand_int(dim);
+                j = rand_int(dim);
             } while (i == j);
 
             constraints[nb].i = i;
@@ -237,9 +249,9 @@ static size_t test_genConstraints(const fed_t& fed, size_t n, constraint_t* cons
             if (dbm[j * dim + i] == dbm_LS_INFINITY) {
                 if (dbm[i * dim + j] == dbm_LS_INFINITY) {
                     // anything will do
-                    constraints[nb].value = 1 + rand() % 1000;
+                    constraints[nb].value = 1 + rand_int(1000);
                 } else if (i != 0 || dbm[i * dim + j] > dbm_LE_ZERO) {
-                    constraints[nb].value = dbm[i * dim + j] - rand() % 10;
+                    constraints[nb].value = dbm[i * dim + j] - rand_int(10);
                     if (i == 0 && constraints[nb].value < dbm_LE_ZERO) {
                         constraints[nb].value = dbm_LE_ZERO;
                     }
@@ -249,16 +261,30 @@ static size_t test_genConstraints(const fed_t& fed, size_t n, constraint_t* cons
             } else  // has to take dbm[j,i] into account
             {
                 if (dbm[i * dim + j] == dbm_LS_INFINITY) {
-                    constraints[nb].value = 2 + rand() % 500 - dbm[j * dim + i];
+                    constraints[nb].value = 2 + rand_int(500) - dbm[j * dim + i];
                 } else {
                     raw_t rawRange = dbm[i * dim + j] + dbm[j * dim + i];
-                    constraints[nb].value = rand() % rawRange + 1 - dbm[j * dim + i];
+                    constraints[nb].value = rand_int(rawRange) + 1 - dbm[j * dim + i];
                 }
             }
             ++nb;
         }
     }
     return nb;
+}
+
+template <typename It>
+void shuffle(It first, It last)
+{
+    size_t size = std::distance(first, last);
+    if (size < 2)
+        return;
+    for (auto i = size_t{0}; i < size - 1; ++i) {
+        auto dist = std::uniform_int_distribution<size_t>{i, size - 1};
+        auto idx = dist(gen);
+        if (idx != i)
+            std::swap(*std::next(first, i), *std::next(first, idx));
+    }
 }
 
 /** Mix a DBM list: misuse of quicksort.
@@ -270,20 +296,13 @@ static size_t test_genConstraints(const fed_t& fed, size_t n, constraint_t* cons
 static void test_mix(fed_t& fed)
 {
     size_t size = fed.size();
+    assert(size <= (1u << 16));
     if (size > 0) {
-        std::vector<fdbm_t*> oldlist(size);
-        std::vector<fdbm_t*> newlist(size);
-        std::vector<uint32_t> index(size);
-        size_t i;
-        assert(fed.write(oldlist.data()) == size);
-        for (i = 0; i < size; ++i) {
-            index[i] = i | (rand() << 16);
-        }
-        std::sort(index.data(), index.data() + size);
-        for (i = 0; i < size; ++i) {
-            newlist[i] = oldlist[index[i] & 0xffff];
-        }
-        fed.read(newlist.data(), size);
+        std::vector<fdbm_t*> list(size);
+        auto written = fed.write(list.data());
+        assert(written == size);
+        shuffle(list.begin(), list.end());
+        fed.read(list.data(), size);
     }
     assert(!fed.hasEmpty());
 }
@@ -639,7 +658,7 @@ static void test_freeClock(cindex_t dim, size_t size)
             fed_t fed1(test_gen(dim, size));
             fed_t fed2 = fed1;
             uint32_t h = fed1.hash();
-            cindex_t c = rand() % (dim - 1) + 1;  // not ref clock
+            cindex_t c = rand_int(dim - 1) + 1;  // not ref clock
             assert(fed2 <= fed1.freeClock(c));
             assert(fed2.hash() == h);
             for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
@@ -674,8 +693,8 @@ static void test_updateValue(cindex_t dim, size_t size)
             fed_t fed2 = fed1;
             fed_t fed3 = fed1;
             uint32_t h = fed1.hash();
-            cindex_t c = rand() % (dim - 1) + 1;
-            int32_t v = rand() % 100;
+            cindex_t c = rand_int(dim - 1) + 1;
+            int32_t v = rand_int(100);
             fed1.updateValue(c, v);
             fed2(c) = v;
             assert(fed1.hash() == fed2.hash());
@@ -720,8 +739,8 @@ static void test_updateClock(cindex_t dim, size_t size)
             fed_t fed2 = fed1;
             fed_t fed3 = fed1;
             uint32_t h = fed1.hash();
-            cindex_t c1 = rand() % (dim - 1) + 1;
-            cindex_t c2 = rand() % (dim - 1) + 1;
+            cindex_t c1 = rand_int(dim - 1) + 1;
+            cindex_t c2 = rand_int(dim - 1) + 1;
             fed1.updateClock(c1, c2);
             fed2(c1) = fed2(c2);
             assert(fed3.hash() == h);
@@ -765,8 +784,8 @@ static void test_updateIncrement(cindex_t dim, size_t size)
             fed_t fed2 = fed1;
             fed_t fed3 = fed1;
             uint32_t h = fed1.hash();
-            cindex_t c = rand() % (dim - 1) + 1;
-            cindex_t v = rand() % 50;
+            cindex_t c = rand_int(dim - 1) + 1;
+            cindex_t v = rand_int(50);
             fed1.updateIncrement(c, v);
             fed2(c) += v;
             assert(fed3.hash() == h);
@@ -810,9 +829,9 @@ static void test_update(cindex_t dim, size_t size)
             fed_t fed2 = fed1;
             fed_t fed3 = fed1;
             uint32_t h = fed1.hash();
-            cindex_t c1 = rand() % (dim - 1) + 1;
-            cindex_t c2 = rand() % (dim - 1) + 1;
-            cindex_t v = rand() % 50;
+            cindex_t c1 = rand_int(dim - 1) + 1;
+            cindex_t c2 = rand_int(dim - 1) + 1;
+            cindex_t v = rand_int(50);
             fed1.update(c1, c2, v);
             fed2(c1) = fed2(c2) + v;
             assert(fed3.hash() == h);
@@ -903,8 +922,8 @@ static void test_constrainEmpty(cindex_t dim, size_t size)
                                                                   << fed << endl);
                 // now empty the federation
                 do {
-                    i = rand() % dim;
-                    j = rand() % dim;
+                    i = rand_int(dim);
+                    j = rand_int(dim);
                 } while (i == j);
                 ASSERT(!fed.constrain(i, j, pt[i] - pt[j], dbm_STRICT), debug_cppPrintVector(cerr, pt.data(), dim)
                                                                             << endl
@@ -1031,7 +1050,7 @@ static void test_freeDown(cindex_t dim, size_t size)
             fed_t fed1(test_gen(dim, size));
             fed_t fed2 = fed1;
             uint32_t h = fed1.hash();
-            cindex_t c = rand() % (dim - 1) + 1;  // not ref clock
+            cindex_t c = rand_int(dim - 1) + 1;  // not ref clock
             assert(fed2 <= fed1.freeDown(c));
             assert(fed2.hash() == h);
             for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
@@ -1064,7 +1083,7 @@ static void test_freeUp(cindex_t dim, size_t size)
             fed_t fed1(test_gen(dim, size));
             fed_t fed2 = fed1;
             uint32_t h = fed1.hash();
-            cindex_t c = rand() % (dim - 1) + 1;  // not ref clock
+            cindex_t c = rand_int(dim - 1) + 1;  // not ref clock
             assert(fed2 <= fed1.freeUp(c));
             assert(fed2.hash() == h);
             for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
@@ -1129,8 +1148,8 @@ static void test_equal(cindex_t dim, size_t size)
                 assert(test_isPointIn(pt.data(), fed1, dim));
                 cindex_t i, j;
                 do {
-                    i = rand() % dim;
-                    j = rand() % dim;
+                    i = rand_int(dim);
+                    j = rand_int(dim);
                 } while (i == j);  // will terminate if dim > 1
                 fed_t fed2 = fed1;
                 fed2.constrain(i, j, pt[i] - pt[j], dbm_STRICT);
@@ -1327,8 +1346,8 @@ int main(int argc, char* argv[])
     start = atoi(argv[1]);
     end = atoi(argv[2]);
     size = atoi(argv[3]);
-    seed = argc > 4 ? atoi(argv[4]) : time(NULL);
-    srand(seed);
+    seed = argc > 4 ? atoi(argv[4]) : std::random_device{}();
+    gen.seed(seed);
     if (size < 1) {
         cerr << "Minimum size=1 taken\n";
         size = 1;
@@ -1347,7 +1366,7 @@ int main(int argc, char* argv[])
         cout << i << ": ";
         test(i, size);
         (cout << " \n").flush();
-        if (rand() & 1)
+        if (rand_int(2) & 1)
             cleanUp();
     }
 

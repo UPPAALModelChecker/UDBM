@@ -3,8 +3,9 @@
 set(libs UDBM UUtils::udebug UUtils::base UUtils::hash)
 
 if (TESTING)
-  file(GLOB test_sources "test_*.c" "test_*.cpp")
+  find_package(doctest 2.4.9 REQUIRED)
 
+  file(GLOB test_sources "test_*.c" "test_*.cpp")
   foreach(source ${test_sources})
     get_filename_component(test_target ${source} NAME_WE)
     add_executable(${test_target} ${source})
@@ -23,7 +24,7 @@ if (TESTING)
   set_tests_properties(dbm_mingraph_1_10 PROPERTIES TIMEOUT 45) # 36s on Win64
   add_test(NAME dbm_mingraph_1_10_1 COMMAND test_mingraph 1 10 1) # failing test on L64-debug
   set_tests_properties(dbm_mingraph_1_10_1 PROPERTIES TIMEOUT 45) # 39s on Win64
-  add_test(NAME dbm_valuation_20    COMMAND test_valuation 20)
+  add_test(NAME dbm_valuation    COMMAND test_valuation)
   add_test(NAME test_allocation COMMAND test_allocation)
 
   set_tests_properties(dbm_dbm_1_10 dbm_fed_1_7_7 PROPERTIES TIMEOUT 1200)

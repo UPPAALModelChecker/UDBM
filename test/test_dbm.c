@@ -97,7 +97,7 @@ static uint32_t goodDBMs = 0;
 static void test_zero(uint32_t size)
 {
     ADBM(dbm);
-    uint32_t* pt = (uint32_t*)calloc(size, sizeof(uint32_t));
+    int32_t* pt = (int32_t*)calloc(size, sizeof(int32_t));
     uint32_t k;
     PRINTF("zero");
     dbm_zero(dbm, size);
@@ -484,7 +484,7 @@ static void test_constrain(uint32_t size)
     ADBM(dbm3);
     ADBM(dbm4);
     ADBM(dbm5);
-    uint32_t* pt = (uint32_t*)calloc(size, sizeof(uint32_t));
+    int32_t* pt = (int32_t*)calloc(size, sizeof(int32_t));
     uint32_t* touched1 = (uint32_t*)calloc(bits2intsize(size), sizeof(uint32_t));
     uint32_t* touched2 = (uint32_t*)calloc(bits2intsize(size), sizeof(uint32_t));
     uint32_t* touched3 = (uint32_t*)calloc(bits2intsize(size), sizeof(uint32_t));
@@ -604,7 +604,7 @@ static void test_constrain(uint32_t size)
 static void test_point(uint32_t size)
 {
     ADBM(dbm1);
-    uint32_t* pt = (uint32_t*)calloc(size, sizeof(uint32_t));
+    int32_t* pt = (int32_t*)calloc(size, sizeof(int32_t));
     uint32_t i, k;
     PRINTF("discrete point");
 
