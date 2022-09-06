@@ -1744,19 +1744,6 @@ namespace dbm
         return !isEmpty();
     }
 
-    bool fed_t::constrain(const cindex_t* table, const base::pointer_t<constraint_t>& vec)
-    {
-        assert(isOK());
-        for (iterator it = beginMutable(); !it.null();) {
-            if (it->ptr_constrain(table, vec.begin(), vec.size())) {
-                ++it;
-            } else {
-                it.removeEmpty();
-            }
-        }
-        return !isEmpty();
-    }
-
     bool fed_t::constrain(const cindex_t* table, const std::vector<constraint_t>& vec)
     {
         assert(isOK());
