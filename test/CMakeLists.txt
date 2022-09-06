@@ -3,7 +3,7 @@
 set(libs UDBM UUtils::udebug UUtils::base UUtils::hash)
 
 if (TESTING)
-  find_package(doctest 2.4.9 REQUIRED)
+  find_package(doctest 2.4.8 REQUIRED)
 
   file(GLOB test_sources "test_*.c" "test_*.cpp")
   foreach(source ${test_sources})
