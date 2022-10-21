@@ -37,7 +37,7 @@ namespace dbm
      * priced DBM is stored in the wrapper. However, the bulk of the
      * pdbm_X() functions are not made available as methods.
      */
-    class pdbm_t
+    class pdbm_t : dbm_t
     {
     protected:
         PDBM pdbm;
@@ -216,7 +216,7 @@ namespace dbm
      * Priced federations implement copy-on-write using reference
      * counting.
      */
-    class pfed_t
+    class pfed_t : fed_t
     {
     public:
         typedef std::list<pdbm_t>::const_iterator const_iterator;
@@ -341,7 +341,7 @@ namespace dbm
         bool isUnbounded() const;
 
         /** Contains a hash of the federation. */
-        uint32_t hash(uint32_t seed) const;
+        uint32_t hash(uint32_t seed = 0) const;
 
         /** Returns true iff the federation contains \v. */
         bool contains(const DoubleValuation& v) const;
@@ -510,6 +510,13 @@ namespace dbm
 
         /// Not implemented
         pfed_t& steal(pfed_t& arg);
+
+        /// Not implemented
+        pfed_t& toLowerBounds() const;
+
+        /// Not implemented
+        pfed_t& toUpperBounds() const;
+
 
 
         /**

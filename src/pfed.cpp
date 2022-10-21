@@ -505,6 +505,14 @@ namespace dbm
         throw std::logic_error("pfed_t::steal not implemented");
     }
 
+    pfed_t& pfed_t::toLowerBounds() const {
+        throw std::logic_error("pfed_t::toLowerBounds not implemented");
+    }
+
+    pfed_t& pfed_t::toUpperBounds() const {
+        throw std::logic_error("pfed_t::toUpperBounds not implemented");
+    }
+
     inline bool pdbm_t::isEmpty() const { throw std::logic_error("pdbm_t::isEmpty not implemented"); }
 
 }  // namespace dbm
