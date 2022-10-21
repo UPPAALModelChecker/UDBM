@@ -115,18 +115,6 @@ namespace dbm
             return isPtr() ? fedTable->getAll() : fed_t(edim());
         }
 
-        pfed_t get(uint32_t id) const
-        {
-            assert(fedTable);
-            return isPtr() ? fedTable->get(id) : pfed_t(edim());
-        }
-
-        pfed_t getAll() const
-        {
-            assert(fedTable);
-            return isPtr() ? fedTable->getAll() : pfed_t(edim());
-        }
-
         /// @return the dimension of the federations.
         cindex_t getDimension() const
         {
@@ -256,9 +244,6 @@ namespace dbm
             /// The federation is empty if the subset id is not defined.
             fed_t get(uint32_t id) const;
             fed_t getAll() const { return all; }
-
-            pfed_t get(uint32_t id) const;
-            pfed_t getAll() const { return all; }
 
             /// Add a federation to the subset 'id' of the partition.
             /// @return true if this table must be resized.
