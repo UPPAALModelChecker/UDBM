@@ -219,9 +219,12 @@ namespace dbm
         return relation(b);
     }
 
-    void pfed_t::up() { for_each(beginMutable(), endMutable(), bind(pdbm_up, _1, ptr->dim)); }
+    pfed_t& pfed_t::up() {
+        for_each(beginMutable(), endMutable(), bind(pdbm_up, _1, ptr->dim));
+        return *this;
+    }
 
-    void pfed_t::up(int32_t rate)
+    pfed_t& pfed_t::up(int32_t rate)
     {
         assert(rate >= 0);
 
@@ -274,14 +277,16 @@ namespace dbm
                 pdbm_upZero(*zone, dim, rate, facets[count - 1]);
             }
         }
+        return *this;
     }
 
-    void pfed_t::updateValueZero(cindex_t clock, int32_t value, cindex_t zero)
+    pfed_t& pfed_t::updateValueZero(cindex_t clock, int32_t value, cindex_t zero)
     {
         for_each(beginMutable(), endMutable(), bind(pdbm_updateValueZero, _1, ptr->dim, clock, value, zero));
+        return *this;
     }
 
-    void pfed_t::updateValue(cindex_t clock, uint32_t value)
+    pfed_t& pfed_t::updateValue(cindex_t clock, uint32_t value)
     {
         uint32_t dim = ptr->dim;
 
@@ -326,6 +331,7 @@ namespace dbm
                 pdbm_updateValueZero(*zone, dim, clock, value, facets[count - 1]);
             }
         }
+        return *this;
     }
 
     void pfed_t::extrapolateMaxBounds(int32_t* max)
@@ -429,14 +435,14 @@ namespace dbm
 
     pfed_t& pfed_t::operator+=(const pfed_t&) { throw std::logic_error("pfed_t::operator += not implemented"); }
 
-    void pfed_t::down() { throw std::logic_error("pfed_t::down not implemented"); }
+    pfed_t&  pfed_t::down() { throw std::logic_error("pfed_t::down not implemented"); }
 
     int32_t pfed_t::getUpperMinimumCost(cindex_t) const
     {
         throw std::logic_error("pfed_t::getUpperMinimumCost not implemented");
     }
 
-    void pfed_t::relaxUp() { throw std::logic_error("pfed_t::relaxUp not implemented"); }
+    pfed_t& pfed_t::relaxUp() { throw std::logic_error("pfed_t::relaxUp not implemented"); }
 
     void pfed_t::getValuation(double*, size_t, bool* freeC) const
     {
@@ -468,4 +474,37 @@ namespace dbm
         }
         return o;
     }
+
+    raw_t pfed_t::getMaxUpper(cindex_t clock) const
+    {
+        throw std::logic_error("pfed_t::getMaxUpper not implemented");
+    }
+
+    raw_t pfed_t::getMaxLower(cindex_t clock) const
+    {
+        throw std::logic_error("pfed_t::getMaxLower not implemented");
+    }
+
+    std::string pfed_t::toString(const ClockAccessor& access, bool full) const{
+        throw std::logic_error("pfed_t::getMaxLower not implemented");
+    }
+
+    void pfed_t::updateClock(cindex_t x, cindex_t y){
+        throw std::logic_error("pfed_t::updateClock not implemented");
+    }
+
+    pfed_t& pfed_t::upStop(const uint32_t* stopped){
+        throw std::logic_error("pfed_t::upStop not implemented");
+    }
+
+    pfed_t& pfed_t::append(pfed_t& arg){
+        throw std::logic_error("pfed_t::append not implemented");
+    }
+
+    pfed_t& pfed_t::steal(pfed_t& arg){
+        throw std::logic_error("pfed_t::steal not implemented");
+    }
+
+    inline bool pdbm_t::isEmpty() const { throw std::logic_error("pdbm_t::isEmpty not implemented"); }
+
 }  // namespace dbm

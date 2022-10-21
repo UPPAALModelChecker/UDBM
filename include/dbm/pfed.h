@@ -11,6 +11,7 @@
 #define DBM_PFED_H
 
 #include "Valuation.h"
+#include "fed.h"
 
 #include "dbm/priced.h"
 
@@ -132,6 +133,9 @@ namespace dbm
 
         /** @see dbm_t::readFromMinDBM() */
         static pdbm_t readFromMinDBM(cindex_t dimension, const int32_t*);
+
+        /// @return true if it is empty.
+        bool isEmpty() const;
     };
 
     inline pdbm_t::pdbm_t(): pdbm(nullptr), dim(0) {}
@@ -352,19 +356,19 @@ namespace dbm
         bool containsWeakly(const IntValuation& v) const;
 
         /** Delay with the current delay rate. */
-        void up();
+        pfed_t& up();
 
         /** Delay with rate \a rate. */
-        void up(int32_t rate);
+        pfed_t& up(int32_t rate);
 
         /** Set x(clock) to \a value. */
-        void updateValue(cindex_t clock, uint32_t value);
+        pfed_t& updateValue(cindex_t clock, uint32_t value);
 
         /**
          * Set x(clock) to \a value. x(zero) must be on a zero-cycle with
          * x(clock).
          */
-        void updateValueZero(cindex_t clock, int32_t value, cindex_t zero);
+        pfed_t& updateValueZero(cindex_t clock, int32_t value, cindex_t zero);
 
         void extrapolateMaxBounds(int32_t* max);
         void diagonalExtrapolateMaxBounds(int32_t* max);
@@ -452,13 +456,13 @@ namespace dbm
         pfed_t operator-(const pfed_t& b) const;
 
         /** Not implemented. */
-        void down();
+        pfed_t& down();
 
         /** Not implemented. */
         int32_t getUpperMinimumCost(cindex_t) const;
 
         /** Not implemented. */
-        void relaxUp();
+        pfed_t& relaxUp();
 
         /** Not implemented. */
         void getValuation(double* cval, size_t dim, bool* freeC = nullptr) const;
@@ -480,6 +484,33 @@ namespace dbm
 
         /** Not implemented. */
         pfed_t& convexHull();
+
+
+        /** Not implemented
+         * @return the max upper bound (raw) of a clock.
+         */
+        raw_t getMaxUpper(cindex_t) const;
+
+        /** Not implemented
+         * @return the max lower bound (raw) of a clock.
+         */
+        raw_t getMaxLower(cindex_t) const;
+
+        /// Not implemented
+        std::string toString(const ClockAccessor&, bool full = false) const;
+
+        /// Not implemented
+        pfed_t& upStop(const uint32_t* stopped);
+
+        /// Not implemented
+        void updateClock(cindex_t x, cindex_t y);
+
+        /// Not implemented
+        pfed_t& append(pfed_t& arg);
+
+        /// Not implemented
+        pfed_t& steal(pfed_t& arg);
+
 
         /**
          * Relation between two priced federations: SUBSET is returned
