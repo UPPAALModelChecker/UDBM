@@ -18,8 +18,21 @@
 #include <list>
 #include <stdexcept>
 
+
+
 namespace dbm
 {
+    class pdbm_t;
+
+    class cst_iterator : public std::_List_const_iterator<dbm::pdbm_t>{
+
+    public:
+        cst_iterator();
+        cst_iterator(iterator iterator);
+        bool null();
+        const raw_t* operator()() const;
+    };
+
     /**
      * Small C++ wrapper for the PDBM priced DBM type.
      *
@@ -37,7 +50,7 @@ namespace dbm
      * priced DBM is stored in the wrapper. However, the bulk of the
      * pdbm_X() functions are not made available as methods.
      */
-    class pdbm_t : dbm_t
+    class pdbm_t
     {
     protected:
         PDBM pdbm;
@@ -216,10 +229,10 @@ namespace dbm
      * Priced federations implement copy-on-write using reference
      * counting.
      */
-    class pfed_t : fed_t
+    class pfed_t
     {
     public:
-        typedef std::list<pdbm_t>::const_iterator const_iterator;
+        typedef cst_iterator const_iterator;
 
         typedef std::list<pdbm_t>::iterator iterator;
 
@@ -672,6 +685,11 @@ namespace dbm
     inline bool pfed_t::satisfies(const constraint_t& c) const { return satisfies(c.i, c.j, c.value); }
 
     std::ostream& operator<<(std::ostream&, const pfed_t&);
+
+    bool cst_iterator::null() { return _M_node == NULL; }
+    const raw_t* cst_iterator::operator()() const { return reinterpret_cast<const raw_t*>(_M_node); }
+    cst_iterator::cst_iterator(std::_List_const_iterator<dbm::pdbm_t>::iterator iterator) {}
+    cst_iterator::cst_iterator() = default;
 }  // namespace dbm
 
 #endif /* DBM_PFED_H */

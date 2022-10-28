@@ -515,4 +515,5 @@ namespace dbm
 
     inline bool pdbm_t::isEmpty() const { throw std::logic_error("pdbm_t::isEmpty not implemented"); }
 
+
 }  // namespace dbm
