@@ -33,6 +33,13 @@ namespace dbm
         const raw_t* operator()() const;
     };
 
+    class iterato : public std::list<pdbm_t>::iterator {
+
+    public:
+        iterato(_List_iterator<pdbm_t> iterator);
+        void remove();
+    };
+
     /**
      * Small C++ wrapper for the PDBM priced DBM type.
      *
@@ -149,6 +156,12 @@ namespace dbm
 
         /// @return true if it is empty.
         bool isEmpty() const;
+
+        /// @return dimension
+        cindex_t pdim() const;
+
+        bool contains(const int32_t* point, cindex_t dim) const;
+        bool contains(const double* point, cindex_t dim) const;
     };
 
     inline pdbm_t::pdbm_t(): pdbm(nullptr), dim(0) {}
@@ -234,7 +247,7 @@ namespace dbm
     public:
         typedef cst_iterator const_iterator;
 
-        typedef std::list<pdbm_t>::iterator iterator;
+        typedef iterato iterator;
 
     protected:
         struct pfed_s
@@ -261,15 +274,17 @@ namespace dbm
         /** Copy-on-write: Creates an unshared copy of the federation. */
         void cow();
 
+    public:
+        /** Allocate empty priced federation of dimension 0. */
+        pfed_t();
+
         /**
          * Adds \a pdbm to the federation. The reference count on pdbm
          * is incremented by one.
          */
         void add(const PDBM pdbm, cindex_t dim);
 
-    public:
-        /** Allocate empty priced federation of dimension 0. */
-        pfed_t();
+        void add(pdbm_t pdbm);
 
         /** Allocate empty priced federation of dimension \a dim. */
         explicit pfed_t(cindex_t dim);
@@ -361,6 +376,12 @@ namespace dbm
 
         /** Returns true iff the federation contains \v. */
         bool contains(const IntValuation& v) const;
+
+        /// Not implemented
+        bool contains(const int32_t* point, cindex_t dim) const;
+        bool contains(const double* point, cindex_t dim) const;
+
+        pfed_t& predt(const pfed_t& bad, const raw_t* restrict = NULL);
 
         /**
          * Returns true iff the federation contains \v, ignoring
@@ -460,6 +481,9 @@ namespace dbm
         pfed_t& operator&=(const pfed_t&);
 
         /** Not implemented. */
+        pfed_t& operator&=(const pdbm_t&);
+
+        /** Not implemented. */
         bool intersects(const pfed_t&) const;
 
         /** Not implemented. */
@@ -498,7 +522,6 @@ namespace dbm
         /** Not implemented. */
         pfed_t& convexHull();
 
-
         /** Not implemented
          * @return the max upper bound (raw) of a clock.
          */
@@ -530,6 +553,52 @@ namespace dbm
         /// Not implemented
         pfed_t& toUpperBounds() const;
 
+        /// Not implemented
+        bool isConstrainedBy(cindex_t, cindex_t, raw_t) const;
+
+        /// Not implemented
+        bool getDelay(const double* point, cindex_t dim, double* min, double* max, double* minVal = NULL,
+                      bool* minStrict = NULL, double* maxVal = NULL, bool* maxStrict = NULL,
+                      const uint32_t* stopped = NULL) const;
+
+        /// Not implemented
+        pfed_t& mergeReduce(size_t skip = 0, int level = 0);
+
+        /// Not implemented
+        bool le(const pfed_t& arg) const;
+
+        /// Not implemented
+        bool lt(const pfed_t& arg) const;
+
+        /// Not implemented
+        bool gt(const pfed_t& arg) const;
+
+        /// Not implemented
+        bool ge(const pfed_t& arg) const;
+
+        /// Not implemented
+        bool eq(const pfed_t& arg) const;
+
+
+        /// Not implemented
+        pfed_t& unionWith(pfed_t& arg);
+
+        /// Not implemented
+        int32_t maxOnZero(cindex_t clock);
+
+        /// Not implemented
+        pfed_t& downStop(const uint32_t* stopped);
+
+        /// Not implemented
+        bool hasZero() const;
+
+        /// Not implemented
+        void swap(pfed_t&);
+
+        /// Not implemented
+        void intern();
+
+        void nil();
 
 
         /**
@@ -686,10 +755,17 @@ namespace dbm
 
     std::ostream& operator<<(std::ostream&, const pfed_t&);
 
-    bool cst_iterator::null() { return _M_node == NULL; }
+    //bool cst_iterator::null() { return _M_node == NULL; }
+    bool cst_iterator::null() { throw std::logic_error("cst_iterator::null not implemented"); }
     const raw_t* cst_iterator::operator()() const { return reinterpret_cast<const raw_t*>(_M_node); }
     cst_iterator::cst_iterator(std::_List_const_iterator<dbm::pdbm_t>::iterator iterator) {}
     cst_iterator::cst_iterator() = default;
+
+    iterato::iterato(std::_List_iterator<pdbm_t> iterator) {}
+    void iterato::remove() { throw std::logic_error("iterato::remove not implemented"); }
+
+    pfed_t operator|(const pfed_t& a, const pfed_t& b);
+
 }  // namespace dbm
 
 #endif /* DBM_PFED_H */

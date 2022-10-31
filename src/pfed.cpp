@@ -377,6 +377,10 @@ namespace dbm
         ptr->zones.push_front(pdbm_t(pdbm, dim));
     }
 
+    void pfed_t::add(pdbm_t pdbm){
+        add(pdbm.operator PDBM(), pdbm.pdim());
+    }
+
     void pfed_t::setZero()
     {
         PDBM pdbm = nullptr;
@@ -423,9 +427,13 @@ namespace dbm
         return *this;
     }
 
+    inline pfed_t operator|(const pfed_t& a, const pfed_t& b) { return pfed_t(a) |= b; }
+
     bool pfed_t::intersects(const pfed_t&) const { throw std::logic_error("pfed_t::intersects not implemented"); }
 
     pfed_t& pfed_t::operator&=(const pfed_t&) { throw std::logic_error("pfed_t::operator &= not implemented"); }
+
+    pfed_t& pfed_t::operator&=(const pdbm_t&) { throw std::logic_error("pfed_t::operator &= not implemented"); }
 
     pfed_t pfed_t::operator&(const pfed_t&) const { throw std::logic_error("pfed_t::operator & not implemented"); }
 
@@ -513,7 +521,90 @@ namespace dbm
         throw std::logic_error("pfed_t::toUpperBounds not implemented");
     }
 
-    inline bool pdbm_t::isEmpty() const { throw std::logic_error("pdbm_t::isEmpty not implemented"); }
+    bool pfed_t::isConstrainedBy(cindex_t, cindex_t, raw_t) const {
+        throw std::logic_error("pfed_t::isConstrainedBy not implemented");
+    }
+    bool pfed_t::getDelay(const double* point, cindex_t dim, double* min, double* max, double* minVal, bool* minStrict,
+                          double* maxVal, bool* maxStrict, const uint32_t* stopped) const
+    {
+        throw std::logic_error("pfed_t::getDelay not implemented");
+    }
+
+    inline bool pdbm_t::isEmpty() const {
+        throw std::logic_error("pdbm_t::isEmpty not implemented");
+    }
+
+    inline pfed_t& pfed_t::mergeReduce(size_t skip, int expensiveTry){
+        throw std::logic_error("pfed_t::mergeReduce not implemented");
+    }
+
+    inline bool pfed_t::le(const pfed_t& arg) const {
+        throw std::logic_error("pfed_t::le not implemented");
+    }
+
+    inline bool pfed_t::lt(const pfed_t& arg) const {
+        throw std::logic_error("pfed_t::lt not implemented");
+    }
+
+    inline bool pfed_t::gt(const pfed_t& arg) const {
+        throw std::logic_error("pfed_t::gt not implemented");
+    }
+
+    inline bool pfed_t::ge(const pfed_t& arg) const {
+        throw std::logic_error("pfed_t::ge not implemented");
+    }
+
+    inline bool pfed_t::eq(const pfed_t& arg) const {
+        throw std::logic_error("pfed_t::eq not implemented");
+    }
+
+    pfed_t& pfed_t::unionWith(pfed_t& arg){
+        throw std::logic_error("pfed_t::unionWith not implemented");
+    }
+
+    int32_t pfed_t::maxOnZero(cindex_t x){
+        throw std::logic_error("pfed_t::maxOnZero not implemented");
+    }
+
+    pfed_t& pfed_t::downStop(const uint32_t* stopped){
+        throw std::logic_error("pfed_t::downStop not implemented");
+    }
+
+    bool pdbm_t::contains(const int32_t* point, cindex_t dim) const{
+        throw std::logic_error("pfed_t::contains not implemented");
+    }
+
+    bool pdbm_t::contains(const double* point, cindex_t dim) const{
+        throw std::logic_error("pfed_t::contains not implemented");
+    }
+
+    bool pfed_t::hasZero() const{
+        throw std::logic_error("pfed_t::hasZero not implemented");
+    }
+
+    inline void pfed_t::swap(pfed_t& arg){
+        throw std::logic_error("pfed_t::swap not implemented");
+    }
+
+    bool pfed_t::contains(const int32_t* point, cindex_t dim) const{
+        throw std::logic_error("pfed_t::contains not implemented");
+    }
+
+    bool pfed_t::contains(const double * point, cindex_t dim) const{
+        throw std::logic_error("pfed_t::contains not implemented");
+    }
+
+    pfed_t& pfed_t::predt(const pfed_t& bad, const raw_t* restrict){
+        throw std::logic_error("pfed_t::predt not implemented");
+    }
+
+    void pfed_t::intern(){
+        throw std::logic_error("pfed_t::intern not implemented");
+    }
 
 
+    inline void pfed_t::nil() { setDimension(1); }
+
+    cindex_t pdbm_t::pdim() const { return dim; }
+    
 }  // namespace dbm
