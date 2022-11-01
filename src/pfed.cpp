@@ -70,12 +70,6 @@ namespace dbm
         add(pdbm, dim);
     }
 
-    pfed_t::iterator pfed_t::erase(iterator i)
-    {
-        assert(ptr->count <= 1);
-        return ptr->zones.erase(i);
-    }
-
 #define for_each__(Z)     for (iterator Z = beginMutable(), Z_ = endMutable(); Z != Z_; zone++)
 #define for_each_(Z)      for (iterator Z = beginMutable(), Z_ = endMutable(); Z != Z_;)
 #define for_each_const(Z) for (const_iterator Z = begin(), Z_ = end(); Z != Z_; zone++)
@@ -395,6 +389,11 @@ namespace dbm
         *this = pfed_t(pdbm, ptr->dim);
     }
 
+    void pfed_t::nil()
+    {
+        setDimension(1);
+    }
+
     void pfed_t::setEmpty() { *this = pfed_t(ptr->dim); }
 
     void pfed_t::freeUp(cindex_t i) { for_each(beginMutable(), endMutable(), bind(pdbm_freeUp, _1, ptr->dim, i)); }
@@ -427,7 +426,7 @@ namespace dbm
         return *this;
     }
 
-    inline pfed_t operator|(const pfed_t& a, const pfed_t& b) { return pfed_t(a) |= b; }
+    pfed_t operator|(const pfed_t& a, const pfed_t& b) { return pfed_t(a) |= b; }
 
     bool pfed_t::intersects(const pfed_t&) const { throw std::logic_error("pfed_t::intersects not implemented"); }
 
@@ -474,12 +473,17 @@ namespace dbm
 
     std::ostream& operator<<(std::ostream& o, const pfed_t& f)
     {
-        pfed_t::const_iterator first = f.begin();
-        pfed_t::const_iterator last = f.end();
-        while (first != last) {
-            pdbm_print(o, *first, f.getDimension());
-            first++;
+
+        for (pfed_t::const_iterator first = f.begin(), end = f.end(); first != end; first++){
+
         }
+
+//        pfed_t::const_iterator first = f.begin();
+//        pfed_t::const_iterator last = f.end();
+//        while (first != last) {
+//            pdbm_print(o, *first, f.getDimension());
+//            first++;
+//        }
         return o;
     }
 
@@ -530,31 +534,27 @@ namespace dbm
         throw std::logic_error("pfed_t::getDelay not implemented");
     }
 
-    inline bool pdbm_t::isEmpty() const {
+    bool pdbm_t::isEmpty() const {
         throw std::logic_error("pdbm_t::isEmpty not implemented");
     }
 
-    inline pfed_t& pfed_t::mergeReduce(size_t skip, int expensiveTry){
-        throw std::logic_error("pfed_t::mergeReduce not implemented");
-    }
-
-    inline bool pfed_t::le(const pfed_t& arg) const {
+    bool pfed_t::le(const pfed_t& arg) const {
         throw std::logic_error("pfed_t::le not implemented");
     }
 
-    inline bool pfed_t::lt(const pfed_t& arg) const {
+    bool pfed_t::lt(const pfed_t& arg) const {
         throw std::logic_error("pfed_t::lt not implemented");
     }
 
-    inline bool pfed_t::gt(const pfed_t& arg) const {
+    bool pfed_t::gt(const pfed_t& arg) const {
         throw std::logic_error("pfed_t::gt not implemented");
     }
 
-    inline bool pfed_t::ge(const pfed_t& arg) const {
+    bool pfed_t::ge(const pfed_t& arg) const {
         throw std::logic_error("pfed_t::ge not implemented");
     }
 
-    inline bool pfed_t::eq(const pfed_t& arg) const {
+    bool pfed_t::eq(const pfed_t& arg) const {
         throw std::logic_error("pfed_t::eq not implemented");
     }
 
@@ -582,7 +582,7 @@ namespace dbm
         throw std::logic_error("pfed_t::hasZero not implemented");
     }
 
-    inline void pfed_t::swap(pfed_t& arg){
+    void pfed_t::swap(pfed_t& arg){
         throw std::logic_error("pfed_t::swap not implemented");
     }
 
@@ -602,9 +602,11 @@ namespace dbm
         throw std::logic_error("pfed_t::intern not implemented");
     }
 
-
-    inline void pfed_t::nil() { setDimension(1); }
+    pfed_t& pfed_t::mergeReduce(size_t skip, int expensiveTry){
+        throw std::logic_error("pfed_t::mergeReduce not implemented");
+    }
 
     cindex_t pdbm_t::pdim() const { return dim; }
-    
+
+
 }  // namespace dbm

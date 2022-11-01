@@ -24,22 +24,6 @@ namespace dbm
 {
     class pdbm_t;
 
-    class cst_iterator : public std::_List_const_iterator<dbm::pdbm_t>{
-
-    public:
-        cst_iterator();
-        cst_iterator(iterator iterator);
-        bool null();
-        const raw_t* operator()() const;
-    };
-
-    class iterato : public std::list<pdbm_t>::iterator {
-
-    public:
-        iterato(_List_iterator<pdbm_t> iterator);
-        void remove();
-    };
-
     /**
      * Small C++ wrapper for the PDBM priced DBM type.
      *
@@ -245,9 +229,27 @@ namespace dbm
     class pfed_t
     {
     public:
-        typedef cst_iterator const_iterator;
+//        typedef cst_iterator const_iterator;
+//        typedef iterato iterator;
 
-        typedef iterato iterator;
+//        typedef std::_List_const_iterator<dbm::pdbm_t> const_iterator;
+//        typedef std::list<pdbm_t>::iterator iterator;
+
+        class const_iterator : public std::_List_const_iterator<dbm::pdbm_t>{
+
+        public:
+            const_iterator();
+            const_iterator(iterator iterator);
+            bool null();
+            const raw_t* operator()() const;
+        };
+
+        class iterator : public std::list<pdbm_t>::iterator {
+
+        public:
+            iterator(_List_iterator<pdbm_t> iterator);
+            void remove();
+        };
 
     protected:
         struct pfed_s
@@ -411,6 +413,8 @@ namespace dbm
         void incrementCost(int32_t value);
 
         int32_t getCostOfValuation(const IntValuation& valuation) const;
+
+
         void relax();
 
         void freeClock(cindex_t clock);
@@ -600,7 +604,6 @@ namespace dbm
 
         void nil();
 
-
         /**
          * Relation between two priced federations: SUBSET is returned
          * if all zones of this federation are contained in some zone
@@ -702,6 +705,8 @@ namespace dbm
         }
     }
 
+
+
     inline pfed_t::iterator pfed_t::beginMutable()
     {
         prepare();
@@ -717,6 +722,35 @@ namespace dbm
     inline pfed_t::const_iterator pfed_t::begin() const { return ptr->zones.begin(); }
 
     inline pfed_t::const_iterator pfed_t::end() const { return ptr->zones.end(); }
+
+
+    inline bool pfed_t::const_iterator::null() { throw std::logic_error("const_iterator::null() not implemented"); }
+
+    inline const raw_t* pfed_t::const_iterator::operator()() const { throw std::logic_error("const_iterator::operator()() not implemented"); }
+
+    inline pfed_t::const_iterator::const_iterator() { throw std::logic_error("const_iterator constructor not implemented"); }
+    inline pfed_t::const_iterator::const_iterator(std::_List_const_iterator<dbm::pdbm_t>::iterator iterator) { throw std::logic_error("const_iterator constructor not implemented"); }
+
+    inline void pfed_t::iterator::remove() { throw std::logic_error("iterator::remove() not implemented"); }
+    inline pfed_t::iterator::iterator(std::_List_iterator<pdbm_t> iterator) {throw std::logic_error("iterator constructor not implemented");}
+
+    inline pfed_t::iterator pfed_t::erase(iterator i) {
+        assert(ptr->count <= 1);
+        return ptr->zones.erase(i);
+    }
+
+    //    //bool cst_iterator::null() { return _M_node == NULL; }
+//    bool pfed_t::const_iterator::null() { throw std::logic_error("cst_iterator::null not implemented"); }
+//
+//    const raw_t* pfed_t::const_iterator::operator()() const { return reinterpret_cast<const raw_t*>(_M_node); }
+//
+//    pfed_t::const_iterator::cst_iterator(std::_List_const_iterator<dbm::pdbm_t>::iterator iterator) {}
+//
+//    pfed_t::const_iterator::cst_iterator() = default;
+//
+//    pfed_t::iterator::iterato(std::_List_iterator<pdbm_t> iterator) {}
+//
+//    void pfed_t::iterator::remove() { throw std::logic_error("iterato::remove not implemented"); }
 
     inline cindex_t pfed_t::getDimension() const { return ptr->dim; }
 
@@ -754,15 +788,6 @@ namespace dbm
     inline bool pfed_t::satisfies(const constraint_t& c) const { return satisfies(c.i, c.j, c.value); }
 
     std::ostream& operator<<(std::ostream&, const pfed_t&);
-
-    //bool cst_iterator::null() { return _M_node == NULL; }
-    bool cst_iterator::null() { throw std::logic_error("cst_iterator::null not implemented"); }
-    const raw_t* cst_iterator::operator()() const { return reinterpret_cast<const raw_t*>(_M_node); }
-    cst_iterator::cst_iterator(std::_List_const_iterator<dbm::pdbm_t>::iterator iterator) {}
-    cst_iterator::cst_iterator() = default;
-
-    iterato::iterato(std::_List_iterator<pdbm_t> iterator) {}
-    void iterato::remove() { throw std::logic_error("iterato::remove not implemented"); }
 
     pfed_t operator|(const pfed_t& a, const pfed_t& b);
 
