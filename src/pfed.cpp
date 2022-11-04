@@ -223,6 +223,8 @@ namespace dbm
             cindex_t x;
             int32_t oldrate = pdbm_getSlopeOfDelayTrajectory(*zone, dim);
 
+            pdbm_print(std::cout, zone->operator PDBM(), dim);
+
             if (rate == oldrate) {
                 /* This is a simple case which does not require splits.
                  */
@@ -259,8 +261,8 @@ namespace dbm
                     pdbm_constrainToFacet(ptr->zones.front(), dim, facets[j], 0);
                     pdbm_upZero(ptr->zones.front(), dim, rate, facets[j]);
                 }
-                pdbm_constrainToFacet(*zone, dim, facets[count - 1], 0);
-                pdbm_upZero(*zone, dim, rate, facets[count - 1]);
+//                pdbm_constrainToFacet(*zone, dim, facets[count - 1], 0);
+//                pdbm_upZero(*zone, dim, rate, facets[count - 1]);
             }
         }
         return *this;
@@ -485,7 +487,19 @@ namespace dbm
     }
 
     std::string pfed_t::toString(const ClockAccessor& access, bool full) const{
-        throw std::logic_error("pfed_t::getMaxLower not implemented");
+        if (isEmpty()) {
+            return "false";
+        }
+        std::string str;
+        bool isFirst = true;
+        for (const_iterator i = begin(); !i.null(); ++i) {
+            if (!isFirst) {
+                str += " || ";
+            }
+            str += i->toString(access, full);
+            isFirst = false;
+        }
+        return str;
     }
 
     void pfed_t::updateClock(cindex_t x, cindex_t y){
@@ -563,6 +577,13 @@ namespace dbm
 
     bool pdbm_t::contains(const double* point, cindex_t dim) const{
         throw std::logic_error("pfed_t::contains not implemented");
+    }
+
+    std::string pdbm_t::toString(const ClockAccessor&, bool full) const
+    {
+        std::stringstream ss;
+        pdbm_print(ss, *this, dim);
+        return ss.str();
     }
 
     bool pfed_t::hasZero() const{

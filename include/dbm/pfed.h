@@ -138,6 +138,13 @@ namespace dbm
         /** @see dbm_t::readFromMinDBM() */
         static pdbm_t readFromMinDBM(cindex_t dimension, const int32_t*);
 
+
+        /// @return string representation of the
+        /// constraints of this PDBM. A clock
+        /// is always positive, so "true" simply means
+        /// all clocks positive.
+        std::string toString(const ClockAccessor&, bool full = false) const;
+
         /// @return true if it is empty.
         bool isEmpty() const;
 
@@ -894,7 +901,7 @@ namespace dbm
 
     inline bool pfed_t::iterator::null() const
     {
-        return pfed != nullptr && zones != nullptr && it != zones->end();
+        return pfed == nullptr || zones == nullptr || it == zones->end();
     }
 
     inline bool pfed_t::iterator::hasNext() const
@@ -1005,7 +1012,7 @@ namespace dbm
 
     inline bool pfed_t::const_iterator::null() const
     {
-        return zones != nullptr && it != zones->end();
+        return pfed == nullptr || zones == nullptr || it == zones->end();
     }
 
     inline bool pfed_t::const_iterator::hasNext() const
