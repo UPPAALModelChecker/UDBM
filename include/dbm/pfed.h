@@ -229,26 +229,108 @@ namespace dbm
     class pfed_t
     {
     public:
-//        typedef cst_iterator const_iterator;
-//        typedef iterato iterator;
+//
+//        typedef std::list<dbm::pdbm_t>::const_iterator const_list_iterator;
+//        typedef std::list<dbm::pdbm_t>::iterator list_iterator;
 
-//        typedef std::_List_const_iterator<dbm::pdbm_t> const_iterator;
-//        typedef std::list<pdbm_t>::iterator iterator;
-
-        class const_iterator : public std::_List_const_iterator<dbm::pdbm_t>{
-
+        /// Mutable iterator -> iterate though dbm_t
+        class iterator
+        {
         public:
-            const_iterator();
-            const_iterator(iterator iterator);
-            bool null();
-            const raw_t* operator()() const;
+            iterator();
+            /// Initialize the iterator of a federation.
+            /// @param _pfed: federation.
+            explicit iterator(pfed_t* _pfed);
+
+            iterator& end();
+
+            /// Dereference to dbm_t, @pre !null()
+            pdbm_t& operator*() const;
+
+            /// Dereference to dbm_t*, @pre !null()
+            pdbm_t* operator->() const;
+
+            /// Mutable access to the matrix as for fed_t, @pre !null()
+            raw_t* operator()() const;
+            raw_t operator()(cindex_t i, cindex_t j) const;
+
+            /// Increment iterator, @pre !null()
+            iterator& operator++();
+
+            // Post increment iterator
+            const iterator operator++(int);
+
+            /// Test if there are DBMs left on the list.
+            bool null() const;
+
+            /// @return true if there is another DBM after, @pre !null()
+            bool hasNext() const;
+
+            /// Equality test of the internal fdbm_t*
+            bool operator==(const iterator& arg) const;
+            bool operator!=(const iterator& arg) const;
+
+            /// Remove (and deallocate) current dbm_t.
+            void remove();
+
+            /// Remove (and deallocate) current empty dbm_t.
+            void removeEmpty();
+
+            /// Extract the current DBM from the list.
+            /// The result->getNext() points to the rest of the list.
+            pfed_t::iterator extract();
+
+            /// Insert a DBM in the list at the current position.
+            void insert(pdbm_t& pdbm);
+
+        private:
+            std::list<pdbm_t>* zones;  /// list of DBMs
+            std::list<pdbm_t>::iterator it;
+            pfed_t* pfed;   /// to update the size
         };
 
-        class iterator : public std::list<pdbm_t>::iterator {
-
+        /// Const iterator -> iterate though dbm_t
+        class const_iterator
+        {
         public:
-            iterator(_List_iterator<pdbm_t> iterator);
-            void remove();
+            const_iterator();
+
+            /// Constructor: @param fed: federation.
+            explicit const_iterator(const pfed_t* pfed);
+
+            // Move iterator to end
+            const_iterator& end();
+
+            /// Dereference to dbm_t
+            const pdbm_t& operator*() const;
+
+            /// Dereference to dbm_t*, @pre !null()
+            const pdbm_t* operator->() const;
+
+            /// Access to the matrix as for fed_t
+            const raw_t* operator()() const;
+            raw_t operator()(cindex_t i, cindex_t j) const;
+
+            /// Increment iterator, @pre !null()
+            const_iterator& operator++();
+
+            /// Post increment iterator
+            const const_iterator operator++(int);
+
+            /// Test if there are DBMs left on the list.
+            bool null() const;
+
+            /// @return true if there is another DBM after, @pre !null()
+            bool hasNext() const;
+
+            /// Equality test of the internal fdbm_t*
+            bool operator==(const const_iterator& arg) const;
+            bool operator!=(const const_iterator& arg) const;
+
+        private:
+            const std::list<pdbm_t>* zones;  /// list of DBMs
+            std::list<pdbm_t>::const_iterator it;
+            const pfed_t* pfed;   /// to update the size
         };
 
     protected:
@@ -277,8 +359,10 @@ namespace dbm
         void cow();
 
     public:
-        /** Allocate empty priced federation of dimension 0. */
-        pfed_t();
+        /// Initialize a pfed_t to empty federation of a given dimension.
+        /// @param dim: dimension of the federation.
+        /// @post isEmpty()
+        explicit pfed_t(cindex_t dim = 1);
 
         /**
          * Adds \a pdbm to the federation. The reference count on pdbm
@@ -287,9 +371,6 @@ namespace dbm
         void add(const PDBM pdbm, cindex_t dim);
 
         void add(pdbm_t pdbm);
-
-        /** Allocate empty priced federation of dimension \a dim. */
-        explicit pfed_t(cindex_t dim);
 
         /**
          * Allocate a priced federation of dimension \a dim initialised to
@@ -461,7 +542,7 @@ namespace dbm
          * Erases a DBM from the federation and returns an iterator to
          * the successor element.
          */
-        iterator erase(iterator);
+        iterator erase(iterator& iter);
 
         /** Assignment operator. */
         pfed_t& operator=(const pfed_t&);
@@ -710,47 +791,18 @@ namespace dbm
     inline pfed_t::iterator pfed_t::beginMutable()
     {
         prepare();
-        return ptr->zones.begin();
+        return iterator(this);
     }
 
     inline pfed_t::iterator pfed_t::endMutable()
     {
         prepare();
-        return ptr->zones.end();
+        return iterator(this).end();
     }
 
-    inline pfed_t::const_iterator pfed_t::begin() const { return ptr->zones.begin(); }
+    inline pfed_t::const_iterator pfed_t::begin() const { return const_iterator(this); }
 
-    inline pfed_t::const_iterator pfed_t::end() const { return ptr->zones.end(); }
-
-
-    inline bool pfed_t::const_iterator::null() { throw std::logic_error("const_iterator::null() not implemented"); }
-
-    inline const raw_t* pfed_t::const_iterator::operator()() const { throw std::logic_error("const_iterator::operator()() not implemented"); }
-
-    inline pfed_t::const_iterator::const_iterator() { throw std::logic_error("const_iterator constructor not implemented"); }
-    inline pfed_t::const_iterator::const_iterator(std::_List_const_iterator<dbm::pdbm_t>::iterator iterator) { throw std::logic_error("const_iterator constructor not implemented"); }
-
-    inline void pfed_t::iterator::remove() { throw std::logic_error("iterator::remove() not implemented"); }
-    inline pfed_t::iterator::iterator(std::_List_iterator<pdbm_t> iterator) {throw std::logic_error("iterator constructor not implemented");}
-
-    inline pfed_t::iterator pfed_t::erase(iterator i) {
-        assert(ptr->count <= 1);
-        return ptr->zones.erase(i);
-    }
-
-    //    //bool cst_iterator::null() { return _M_node == NULL; }
-//    bool pfed_t::const_iterator::null() { throw std::logic_error("cst_iterator::null not implemented"); }
-//
-//    const raw_t* pfed_t::const_iterator::operator()() const { return reinterpret_cast<const raw_t*>(_M_node); }
-//
-//    pfed_t::const_iterator::cst_iterator(std::_List_const_iterator<dbm::pdbm_t>::iterator iterator) {}
-//
-//    pfed_t::const_iterator::cst_iterator() = default;
-//
-//    pfed_t::iterator::iterato(std::_List_iterator<pdbm_t> iterator) {}
-//
-//    void pfed_t::iterator::remove() { throw std::logic_error("iterato::remove not implemented"); }
+    inline pfed_t::const_iterator pfed_t::end() const { return const_iterator(this).end(); }
 
     inline cindex_t pfed_t::getDimension() const { return ptr->dim; }
 
@@ -790,6 +842,188 @@ namespace dbm
     std::ostream& operator<<(std::ostream&, const pfed_t&);
 
     pfed_t operator|(const pfed_t& a, const pfed_t& b);
+
+    /***********************************************
+     *  Inlined implementations of pfed_t::iterator *
+     ***********************************************/
+
+    inline pfed_t::iterator::iterator(pfed_t* _pfed): zones(&_pfed->ptr->zones), it(_pfed->ptr->zones.begin()), pfed(_pfed) {
+        assert(_pfed);
+    }
+
+    inline pfed_t::iterator::iterator(): zones(nullptr), pfed(nullptr) {}
+
+    inline pdbm_t& pfed_t::iterator::operator*() const
+    {
+        assert(pfed && zones);
+        return *it;
+    }
+
+    inline pdbm_t* pfed_t::iterator::operator->() const
+    {
+        assert(pfed && zones);
+        return &*it;
+    }
+
+    inline raw_t* pfed_t::iterator::operator()() const
+    {
+        assert(pfed && zones);
+        return it->getDBM();
+    }
+
+    inline raw_t pfed_t::iterator::operator()(cindex_t i, cindex_t j) const
+    {
+        assert(pfed && zones);
+        return (*it)(i, j);
+    }
+
+    inline pfed_t::iterator& pfed_t::iterator::operator++()
+    {
+        assert(pfed && zones);
+        ++it;
+        return *this;
+    }
+
+    inline const pfed_t::iterator pfed_t::iterator::operator++(int)
+    {
+        assert(pfed && zones);
+        auto before = iterator(*this);
+        ++it;
+        return before;
+    }
+
+    inline bool pfed_t::iterator::null() const
+    {
+        return pfed != nullptr && zones != nullptr && it != zones->end();
+    }
+
+    inline bool pfed_t::iterator::hasNext() const
+    {
+        assert(pfed && zones);
+        return it != zones->end();
+    }
+
+    inline bool pfed_t::iterator::operator==(const iterator& arg) const
+    {
+        assert(pfed && zones);
+        return it == arg.it;
+    }
+
+    inline bool pfed_t::iterator::operator!=(const iterator& arg) const { return !(*this == arg); }
+
+    inline void pfed_t::iterator::remove()
+    {
+        assert(pfed && zones);
+        zones->erase(it);
+    }
+
+    inline void pfed_t::iterator::removeEmpty()
+    {
+        //        assert(fdbm && *fdbm);
+        //        *fdbm = (*fdbm)->removeEmptyAndNext();
+        //        ifed->decSize();
+        throw std::logic_error("pfed_t::iterator::removeEmpty not implemented");
+    }
+
+    inline pfed_t::iterator pfed_t::iterator::extract()
+    {
+        //        assert(fdbm && *fdbm);
+        //        fpdbm_t* current = *fdbm;
+        //        *fdbm = current->getNext();
+        //        ifed->decSize();
+        //        return current;
+        throw std::logic_error("pfed_t::iterator::extract not implemented");
+    }
+
+    inline void pfed_t::iterator::insert(pdbm_t& pdbm)
+    {
+        assert(pfed->getDimension() == pdbm.getDimension());
+        pfed->prepare();
+        it = zones->insert(it, pdbm);
+    }
+
+    inline pfed_t::iterator& pfed_t::iterator::end() {
+        assert(pfed && zones);
+        it = zones->end();
+        return *this;
+    }
+
+    inline pfed_t::iterator pfed_t::erase(iterator& iter)
+    {
+        iter.remove();
+        return iter;
+    }
+
+    /*****************************************************
+     *  Inlined implementations of pfed_t::const_iterator *
+     *****************************************************/
+
+    inline pfed_t::const_iterator::const_iterator(const pfed_t* _pfed) : zones(&_pfed->ptr->zones), it(_pfed->ptr->zones.begin()), pfed(_pfed) {
+        assert(_pfed && zones);
+    }
+
+    inline pfed_t::const_iterator::const_iterator(): zones(nullptr), pfed(nullptr) {}
+
+    inline const pdbm_t& pfed_t::const_iterator::operator*() const
+    {
+        assert(pfed && zones);
+        return *it;
+    }
+
+    inline const pdbm_t* pfed_t::const_iterator::operator->() const
+    {
+        assert(pfed && zones);
+        return &*it;
+    }
+
+    inline const raw_t* pfed_t::const_iterator::operator()() const
+    {
+        assert(pfed && zones);
+        return it->const_dbm();
+    }
+
+    inline raw_t pfed_t::const_iterator::operator()(cindex_t i, cindex_t j) const
+    {
+        assert(pfed && zones);
+        return (*it)(i, j);
+    }
+
+    inline pfed_t::const_iterator& pfed_t::const_iterator::operator++()
+    {
+        assert(pfed && zones);
+        ++it;
+        return *this;
+    }
+
+    inline const pfed_t::const_iterator pfed_t::const_iterator::operator++(int)
+    {
+        assert(pfed && zones);
+        auto before = const_iterator(*this);
+        ++it;
+        return before;
+    }
+
+    inline bool pfed_t::const_iterator::null() const
+    {
+        return zones != nullptr && it != zones->end();
+    }
+
+    inline bool pfed_t::const_iterator::hasNext() const
+    {
+        assert(pfed && zones);
+        return it != zones->end();
+    }
+
+    inline bool pfed_t::const_iterator::operator==(const const_iterator& arg) const { return it == arg.it; }
+
+    inline bool pfed_t::const_iterator::operator!=(const const_iterator& arg) const { return !(*this == arg); }
+
+    inline pfed_t::const_iterator& pfed_t::const_iterator::end()
+    {
+        assert(pfed && zones);
+        it = zones->end();
+        return *this;
+    }
 
 }  // namespace dbm
 

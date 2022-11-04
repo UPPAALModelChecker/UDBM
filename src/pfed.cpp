@@ -45,14 +45,6 @@ namespace dbm
         ptr->count = 1;
     }
 
-    pfed_t::pfed_t()
-    {
-        ptr = alloc.allocate(1);
-        alloc.construct(ptr, pfed_s());
-        ptr->dim = 0;
-        ptr->count = 1;
-    }
-
     pfed_t::pfed_t(cindex_t dim)
     {
         ptr = alloc.allocate(1);
@@ -124,10 +116,10 @@ namespace dbm
 
     bool pfed_t::satisfies(cindex_t i, cindex_t j, raw_t constraint) const
     {
-        return find_if(begin(), end(), bind(pdbm_satisfies, _1, ptr->dim, i, j, constraint)) != end();
+        return find_if(ptr->zones.begin(), ptr->zones.end(), bind(pdbm_satisfies, _1, ptr->dim, i, j, constraint)) != ptr->zones.end();
     }
 
-    bool pfed_t::isUnbounded() const { return find_if(begin(), end(), bind(pdbm_isUnbounded, _1, ptr->dim)) != end(); }
+    bool pfed_t::isUnbounded() const { return find_if(ptr->zones.begin(), ptr->zones.end(), bind(pdbm_isUnbounded, _1, ptr->dim)) != ptr->zones.end(); }
 
     uint32_t pfed_t::hash(uint32_t seed) const
     {
@@ -139,17 +131,17 @@ namespace dbm
 
     bool pfed_t::contains(const IntValuation& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsInt, _1, ptr->dim, valuation())) != end();
+        return find_if(ptr->zones.begin(), ptr->zones.end(), bind(pdbm_containsInt, _1, ptr->dim, valuation())) != ptr->zones.end();
     }
 
     bool pfed_t::contains(const DoubleValuation& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsDouble, _1, ptr->dim, valuation())) != end();
+        return find_if(ptr->zones.begin(), ptr->zones.end(), bind(pdbm_containsDouble, _1, ptr->dim, valuation())) != ptr->zones.end();
     }
 
     bool pfed_t::containsWeakly(const IntValuation& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsIntWeakly, _1, ptr->dim, valuation())) != end();
+        return find_if(ptr->zones.begin(), ptr->zones.end(), bind(pdbm_containsIntWeakly, _1, ptr->dim, valuation())) != ptr->zones.end();
     }
 
     relation_t pfed_t::relation(const pfed_t& b) const
@@ -410,12 +402,12 @@ namespace dbm
         return *this;
     }
 
-    pfed_t& pfed_t::operator|=(const pfed_t& fed)
+    pfed_t& pfed_t::operator|=(const pfed_t& pfed)
     {
         // REVISIT: Eliminate included zones.
-        assert(fed.ptr->dim == ptr->dim);
+        assert(pfed.ptr->dim == ptr->dim);
         prepare();
-        ptr->zones.insert(ptr->zones.begin(), fed.begin(), fed.end());
+        ptr->zones.insert(ptr->zones.begin(), pfed.ptr->zones.begin(), pfed.ptr->zones.end());
         return *this;
     }
 
@@ -473,17 +465,12 @@ namespace dbm
 
     std::ostream& operator<<(std::ostream& o, const pfed_t& f)
     {
-
-        for (pfed_t::const_iterator first = f.begin(), end = f.end(); first != end; first++){
-
+        pfed_t::const_iterator first = f.begin();
+        pfed_t::const_iterator last = f.end();
+        while (first != last) {
+            pdbm_print(o, *first, f.getDimension());
+            ++first;
         }
-
-//        pfed_t::const_iterator first = f.begin();
-//        pfed_t::const_iterator last = f.end();
-//        while (first != last) {
-//            pdbm_print(o, *first, f.getDimension());
-//            first++;
-//        }
         return o;
     }
 
@@ -607,6 +594,5 @@ namespace dbm
     }
 
     cindex_t pdbm_t::pdim() const { return dim; }
-
-
 }  // namespace dbm
+
