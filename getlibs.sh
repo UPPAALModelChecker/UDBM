@@ -21,29 +21,32 @@ fi
 cd "$SOURCES"
 curl -L https://github.com/doctest/doctest/archive/refs/tags/v2.4.9.tar.gz -o doctest-2.4.9.tar.gz
 tar -xf doctest-2.4.9.tar.gz
-mkdir -p "$SOURCES/doctest-2.4.9/build"
-cd "$SOURCES/doctest-2.4.9/build"
-cmake $CMAKE_ARGS ..
-cmake --build . --config Release
-cmake --install . --config Release
+SOURCE_DIR="$SOURCES/doctest-2.4.9"
+BUILD_DIR="$SOURCE_DIR/build"
+mkdir -p "$BUILD_DIR"
+cmake $CMAKE_ARGS -DDOCTEST_WITH_TESTS=OFF -B "$BUILD_DIR" "$SOURCE_DIR"
+cmake --build "$BUILD_DIR" --config Release
+cmake --install "$BUILD_DIR" --config Release
 
 # xxHash for fast high quality hashing
 cd "$SOURCES"
 curl -L https://github.com/Cyan4973/xxHash/archive/refs/tags/v0.8.0.tar.gz -o xxHash-0.8.0.tar.gz
 tar -xf xxHash-0.8.0.tar.gz
-mkdir -p "$SOURCES/xxHash-0.8.0/build"
-cd "$SOURCES/xxHash-0.8.0/build"
-cmake $CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF ../cmake_unofficial
-cmake --build . --config Release
-cmake --install . --config Release
+SOURCE_DIR="$SOURCES/xxHash-0.8.0"
+BUILD_DIR="$SOURCE_DIR/build"
+mkdir -p "$BUILD_DIR"
+cmake $CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -B "$BUILD_DIR" "$SOURCE_DIR/cmake_unofficial"
+cmake --build "$BUILD_DIR" --config Release
+cmake --install "$BUILD_DIR" --config Release
 
 # UUtils various low level Uppaal utilities
 #git clone https://github.com/UPPAALModelChecker/UUtils "$SOURCE_DIR/libs/sources/UUtils";
 cd "$SOURCES"
 curl -L https://github.com/UPPAALModelChecker/UUtils/archive/refs/tags/v1.1.1.tar.gz -o UUtils-1.1.1.tar.gz
 tar -xf UUtils-1.1.1.tar.gz
-mkdir -p "$SOURCES/UUtils-1.1.1/build"
-cd "$SOURCES/UUtils-1.1.1/build"
-cmake $CMAKE_ARGS ..
-cmake --build . --config Release
-cmake --install . --config Release
+SOURCE_DIR="$SOURCES/UUtils-1.1.1"
+BUILD_DIR="$SOURCE_DIR/build"
+mkdir -p "$BUILD_DIR"
+cmake $CMAKE_ARGS -B "$BUILD_DIR" "$SOURCE_DIR"
+cmake --build "$BUILD_DIR" --config Release
+cmake --install "$BUILD_DIR" --config Release
