@@ -29,7 +29,6 @@
 
 using namespace std;
 using namespace dbm;
-// using namespace base;
 
 // Range for DBM generation
 #define MAXRANGE 10000
