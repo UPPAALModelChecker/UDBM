@@ -20,8 +20,6 @@
 #include "dbm/print.h"
 #include "base/bitstring.h"
 #include "base/doubles.h"
-#include "base/stats.h"
-#include "debug/macros.h"
 
 #include <forward_list>
 #include <functional>

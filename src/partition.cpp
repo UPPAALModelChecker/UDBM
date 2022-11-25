@@ -13,7 +13,6 @@
 
 #include "dbm/partition.h"
 
-#include "base/intutils.h"
 #ifndef NDEBUG
 #include "dbm/print.h"
 #endif

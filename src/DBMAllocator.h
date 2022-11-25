@@ -16,7 +16,6 @@
 
 #include "dbm/config.h"
 #include "dbm/fed.h"
-#include "base/array_t.h"
 
 #include <forward_list>
 #include <vector>
