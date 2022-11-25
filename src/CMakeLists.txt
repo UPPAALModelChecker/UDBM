@@ -1,9 +1,8 @@
 add_library(UDBM DBMAllocator.cpp dbm.c fed_dbm.cpp mingraph.c mingraph_read.c partition.cpp print.cpp gen.c
         mingraph_cache.cpp mingraph_relation.c pfed.cpp fed.cpp infimum.cpp mingraph_equal.c mingraph_write.c
         priced.cpp)
-if (APPLE)
-    target_link_options(-fvisibility=hidden -fvisibility-inline-hidden)
-endif(APPLE)
+set_property(TARGET UDBM PROPERTY C_VISIBILITY_PRESET hidden)
+set_property(TARGET UDBM PROPERTY VISIBILITY_INLINES_HIDDEN ON)
 target_link_libraries(UDBM UUtils::base UUtils::udebug UUtils::hash)
 
 target_include_directories(UDBM
