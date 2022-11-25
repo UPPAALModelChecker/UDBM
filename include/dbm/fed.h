@@ -18,7 +18,6 @@
 #include "dbm/config.h"
 #include "dbm/dbm.h"
 #include "dbm/mingraph.h"
-#include "base/pointer.h"
 
 #include <stdexcept>
 #include <vector>
@@ -401,7 +400,6 @@ namespace dbm
         dbm_t& operator&=(const dbm_t&);
         dbm_t& operator&=(const raw_t*);
         dbm_t& operator&=(const constraint_t&);
-        dbm_t& operator&=(const base::pointer_t<constraint_t>&);
         dbm_t& operator&=(const std::vector<constraint_t>&);
 
         /// Compute the intersection with the axis of a given clock.
@@ -425,7 +423,6 @@ namespace dbm
         bool constrain(const constraint_t& c);
         bool constrain(const constraint_t* c, size_t n);
         bool constrain(const cindex_t* table, const constraint_t* c, size_t n);
-        bool constrain(const cindex_t* table, const base::pointer_t<constraint_t>&);
         bool constrain(const cindex_t* table, const std::vector<constraint_t>&);
 
         /// @return false if there is no intersection with the argument
@@ -996,7 +993,6 @@ namespace dbm
         fed_t& operator&=(const dbm_t&);
         fed_t& operator&=(const raw_t*);
         fed_t& operator&=(const constraint_t&);
-        fed_t& operator&=(const base::pointer_t<constraint_t>&);
         fed_t& operator&=(const std::vector<constraint_t>&);
 
         /// (Set) subtraction operator (-).
@@ -1026,7 +1022,6 @@ namespace dbm
         bool constrain(const constraint_t& c);
         bool constrain(const constraint_t* c, size_t n);
         bool constrain(const cindex_t* table, const constraint_t* c, size_t n);
-        bool constrain(const cindex_t* table, const base::pointer_t<constraint_t>&);
         bool constrain(const cindex_t* table, const std::vector<constraint_t>&);
 
         /// @return false if there is no intersection with the argument
@@ -1592,11 +1587,6 @@ namespace dbm
     dbm_t operator&(const constraint_t& c, const dbm_t& a);
     fed_t operator&(const fed_t& a, const constraint_t& c);
     fed_t operator&(const constraint_t& c, const fed_t& a);
-
-    dbm_t operator&(const dbm_t& a, const base::pointer_t<constraint_t>& c);
-    dbm_t operator&(const base::pointer_t<constraint_t>& c, const dbm_t& a);
-    fed_t operator&(const fed_t& a, const base::pointer_t<constraint_t>& c);
-    fed_t operator&(const base::pointer_t<constraint_t>& c, const fed_t& a);
 
     dbm_t operator&(const dbm_t& a, const std::vector<constraint_t>& vec);
     dbm_t operator&(const std::vector<constraint_t>& vec, const dbm_t& a);

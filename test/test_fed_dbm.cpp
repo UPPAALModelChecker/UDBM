@@ -23,14 +23,13 @@
 #include "dbm/fed.h"
 #include "dbm/gen.h"
 #include "dbm/print.h"
-#include "debug/macros.h"
 #include "debug/utils.h"
 
 #include <ctime>
 
 using namespace std;
 using namespace dbm;
-using namespace base;
+// using namespace base;
 
 // Range for DBM generation
 #define MAXRANGE 10000
@@ -74,7 +73,7 @@ static void test(cindex_t dim)
 {
     NEW(dbm);
     NEW(dbm2);
-    constraint_t* cnstr = new constraint_t[dim * dim];
+    auto cnstr = std::vector<constraint_t>(dim * dim);
     std::vector<int32_t> lower(dim);
     std::vector<int32_t> upper(dim);
     IntValuation pt(dim);
@@ -82,12 +81,13 @@ static void test(cindex_t dim)
     bool c1 = false, c2 = false, c4 = false;
     bool c5 = false, c6 = false, c7 = false;
     BEGIN;
-    dbm_t a;           // default
-    dbm_t b(dim);      // dim
-    dbm_t c(a), d(b);  // copy
+    auto a = dbm_t{};     // default
+    auto b = dbm_t{dim};  // dim
+    auto c = dbm_t{a};    // copy
+    auto d = dbm_t{b};    // copy
     cindex_t i, j, k;
     bool ab_equal = false;
-    const raw_t* ptr;
+    const raw_t* ptr{nullptr};
     PROGRESS();
 
     // constructor post-conditions
@@ -274,12 +274,13 @@ static void test(cindex_t dim)
             if (stop && (rand() & 1))
                 break;
         }
-        b &= pointer_t<constraint_t>(cnstr, k);
+        cnstr.resize(k);
+        b &= cnstr;
         assert(a == b);
-        assert(dbm_constrainN(dbm, dim, cnstr, k));
+        assert(dbm_constrainN(dbm, dim, cnstr.data(), k));
         assert(a == dbm);
         c = b;
-        b &= pointer_t<constraint_t>(cnstr, k);
+        b &= cnstr;
         assert(b() == c());
         c.nil();
         assert(a.contains(pt.data(), dim));
@@ -476,7 +477,7 @@ static void test(cindex_t dim)
     }
 
     END;
-    delete[] cnstr;
+    cnstr.clear();
     FREE(dbm2);
     FREE(dbm);
     // meant to check branches
@@ -496,7 +497,7 @@ int main(int argc, char* argv[])
 
     start = atoi(argv[1]);
     end = atoi(argv[2]);
-    seed = argc > 3 ? atoi(argv[3]) : time(NULL);
+    seed = argc > 3 ? atoi(argv[3]) : time(nullptr);
     srand(seed);
     if (start < 1) {
         cerr << "Minimum dimension=1 taken\n";
