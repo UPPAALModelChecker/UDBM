@@ -20,8 +20,6 @@
 #include "dbm/print.h"
 #include "base/bitstring.h"
 #include "base/doubles.h"
-#include "base/stats.h"
-#include "debug/macros.h"
 
 #include <forward_list>
 #include <functional>
@@ -1736,19 +1734,6 @@ namespace dbm
         assert(isOK());
         for (iterator it = beginMutable(); !it.null();) {
             if (it->ptr_constrain(table, c, n)) {
-                ++it;
-            } else {
-                it.removeEmpty();
-            }
-        }
-        return !isEmpty();
-    }
-
-    bool fed_t::constrain(const cindex_t* table, const base::pointer_t<constraint_t>& vec)
-    {
-        assert(isOK());
-        for (iterator it = beginMutable(); !it.null();) {
-            if (it->ptr_constrain(table, vec.begin(), vec.size())) {
                 ++it;
             } else {
                 it.removeEmpty();

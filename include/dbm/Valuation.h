@@ -17,90 +17,64 @@
 #define INCLUDE_DBM_VALUATION_H
 
 #include "dbm/ClockAccessor.h"
-#include "base/pointer.h"
 
 #include <iomanip>
 #include <limits>
 #include <sstream>
+#include <vector>
+#include <cassert>
 
 namespace dbm
 {
-    /** Valuation: like a fixed vector of scalars S with
-     * some basic operations on it.
-     * We don't use array_t because we don't want to
-     * resize but we need basic memory alloc/dealloc.
-     */
+    /** Valuation: similar to std::valarray, except it treats reference and dynamic values (clocks) specially. */
     template <class S>
-    class Valuation : public base::pointer_t<S>
+    class Valuation
     {
     private:
-        size_t dynamicSize;
         size_t staticSize;
-        // S* dynamic;
+        size_t dynamicSize;
+        std::vector<S> values;
+
     public:
         /** Constructor
-         * @param size: size of the S valuation vector,
-         * or dimension.
+         * @param size: size of the S valuation vector (number of dimensions).
+         * @param dyn: number of dynamic values.
          */
-        Valuation(size_t size, size_t dyn = 0):
-            base::pointer_t<S>(new S[size + dyn], dyn + size), dynamicSize(dyn), staticSize(size)
-        {
-            base::pointer_t<S>::reset();
-        }
-        /** Copy constructor
-         * @param original: vector to copy
-         */
-        Valuation(const Valuation<S>& original):
-            base::pointer_t<S>(new S[original.staticSize + original.dynamicSize],
-                               original.staticSize + original.dynamicSize),
-            dynamicSize(original.dynamicSize), staticSize(original.staticSize)
-        {
-            this->copyFrom(original);
-        }
+        Valuation(size_t size, size_t dyn = 0): staticSize{size}, dynamicSize{dyn}, values(size + dyn, S{}) {}
 
-        ~Valuation() { delete[] this->data; }
-
-        /**
-         * Copy the elements of the original vector.
-         * It is dangerous not to have this operator.
-         * @pre original.size() == size().
+        /** Add an amount to all the elements of this vector EXCEPT #0 (reference clock).
+         * @param value: amount to add.
          */
-        Valuation<S>& operator=(const Valuation<S>& original)
+        Valuation& operator+=(S value)
         {
-            base::pointer_t<S>::copyFrom(original);
-            return *this;
-        }
-
-        /** Add value to all the elements of this vector
-         * EXCEPT element 0 (reference clock).
-         * @param value: element to add.
-         */
-        Valuation<S>& operator+=(S value)
-        {
-            if (value != 0) {
-                for (S* i = this->begin() + 1; i < this->end(); ++i) {
+            if (value != 0 && !values.empty()) {
+                for (auto i = std::next(this->begin()); i != this->end(); ++i)
                     *i += value;
-                }
             }
             return *this;
         }
-        void reset() { std::fill(this->begin(), this->end(), 0); }
-        S last() const
+        /** Subtract an amount from all the elements EXCEPT #0.
+         * @param value: amount to subtract.
+         */
+        Valuation& operator-=(S value) { return *this += -value; }
+
+        /** Reset all values (except #0) to specific value */
+        void reset(S value = {})
         {
-            assert(base::pointer_t<S>::size() > 0);
-            return (*this)[base::pointer_t<S>::size() - 1];
+            if (!values.empty())
+                std::fill(std::next(this->begin()), this->end(), value);
+        }
+        const S& last() const
+        {
+            assert(!values.empty());
+            return values.back();
         }
 
-        S lastStatic() const
+        const S& lastStatic() const
         {
             assert(staticSize > 0);
             return (*this)[staticSize - 1];
         }
-
-        /** Subtract value to all the elements of this vector.
-         * @param value: element to subtract.
-         */
-        Valuation<S>& operator-=(S value) { return *this += -value; }
 
         /** @return the delay between this point and the
          * argument point. This has any sense iff
@@ -108,15 +82,12 @@ namespace dbm
          */
         S getDelayTo(const Valuation<S>& arg) const
         {
-            if (base::pointer_t<S>::size() <= 1) {
-                return 0;  // Only ref clock.
-            }
+            if (values.size() <= 1)
+                return 0;                   // Only ref clock.
             S delay = arg[1] - (*this)[1];  // Get delay.
 #ifndef NDEBUG                              // Check consistency.
-            size_t n = base::pointer_t<S>::size();
-            for (size_t i = 1; i < n; ++i) {
+            for (size_t i = 1, n = values.size(); i < n; ++i)
                 assert(arg[i] - (*this)[i] == delay);
-            }
 #endif
             return delay;
         }
@@ -150,37 +121,53 @@ namespace dbm
             // Copy the dynamic parts in common
             std::copy(src.begin(), src.end(), this->begin());
             for (size_t i = src.dynamicSize; i < dynamicSize; ++i) {
-                (*this)[staticSize + i] = 0;
+                (*this)[staticSize + i] = S{};
             }
         }
 
-        bool extend(size_t n)
+        /** Extend the number dynamic values by the specified amount. */
+        bool extend(size_t n, S value = {})
         {
-            S* buf = new S[n + dynamicSize + staticSize];
-
-            std::copy(base::pointer_t<S>::begin(), base::pointer_t<S>::end(), buf);
-            delete[] base::pointer_t<S>::data;
-            // dynamicSize += n;
-            std::fill_n(buf + staticSize + dynamicSize, n, 0);
             dynamicSize += n;
-            this->setData(buf, dynamicSize + staticSize);
+            values.resize(staticSize + dynamicSize, value);
             return true;
+        }
+
+        size_t size() const { return values.size(); }
+        auto begin() const { return values.cbegin(); }
+        auto end() const { return values.cend(); }
+        auto begin() { return values.begin(); }
+        auto end() { return values.end(); }
+
+        const S* data() const { return values.data(); }
+        S* data() { return values.data(); }
+
+        /** wrap and check */
+        S& operator[](size_t at)
+        {
+            assert(at < values.size());
+            return values[at];
+        }
+
+        /** wrap and check read-only */
+        const S& operator[](size_t at) const
+        {
+            assert(at < values.size());
+            return values[at];
         }
     };
 
+    template <typename S>
+    std::ostream& operator<<(std::ostream& os, const Valuation<S>& val)
+    {
+        os << '(' << val.size() << ")[";
+        for (auto& v : val)
+            os << ' ' << v;
+        return os << " ]";
+    }
+
     using IntValuation = Valuation<int32_t>;
     using DoubleValuation = Valuation<double>;
-
-    /** Overload += for automatic cast. */
-    /*    static inline
-        DoubleValuation& operator += (DoubleValuation& d, int32_t v) {
-            return d += (double)v;
-        }
-
-        static inline
-        DoubleValuation& operator += (DoubleValuation& d, double v) {
-            return d += v;
-        }*/
 }  // namespace dbm
 
 #endif  // INCLUDE_DBM_VALUATION_H

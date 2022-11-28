@@ -1,6 +1,7 @@
 /build
+/build-*
 /cmake-build-*
-/libs
+/local
 compile_commands.json
 
 /.idea

@@ -17,9 +17,6 @@
 #include "dbm/fed.h"
 #include "io/FileStreamBuffer.h"
 #include "base/bitstring.h"
-#include "debug/macros.h"
-
-#include <cstdlib>
 
 /* For easy reading */
 #define DBM(I, J) dbm[(I)*dim + (J)]

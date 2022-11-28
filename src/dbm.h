@@ -15,7 +15,6 @@
 #define DBM_DBM_H
 
 #include "dbm/constraints.h"  // bit_t
-#include "base/inttypes.h"
 
 #ifdef __cplusplus
 #include <cstddef>

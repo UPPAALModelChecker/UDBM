@@ -1128,12 +1128,6 @@ namespace dbm
         return *this;
     }
 
-    inline dbm_t& dbm_t::operator&=(const base::pointer_t<constraint_t>& c)
-    {
-        constrain(c.begin(), c.size());
-        return *this;
-    }
-
     inline dbm_t& dbm_t::operator&=(const std::vector<constraint_t>& vec)
     {
         constrain(&vec[0], vec.size());
@@ -1165,11 +1159,6 @@ namespace dbm
     inline bool dbm_t::constrain(const cindex_t* table, const constraint_t* cnstr, size_t n)
     {
         return !isEmpty() && ptr_constrain(table, cnstr, n);
-    }
-
-    inline bool dbm_t::constrain(const cindex_t* table, const base::pointer_t<constraint_t>& vec)
-    {
-        return !isEmpty() && ptr_constrain(table, vec.begin(), vec.size());
     }
 
     inline bool dbm_t::constrain(const cindex_t* table, const std::vector<constraint_t>& vec)
@@ -1852,12 +1841,6 @@ namespace dbm
         return *this;
     }
 
-    inline fed_t& fed_t::operator&=(const base::pointer_t<constraint_t>& c)
-    {
-        constrain(c.begin(), c.size());
-        return *this;
-    }
-
     inline fed_t& fed_t::operator&=(const std::vector<constraint_t>& vec)
     {
         constrain(&vec[0], vec.size());
@@ -2013,11 +1996,6 @@ namespace dbm
     inline dbm_t operator&(const constraint_t& c, const dbm_t& a) { return dbm_t(a) &= c; }
     inline fed_t operator&(const fed_t& a, const constraint_t& c) { return fed_t(a) &= c; }
     inline fed_t operator&(const constraint_t& c, const fed_t& a) { return fed_t(a) &= c; }
-
-    inline dbm_t operator&(const dbm_t& a, const base::pointer_t<constraint_t>& c) { return dbm_t(a) &= c; }
-    inline dbm_t operator&(const base::pointer_t<constraint_t>& c, const dbm_t& a) { return dbm_t(a) &= c; }
-    inline fed_t operator&(const fed_t& a, const base::pointer_t<constraint_t>& c) { return fed_t(a) &= c; }
-    inline fed_t operator&(const base::pointer_t<constraint_t>& c, const fed_t& a) { return fed_t(a) &= c; }
 
     inline dbm_t operator&(const dbm_t& a, const std::vector<constraint_t>& vec) { return dbm_t(a) &= vec; }
     inline dbm_t operator&(const std::vector<constraint_t>& vec, const dbm_t& a) { return dbm_t(a) &= vec; }

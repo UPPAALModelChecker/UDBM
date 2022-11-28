@@ -1,29 +1,21 @@
 // -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 ////////////////////////////////////////////////////////////////////
 //
-// Filename : testvaluation.cpp
-//
-// Basic tests of IntValuation and DoubleValuation
+// Unit tests for IntValuation and DoubleValuation
 //
 // This file is a part of the UPPAAL toolkit.
+// Copyright (c) 2011 - 2022, Aalborg University.
 // Copyright (c) 1995 - 2003, Uppsala University and Aalborg University.
-// All right reserved.
-//
-// $Id: testvaluation.cpp,v 1.1 2005/04/22 15:20:09 adavid Exp $
+// All rights reserved.
 //
 ///////////////////////////////////////////////////////////////////
 
-// Tests are always for debugging.
-
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-
 #include "dbm/Valuation.h"
-#include "debug/macros.h"
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <iostream>
-#include <ctime>
+
+#include <doctest/doctest.h>
 
 using namespace std;
 using namespace dbm;
@@ -34,47 +26,28 @@ static void test(int size)
     DoubleValuation dv(size);
 
     for (int i = 0; i < size; ++i) {
-        ASSERT(iv[i] == 0, cerr << iv[i] << endl);
-        ASSERT(dv[i] == 0.0, cerr << dv[i] << endl);
+        CHECK(iv[i] == 0);
+        CHECK(dv[i] == 0.0);
     }
 
     (iv += 3) -= 2;
     (dv += 3.1) -= 2;
 
     if (size > 0) {
-        assert(iv[0] == 0.0);
-        assert(dv[0] == 0.0);
+        CHECK(iv[0] == 0.0);
+        CHECK(dv[0] == 0.0);
     }
 
     for (int i = 1; i < size; ++i) {
-        ASSERT(iv[i] == 1, cerr << iv[i] << endl);
-        ASSERT(dv[i] == 1.1, cerr << dv[i] << endl);
+        CHECK(iv[i] == 1);
+        CHECK(dv[i] == 1.1);
     }
 
     cout << iv << endl << dv << endl;
 }
 
-int main(int argc, char* argv[])
+TEST_CASE("Valuation")
 {
-    int n, seed;
-
-    if (argc < 2) {
-        cerr << "Usage: " << argv[0] << " size [seed]\n";
-        return 1;
-    }
-
-    n = atoi(argv[1]);
-    seed = argc > 2 ? atoi(argv[2]) : time(NULL);
-    srand(seed);
-
-    /* Print the seed for the random generator
-     * to be able to repeat a failed test.
-     */
-    cout << "Test with seed=" << seed << endl;
-
-    for (int i = 0; i <= n; ++i)
+    for (int i = 0; i <= 20; ++i)
         test(i);
-
-    cout << "Passed\n";
-    return 0;
 }

@@ -145,17 +145,17 @@ namespace dbm
 
     bool pfed_t::contains(const IntValuation& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsInt, _1, ptr->dim, valuation())) != end();
+        return find_if(begin(), end(), bind(pdbm_containsInt, _1, ptr->dim, valuation.data())) != end();
     }
 
     bool pfed_t::contains(const DoubleValuation& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsDouble, _1, ptr->dim, valuation())) != end();
+        return find_if(begin(), end(), bind(pdbm_containsDouble, _1, ptr->dim, valuation.data())) != end();
     }
 
     bool pfed_t::containsWeakly(const IntValuation& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsIntWeakly, _1, ptr->dim, valuation())) != end();
+        return find_if(begin(), end(), bind(pdbm_containsIntWeakly, _1, ptr->dim, valuation.data())) != end();
     }
 
     relation_t pfed_t::relation(const pfed_t& b) const
@@ -357,7 +357,7 @@ namespace dbm
          * lambda x y . min(x, pdbm_getCostOfValuation(y, dim, val))
          */
         return accumulate(begin(), end(), INT_MAX,
-                          bind(min, _1, bind(pdbm_getCostOfValuation, _2, ptr->dim, valuation())));
+                          bind(min, _1, bind(pdbm_getCostOfValuation, _2, ptr->dim, valuation.data())));
     }
 
     void pfed_t::relax() { for_each(beginMutable(), endMutable(), bind(pdbm_relax, _1, ptr->dim)); }
