@@ -513,7 +513,9 @@ namespace dbm
         /// @pre same dimension.
 
         bool contains(const int32_t* point, cindex_t dim) const;
+        bool contains(const std::vector<int32_t>& point) const { return contains(point.data(), point.size()); }
         bool contains(const double* point, cindex_t dim) const;
+        bool contains(const std::vector<double>& point) const { return contains(point.data(), point.size()); }
 
         /** Compute the 'almost min' necessary delay from
          * a point to enter this federation. If this point
@@ -533,16 +535,16 @@ namespace dbm
          * wait >= 2.1 or wait > 2.1.
          * @pre minVal and minStrict are both NULL or non NULL.
          */
-        bool getMinDelay(const double* point, cindex_t dim, double* t, double* minVal = NULL, bool* minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
+        bool getMinDelay(const double* point, cindex_t dim, double* t, double* minVal = nullptr,
+                         bool* minStrict = nullptr, const uint32_t* stopped = nullptr) const;
 
         /**
          * Compute the max delay from a point such that it respects the
          * upper bound constraints of the DBM.
          * @return true if the delay is possible, false otherwise.
          */
-        bool getMaxDelay(const double* point, cindex_t dim, double* t, double* minVal = NULL, bool* minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
+        bool getMaxDelay(const double* point, cindex_t dim, double* t, double* minVal = nullptr,
+                         bool* minStrict = nullptr, const uint32_t* stopped = nullptr) const;
 
         /** Similarly for the past.
          *  The returned value (in t) is <= max.
@@ -600,7 +602,11 @@ namespace dbm
          * if isEmpty() or cval too constrained.
          * @post if freeC != NULL, forall i < dim: freeC[i] = false
          */
-        void getValuation(double* cval, cindex_t dimen, bool* freeC = NULL) const;
+        void getValuation(double* cval, cindex_t dimen, bool* freeC = nullptr) const;
+        void getValuation(std::vector<double>& cval, bool* freeC = nullptr) const
+        {
+            getValuation(cval.data(), cval.size(), freeC);
+        }
 
         /// Special constructor to copy the result of a pending operation.
         /// @param op: clock operation.
@@ -1192,8 +1198,13 @@ namespace dbm
          * wait >= 2.1 or wait > 2.1.
          * @pre minVal and minStrict are both NULL or non NULL.
          */
-        bool getMinDelay(const double* point, cindex_t dim, double* t, double* minVal = NULL, bool* minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
+        bool getMinDelay(const double* point, cindex_t dim, double* t, double* minVal = nullptr,
+                         bool* minStrict = nullptr, const uint32_t* stopped = nullptr) const;
+        bool getMinDelay(const std::vector<double>& point, double& t, double* minVal = nullptr,
+                         bool* minStrict = nullptr, const uint32_t* stopped = nullptr) const
+        {
+            return getMinDelay(point.data(), point.size(), &t, minVal, minStrict, stopped);
+        }
 
         /** Similarly for the past.
          *  The returned value (in t) is <= max, where max.
@@ -1209,9 +1220,15 @@ namespace dbm
          * @param min and max give the interval, max can be
          * HUGE_VAL to mean infinity.
          */
-        bool getDelay(const double* point, cindex_t dim, double* min, double* max, double* minVal = NULL,
-                      bool* minStrict = NULL, double* maxVal = NULL, bool* maxStrict = NULL,
-                      const uint32_t* stopped = NULL) const;
+        bool getDelay(const double* point, cindex_t dim, double* min, double* max, double* minVal = nullptr,
+                      bool* minStrict = nullptr, double* maxVal = nullptr, bool* maxStrict = nullptr,
+                      const uint32_t* stopped = nullptr) const;
+        bool getDelay(const std::vector<double>& point, double& min, double& max, double* minVal = nullptr,
+                      bool* minStrict = nullptr, double* maxVal = nullptr, bool* maxStrict = nullptr,
+                      const uint32_t* stopped = nullptr) const
+        {
+            return getDelay(point.data(), point.size(), &min, &max, minVal, minStrict, maxVal, maxStrict, stopped);
+        }
 
         bool isConstrainedBy(cindex_t, cindex_t, raw_t) const;
 
@@ -1270,7 +1287,11 @@ namespace dbm
          * @post if freeC != NULL, forall i < dim: freeC[i] = false
          * @pre same dimension.
          */
-        void getValuation(double* cval, cindex_t dimen, bool* freeC = NULL) const;
+        void getValuation(double* cval, cindex_t dimen, bool* freeC = nullptr) const;
+        void getValuation(std::vector<double>& cval, bool* freeC = nullptr) const
+        {
+            getValuation(cval.data(), cval.size(), freeC);
+        }
 
         /** predt operation: temporal predecessor of this federation
          * avoiding 'bad'. The extra argument 'restrict' is to apply
@@ -1282,9 +1303,9 @@ namespace dbm
          * without entering bad.
          * @pre same dimension.
          */
-        fed_t& predt(const fed_t& bad, const raw_t* restrict = NULL);
-        fed_t& predt(const dbm_t& bad, const raw_t* restrict = NULL);
-        fed_t& predt(const raw_t* bad, cindex_t dim, const raw_t* restrict = NULL);
+        fed_t& predt(const fed_t& bad, const raw_t* restrict = nullptr);
+        fed_t& predt(const dbm_t& bad, const raw_t* restrict = nullptr);
+        fed_t& predt(const raw_t* bad, cindex_t dim, const raw_t* restrict = nullptr);
 
         /** succt operation: symmetric to predt except that lower2upper(bad) is
          * added to the result (this is used for urgent action in strategies).

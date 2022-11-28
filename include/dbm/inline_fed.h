@@ -285,8 +285,7 @@ namespace dbm
         }
 
     private:
-        /// Must never be called
-        ~idbm_t() = delete;
+        ~idbm_t() = delete;  ///< Must never be called
 
         /* Inherited variables from parent class:
          * idbm_t **previous, *next: for collision list of
