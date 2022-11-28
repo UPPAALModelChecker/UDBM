@@ -9,14 +9,16 @@
 #include <stdexcept>
 #include <cstdlib>
 
-/*
- * constraintValue(i,j)
- * pre: dbm with dim has to be defined and 0 <= i,j < dim
- *
+/**
+ * get_bound(dbm, dim, i,j)
  * Returns c where x_i - x_j <= c in the dbm;
  */
-#define constraintValue(i, j) (dbm_raw2bound(dbm[(i)*dim + (j)]))
-#define b(i)                  (-rates[i])  // b is the notation for supply/demand in the network flow literature
+static inline int32_t get_bound(const raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j)
+{
+    return dbm_raw2bound(dbm[(i)*dim + (j)]);
+}
+/** b is the notation for supply/demand in the network flow literature */
+static inline int32_t b(const int32_t* rates, cindex_t i) { return -rates[i]; }
 
 /**
  * Tree structure:
@@ -70,7 +72,7 @@ static void printSimpleNodeInfo(const Tree& tree, const uint32_t i)
 static void printNodeInfo(const Tree& tree, const int32_t* rates, uint32_t i)
 {
     printSimpleNodeInfo(tree, i);
-    std::cerr << ", s/d: " << b(i) << " ";
+    std::cerr << ", s/d: " << b(rates, i) << " ";
     std::cerr << std::endl;
 }
 
@@ -101,9 +103,9 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, const Tre
     sum[0] = 0;
 
     for (auto i = 1u; i < dim; i++) {
-        sum[0] -= b(i);
-        total -= b(i);
-        sum[i] = b(i);
+        sum[0] -= b(rates, i);
+        total -= b(rates, i);
+        sum[i] = b(rates, i);
     }
     for (auto i = 1u; i < dim; i++) {
         const auto pred_i = tree.pred_of(i);
@@ -118,8 +120,8 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, const Tre
     for (auto i = 0u; i < dim; i++) {
         if (sum[i] != 0) {
             treeOK = false;
-            std::cerr << "sum[" << i << "] is corrupted: " << sum[i] << ", should be: " << (i == 0 ? total : b(i))
-                      << std::endl;
+            std::cerr << "sum[" << i << "] is corrupted: " << sum[i]
+                      << ", should be: " << (i == 0 ? total : b(rates, i)) << std::endl;
         }
     }
 
@@ -129,9 +131,9 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, const Tre
         const auto pred_i = tree.pred_of(i);
         if (tree[i].potential != dbm_INFINITY || pred_i != 0) {
             if (tree[i].inbound)
-                reduced_cost = constraintValue(pred_i, i) - tree[pred_i].potential + tree[i].potential;
+                reduced_cost = get_bound(dbm, dim, pred_i, i) - tree[pred_i].potential + tree[i].potential;
             else
-                reduced_cost = constraintValue(i, pred_i) + tree[pred_i].potential - tree[i].potential;
+                reduced_cost = get_bound(dbm, dim, i, pred_i) + tree[pred_i].potential - tree[i].potential;
             if (reduced_cost != 0) {
                 treeOK = false;
                 std::cerr << "Reduced cost not zero (" << reduced_cost << ") i (pot): " << i << " ("
@@ -168,9 +170,9 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, const Tre
     // For each node the subtree should match the thread.
     for (auto i = 1u; i < dim; i++) {
         uint32_t size = bits2intsize(dim);
-        std::vector<uint32_t> thread(size, 0);
-        std::vector<uint32_t> subtree(size, 0);
-        j = tree.thread_of(i);
+        auto thread = std::vector<uint32_t>(size, 0);
+        auto subtree = std::vector<uint32_t>(size, 0);
+        auto j = tree.thread_of(i);
         base_setOneBit(thread.data(), i);
         base_setOneBit(subtree.data(), i);
         // Getting the tread
@@ -216,10 +218,8 @@ static void printSolution(int32_t* valuation, const int32_t* rates, uint32_t dim
 
 static void printClockLowerBounds(const raw_t* dbm, uint32_t dim)
 {
-    for (uint32_t i = 1; i < dim; i++) {
-        std::cerr << "Lower bound " << i << ": " << -constraintValue(0, i) << std::endl;
-        ;
-    }
+    for (uint32_t i = 1; i < dim; i++)
+        std::cerr << "Lower bound " << i << ": " << -get_bound(dbm, dim, 0, i) << std::endl;
 }
 /*
 static void printAllConstraints(const raw_t *dbm, uint32_t dim, arc_t *arcs, uint32_t nbConstraints)
@@ -227,7 +227,7 @@ static void printAllConstraints(const raw_t *dbm, uint32_t dim, arc_t *arcs, uin
     for (uint32_t i = 0; i < nbConstraints; i++)
     {
         std::cerr << "Constraint " << i << ": x_" << arcs[i].i << " - x_" << arcs[i].j << " <= " <<
-constraintValue(arcs[i].i, arcs[i].j) << std::endl;
+get_bound(dbm, dim, arcs[i].i, arcs[i].j) << std::endl;
     }
 }
 
@@ -272,7 +272,7 @@ static void findInitialSpanningTreeSolution(const raw_t* dbm, const int32_t* rat
         node->thread = &tree[(i + 1) % dim];
         node->flow = abs(rates[i]);
 
-        if (b(i) < 0) {  // -rate(i) < 0
+        if (b(rates, i) < 0) {  // -rate(i) < 0
             node->inbound = true;
             node->potential = -dbm_raw2bound(dbm[i]);
         } else {  // -rate(i) >= 0
@@ -532,7 +532,7 @@ static auto enteringArcDanzig(const std::vector<arc_t>& arcs, const Tree& tree, 
     for (auto it = arcs.begin(); it != arcs.end(); ++it) {
         /* Check if reduced cost is negative, i.e.  c_ij - pi(i) +
          * pi(j) < 0 for any arcs in arcs */
-        int32_t reduced_cost = constraintValue(it->i, it->j) - tree[it->i].potential + tree[it->j].potential;
+        int32_t reduced_cost = get_bound(dbm, dim, it->i, it->j) - tree[it->i].potential + tree[it->j].potential;
 
         if (reduced_cost < lowest_reduced_cost) {
             lowest_reduced_cost = reduced_cost;
@@ -553,7 +553,7 @@ static auto enteringArcDanzig(const std::vector<arc_t>& arcs, const Tree& tree, 
 //         /* Check if reduced cost is negative, i.e.  c_ij - pi(i) +
 //          * pi(j) < 0 for any arcs in arcs.
 //          */
-//         int32_t reduced_cost = constraintValue(firstArc->i, firstArc->j)
+//         int32_t reduced_cost = get_bound(dbm, dim, firstArc->i, firstArc->j)
 //             - potential(firstArc->i) + potential(firstArc->j);
 //         if (reduced_cost < 0)
 //         {
@@ -654,16 +654,16 @@ static void testAndRemoveArtificialArcs(const raw_t* dbm, const int32_t* rates, 
             tree[i].inbound = true;
 
             Node* tmp = tree[i].thread;
-            [[maybe_unused]] int32_t rateSum = b(i);
+            [[maybe_unused]] int32_t rateSum = b(rates, i);
 
-            int32_t minPotential = dbm_INFINITY + constraintValue(0, i);
+            int32_t minPotential = dbm_INFINITY + get_bound(dbm, dim, 0, i);
 
             /*
              * Find the highest potential we can decrease i with and
              * maintain positive potentials.
              */
             while (tmp->depth > tree[i].depth) {
-                rateSum += b(tree.index_of(tmp));
+                rateSum += b(rates, tree.index_of(tmp));
                 if (tmp->potential < minPotential)
                     minPotential = tmp->potential;
                 tmp = tmp->thread;
@@ -752,7 +752,7 @@ static void infimumNetSimplex(const raw_t* dbm, const int32_t* rates, Tree& tree
          */
         Node* leave = findLeavingArc(k, l, root);
 
-        updateSpanningTree(k, l, leave, root, constraintValue(arc->i, arc->j));
+        updateSpanningTree(k, l, leave, root, get_bound(dbm, dim, arc->i, arc->j));
 
         ASSERT(checkTreeIntegrity(dbm, rates, tree, dim), printAllNodeInfo(tree, rates));
         // printAllNodeInfo(tree, rates, dim);
@@ -791,7 +791,7 @@ int32_t pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const 
         if (tree[i].potential == dbm_INFINITY && tree.pred_of(i) == 0 && tree[i].flow > 0) {
             return -dbm_INFINITY;
         }
-        solution += rates[i] * (tree[i].potential + constraintValue(0, i));
+        solution += rates[i] * (tree[i].potential + get_bound(dbm, dim, 0, i));
     }
 
     return solution;
@@ -802,7 +802,7 @@ void pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const int
     if (allPositive(rates, rates + dim)) {
         valuation[0] = 0;
         for (uint32_t i = 1; i < dim; ++i)
-            valuation[i] = -constraintValue(0, i);
+            valuation[i] = -get_bound(dbm, dim, 0, i);
     } else {
         auto tree = Tree(dim);
         infimumNetSimplex(dbm, rates, tree);
