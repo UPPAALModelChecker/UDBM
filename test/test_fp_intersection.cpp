@@ -16,25 +16,25 @@ void printConstraint(const raw_t constraint, const double i, const double j)
     std::cout << i << (dbm_rawIsStrict(constraint) ? "<" : "<=") << j << "+" << dbm_raw2bound(constraint) << std::endl;
 }
 
-#define DBM(I, J) dbm[(I)*dim + (J)]
+static inline raw_t get_bound(const raw_t* dbm, cindex_t dim, cindex_t i, cindex_t j) { return dbm[i * dim + j]; }
 void printViolatingConstraint(const raw_t* dbm, const double* pt, const uint32_t dim)
 {
     cindex_t i, j;
     for (i = 0; i < dim; ++i) {
         for (j = 0; j < dim; ++j) {
-            if (DBM(i, j) < dbm_LS_INFINITY) {
-                double bound = dbm_raw2bound(DBM(i, j));
+            if (get_bound(dbm, dim, i, j) < dbm_LS_INFINITY) {
+                double bound = dbm_raw2bound(get_bound(dbm, dim, i, j));
                 /* if strict: !(pi-pj < bij) -> false
                  * if weak  : !(pi-pj <= bij) -> false
                  */
-                if (dbm_rawIsStrict(DBM(i, j))) {
+                if (dbm_rawIsStrict(get_bound(dbm, dim, i, j))) {
                     // if (pt[i] >= pt[j]+bound) return false;
                     if (IS_GE(pt[i], pt[j] + bound))
-                        printConstraint(DBM(i, j), pt[i], pt[j]);
+                        printConstraint(get_bound(dbm, dim, i, j), pt[i], pt[j]);
                 } else {
                     // if (pt[i] > pt[j]+bound) return false;
                     if (IS_GT(pt[i], pt[j] + bound))
-                        printConstraint(DBM(i, j), pt[i], pt[j]);
+                        printConstraint(get_bound(dbm, dim, i, j), pt[i], pt[j]);
                 }
             }
         }
