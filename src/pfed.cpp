@@ -223,7 +223,7 @@ namespace dbm
             cindex_t x;
             int32_t oldrate = pdbm_getSlopeOfDelayTrajectory(*zone, dim);
 
-            pdbm_print(std::cout, zone->operator PDBM(), dim);
+//            pdbm_print(std::cout, zone->operator PDBM(), dim);
 
             if (rate == oldrate) {
                 /* This is a simple case which does not require splits.
@@ -487,19 +487,54 @@ namespace dbm
     }
 
     std::string pfed_t::toString(const ClockAccessor& access, bool full) const{
-        if (isEmpty()) {
-            return "false";
-        }
-        std::string str;
-        bool isFirst = true;
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (!isFirst) {
-                str += " || ";
+        bool dbmprinted = false;
+        bool brackets = size() > 1;
+        uint32_t size = getDimension();
+        std::stringstream out;
+        for (auto z = begin(); z != end(); ++z) {
+            bool oneprinted = false;
+            if (dbmprinted) {
+                out << " or ";
             }
-            str += i->toString(access, full);
-            isFirst = false;
+            if (brackets) {
+                out << "(";
+            }
+            for (uint32_t i = 0; i < size; i++) {
+                for (uint32_t j = 0; j < size; j++) {
+                    raw_t raw = z(i, j);
+                    bool strict = dbm_rawIsStrict(raw);
+                    int32_t bound = dbm_raw2bound(raw);
+                    if (raw < dbm_LS_INFINITY) {
+                        if (i != 0u) {
+                            if (i != j) {
+                                out << (oneprinted ? ", " : "") << access.getClockName(i);
+                                if (j > 0) {
+                                    out << "-" << access.getClockName(j);
+                                }
+                                out << (strict ? "<" : "<=") << bound;
+                                oneprinted = true;
+                            }
+                        } else if ((j != 0u) && ((bound != 0) || strict)) {
+                            // print for i==0,j!=0,bound!=0
+                            out << (oneprinted ? ", " : "") << access.getClockName(j) << (strict ? ">" : ">=")
+                                << -bound;
+                            oneprinted = true;
+                        }
+                    }
+                }
+            }
+            oneprinted = false;
+            out << " :";
+            for (uint32_t i = 1; i < size; ++i) {
+                out << (oneprinted? ",": "") << " r(" << access.getClockName(i) << ") = " << pdbm_getRate(z->operator PDBM(), size, i);
+                oneprinted = true;
+            }
+            if (brackets) {
+                out << ")";
+            }
+            dbmprinted = true;
         }
-        return str;
+        return out.str();
     }
 
     void pfed_t::updateClock(cindex_t x, cindex_t y){
@@ -559,8 +594,33 @@ namespace dbm
         throw std::logic_error("pfed_t::eq not implemented");
     }
 
-    pfed_t& pfed_t::unionWith(pfed_t& arg){
-        throw std::logic_error("pfed_t::unionWith not implemented");
+    bool pfed_t::unionWith(pfed_t& other) {
+        assert(ptr->dim == other.ptr->dim);
+        bool changed = false;
+
+        for (auto ot = other.beginMutable(); ot != other.endMutable(); ++ot) {
+            bool maybe_insert = true;
+            bool definitely_insert = false;
+            for (auto it = beginMutable(); it != endMutable();) {
+                switch (pdbm_relation(*ot, *it, ptr->dim)) {
+                case base_SUPERSET:
+                    it.remove();
+                    definitely_insert = true;
+                    break;
+                case base_SUBSET:
+                case base_EQUAL:
+                    maybe_insert = false;
+                case base_DIFFERENT:
+                    ++it;
+                    break;
+                }
+            }
+            if (definitely_insert || maybe_insert) {
+                add(*ot);
+                changed = true;
+            }
+        }
+        return changed;
     }
 
     int32_t pfed_t::maxOnZero(cindex_t x){

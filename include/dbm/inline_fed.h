@@ -512,6 +512,12 @@ namespace dbm
             return *this;
         }
 
+        bool unionWithChanged(dbmlist_t& arg) {
+            removeIncluded(arg);
+            append(arg);
+            return arg.size() > 0;
+        }
+
         /// Simple reduction by inclusion check of DBMs.
         void reduce(cindex_t dim);
 

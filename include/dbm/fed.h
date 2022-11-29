@@ -955,6 +955,9 @@ namespace dbm
         fed_t& unionWith(fed_t& arg);
         fed_t& unionWithC(fed_t arg);  // dummy wrapper
 
+        // Performs unionWith operation and returns whether the fed changed
+        bool unionWithChanged(const fed_t& arg);
+
         /// Simply add (list concatenation) DBMs to this federation.
         /// @pre same dimension.
 

@@ -290,6 +290,8 @@ namespace dbm
             /// Insert a DBM in the list at the current position.
             void insert(pdbm_t& pdbm);
 
+            const std::list<pdbm_t>::iterator& getInternalIterator() { return it; };
+
         private:
             std::list<pdbm_t>* zones;  /// list of DBMs
             std::list<pdbm_t>::iterator it;
@@ -318,6 +320,8 @@ namespace dbm
             const raw_t* operator()() const;
             raw_t operator()(cindex_t i, cindex_t j) const;
 
+            // New iterator at end
+
             /// Increment iterator, @pre !null()
             const_iterator& operator++();
 
@@ -333,6 +337,8 @@ namespace dbm
             /// Equality test of the internal fdbm_t*
             bool operator==(const const_iterator& arg) const;
             bool operator!=(const const_iterator& arg) const;
+
+            const std::list<pdbm_t>::const_iterator& getInternalIterator() { return it; };
 
         private:
             const std::list<pdbm_t>* zones;  /// list of DBMs
@@ -624,7 +630,9 @@ namespace dbm
          */
         raw_t getMaxLower(cindex_t) const;
 
-        /// Not implemented
+        /*
+         * Prints string
+         */
         std::string toString(const ClockAccessor&, bool full = false) const;
 
         /// Not implemented
@@ -672,8 +680,10 @@ namespace dbm
         bool eq(const pfed_t& arg) const;
 
 
-        /// Not implemented
-        pfed_t& unionWith(pfed_t& arg);
+        /*
+         * Non-exact union. Keeps all zones that are not subseteq of another zone. Returns true if the zones changed.
+         */
+        bool unionWith(pfed_t& arg);
 
         /// Not implemented
         int32_t maxOnZero(cindex_t clock);
@@ -921,7 +931,7 @@ namespace dbm
     inline void pfed_t::iterator::remove()
     {
         assert(pfed && zones);
-        zones->erase(it);
+        it = zones->erase(it);
     }
 
     inline void pfed_t::iterator::removeEmpty()
@@ -1031,7 +1041,6 @@ namespace dbm
         it = zones->end();
         return *this;
     }
-
 }  // namespace dbm
 
 #endif /* DBM_PFED_H */

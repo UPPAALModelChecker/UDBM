@@ -1374,6 +1374,22 @@ namespace dbm
         return *this;
     }
 
+    bool fed_t::unionWithChanged(const fed_t& arg) {
+        assert(getDimension() == arg.getDimension());
+        assert(isOK());
+        assert(arg.isOK());
+
+        if (!arg.isEmpty()) {
+            setMutable();
+            auto copy = fed_t(arg);
+            copy.setMutable();
+            bool changed = ifed()->unionWithChanged(*copy.ifed());
+            copy.ifed()->reset();
+            return changed;
+        }
+        return false;
+    }
+
     fed_t& fed_t::append(fed_t& arg)
     {
         assert(getDimension() == arg.getDimension());
