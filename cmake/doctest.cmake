@@ -1,4 +1,4 @@
-find_package(doctest 2.4.9 QUIET)
+find_package(doctest 2.4.8 QUIET)
 if(doctest_FOUND)
   message(STATUS "Found doctest preinstalled.")
 else(doctest_FOUND)

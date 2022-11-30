@@ -22,12 +22,12 @@
       library = (pkgs: nativePkgs:
         uutils.addCrossCheck pkgs nativePkgs (pkgs.stdenv.mkDerivation {
           pname = "UDBM";
-          version = "1.2.0";
+          version = "2.0.12";
           src = ./.;
-          nativeBuildInputs = with nativePkgs; [ cmake ];
+          nativeBuildInputs = with nativePkgs; [ cmake clang-tools_14 ];
           propagatedBuildInputs = [ (uutils.library pkgs nativePkgs) ];
           buildInputs = with pkgs; [ doctest boost174 ];
-          cmakeFlags = [ "-DTESTING=ON" ];
+          cmakeFlags = [ "-DUDBM_WITH_TESTS=ON" ];
           doCheck = true;
         }));
 
