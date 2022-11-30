@@ -18,20 +18,22 @@
 #include "io/FileStreamBuffer.h"
 #include "base/bitstring.h"
 
-/* For easy reading */
-#define DBM(I, J) dbm[(I)*dim + (J)]
-#define SRC(I, J) src[(I)*dim + (J)]
-#define DST(I, J) dst[(I)*dim + (J)]
-
 /* For debugging */
+static inline void ASSERT_DIAG_OK(raw_t* DBM, cindex_t DIM)
+{
+    ASSERT(dbm_isDiagonalOK(DBM, DIM), dbm_print(stderr, DBM, DIM));
+}
 
-#define ASSERT_DIAG_OK(DBM, DIM)   ASSERT(dbm_isDiagonalOK(DBM, DIM), dbm_print(stderr, DBM, DIM))
-#define ASSERT_NOT_EMPTY(DBM, DIM) ASSERT(!dbm_debugIsEmpty(DBM, DIM), dbm_print(stderr, DBM, DIM))
+/** For easy conversion FILE* to ostream */
+class file_ostream
+{
+    io::FileStreamBuffer buffer;
+    std::ostream os;
 
-/* For easy convertion FILE* to ostream */
-#define OUT2OS()                   \
-    io::FileStreamBuffer fsb(out); \
-    std::ostream os(&fsb)
+public:
+    file_ostream(FILE* file): buffer{file}, os{&buffer} {}
+    operator std::ostream&() { return os; }
+};
 
 static const char* _print_prefix = "";
 static bool _ruby_format = false;
@@ -39,10 +41,7 @@ static bool _ruby_format = false;
 /* Wrappers */
 namespace dbm
 {
-    std::ostream& operator<<(std::ostream& os, const dbm::dbm_t& dbm)
-    {
-        return dbm_cppPrint(os, dbm(), dbm.getDimension());
-    }
+    std::ostream& operator<<(std::ostream& os, const dbm::dbm_t& dbm) { return dbm_cppPrint(os, dbm.dbm_read()); }
 
     std::ostream& operator<<(std::ostream& os, const dbm::fed_t& fed)
     {
@@ -70,7 +69,7 @@ namespace dbm
             os << '\n';
         } else {
             for (dbm::fed_t::const_iterator iter(fed); !iter.null();) {
-                dbm_cppPrint(os, iter(), dim);
+                dbm_cppPrint(os, iter);
                 ++iter;
                 if (!iter.null()) {
                     os << _print_prefix << (_ruby_format ? ",matrix\\\n" : ",\n");
@@ -89,7 +88,7 @@ std::ostream& operator<<(std::ostream& os, const constraint_t& c)
 
 void dbm_setPrintPrefix(const char* prefix)
 {
-    if (prefix) {
+    if (prefix != nullptr) {
         _print_prefix = prefix;
     } else {
         _print_prefix = "";
@@ -100,27 +99,26 @@ void dbm_setRubyFormat(bool mode) { _ruby_format = mode; }
 
 /* Call print raw on all constraints.
  */
-std::ostream& dbm_cppPrint(std::ostream& out, const raw_t* dbm, cindex_t dim)
+std::ostream& dbm_cppPrint(std::ostream& os, dbm::reader dbm)
 {
-    cindex_t i, j;
-
-    if (dbm) {
-        for (i = 0; i < dim; ++i) {
-            out << _print_prefix;
-            for (j = 0; j < dim; ++j) {
-                dbm_cppPrintRaw(out, DBM(i, j)) << '\t';
+    const auto dim = dbm.get_dim();
+    if (dbm != nullptr) {
+        for (cindex_t i = 0; i < dim; ++i) {
+            os << _print_prefix;
+            for (cindex_t j = 0; j < dim; ++j) {
+                dbm_cppPrintRaw(os, dbm.at(i, j)) << '\t';
             }
-            out << "\\\n";
+            os << "\\\n";
         }
     }
 
-    return out;
+    return os;
 }
-void dbm_print(FILE* out, const raw_t* dbm, cindex_t dim)
+void dbm_print(FILE* file, const raw_t* dbm, cindex_t dim)
 {
-    if (dbm) {
-        OUT2OS();
-        dbm_cppPrint(os, dbm, dim);
+    if (dbm != nullptr) {
+        auto fos = file_ostream{file};
+        dbm_cppPrint(fos, {dbm, dim});
     }
 }
 
@@ -128,66 +126,72 @@ void dbm_print(FILE* out, const raw_t* dbm, cindex_t dim)
  * depending on the activation of the colors.
  */
 #ifndef NPRETTY_COLORS
-#define PRE_DIFF() \
-    if (diff)      \
-    out << RED(BOLD)
-#define POST_DIFF() \
-    if (diff)       \
-    out << NORMAL
+static inline void PRE_DIFF(std::ostream& os, const raw_t diff)
+{
+    if (diff != 0)
+        os << RED(BOLD);
+}
+static inline void POST_DIFF(std::ostream& os, const raw_t diff)
+{
+    if (diff != 0)
+        os << NORMAL;
+}
 #else
-#define PRE_DIFF()
-#define POST_DIFF() \
-    if (diff)       \
-    out << '*'
+static inline void PRE_DIFF(std::ostream& os, bool diff) {}
+static inline void POST_DIFF(std::ostream& os, bool diff)
+{
+    if (diff)
+        os << '*';
+}
 #endif
 
 /* Similar to print but do it twice and mark
  * the difference between the DBMs.
  */
-std::ostream& dbm_cppPrintDiff(std::ostream& out, const raw_t* src, const raw_t* dst, cindex_t dim)
+std::ostream& dbm_cppPrintDiff(std::ostream& os, dbm::reader src, dbm::reader dst)
 {
     cindex_t i, j;
     assert(src && dst);
+    assert(src.get_dim() == dst.get_dim());
 
-    out << "DBM diff " << dim << 'x' << dim << ":\n";
+    const auto dim = src.get_dim();
+    os << "DBM diff " << dim << 'x' << dim << ":\n";
 
     for (i = 0; i < dim; ++i) {
-        raw_t diff = SRC(i, 0) ^ DST(i, 0);
-        PRE_DIFF();
-        dbm_cppPrintRaw(out, SRC(i, 0));
-        POST_DIFF();
+        raw_t diff = src.at(i, 0) ^ dst.at(i, 0);
+        PRE_DIFF(os, diff);
+        dbm_cppPrintRaw(os, src.at(i, 0));
+        POST_DIFF(os, diff);
         for (j = 1; j < dim; ++j) {
-            out << '\t';
-            diff = SRC(i, j) ^ DST(i, j);
-            PRE_DIFF();
-            dbm_cppPrintRaw(out, SRC(i, j));
-            POST_DIFF();
+            os << '\t';
+            diff = src.at(i, j) ^ dst.at(i, j);
+            PRE_DIFF(os, diff);
+            dbm_cppPrintRaw(os, src.at(i, j));
+            POST_DIFF(os, diff);
         }
-        out << '\n';
+        os << '\n';
     }
 
-    out << '\n';
+    os << '\n';
     for (i = 0; i < dim; ++i) {
-        raw_t diff = SRC(i, 0) ^ DST(i, 0);
-        PRE_DIFF();
-        dbm_cppPrintRaw(out, DST(i, 0));
-        POST_DIFF();
+        raw_t diff = src.at(i, 0) ^ dst.at(i, 0);
+        PRE_DIFF(os, diff);
+        dbm_cppPrintRaw(os, dst.at(i, 0));
+        POST_DIFF(os, diff);
         for (j = 1; j < dim; ++j) {
-            out << '\t';
-            diff = SRC(i, j) ^ DST(i, j);
-            PRE_DIFF();
-            dbm_cppPrintRaw(out, DST(i, j));
-            POST_DIFF();
+            os << '\t';
+            diff = src.at(i, 0) ^ dst.at(i, 0);
+            PRE_DIFF(os, diff);
+            dbm_cppPrintRaw(os, dst.at(i, j));
+            POST_DIFF(os, diff);
         }
-        out << '\n';
+        os << '\n';
     }
-
-    return out;
+    return os;
 }
-void dbm_printDiff(FILE* out, const raw_t* src, const raw_t* dst, cindex_t dim)
+void dbm_printDiff(FILE* file, const raw_t* src, const raw_t* dst, cindex_t dim)
 {
-    OUT2OS();
-    dbm_cppPrintDiff(os, src, dst, dim);
+    dbm_cppPrintDiff(file_ostream{file}, {src, dim}, {dst, dim});
 }
 
 #undef PRE_DIFF
@@ -197,26 +201,23 @@ void dbm_printDiff(FILE* out, const raw_t* src, const raw_t* dst, cindex_t dim)
  * - close the copy
  * - print the difference
  */
-std::ostream& dbm_cppPrintCloseDiff(std::ostream& out, const raw_t* dbm, cindex_t dim)
+std::ostream& dbm_cppPrintCloseDiff(std::ostream& out, dbm::reader dbm)
 {
-    raw_t* copy = new raw_t[dim * dim];
-
-    assert(dbm && dim);
-    dbm_copy(copy, dbm, dim);
-    dbm_close(copy, dim);
-    if (dbm_isEmpty(copy, dim)) {
+    assert(dbm);
+    const auto dim = dbm.get_dim();
+    auto copy = std::vector<raw_t>(dim * dim, 0);
+    dbm_copy(copy.data(), dbm, dim);
+    dbm_close(copy.data(), dim);
+    if (dbm_isEmpty(copy.data(), dim)) {
         out << RED(BOLD) "Warning: empty DBM!" NORMAL " ";
     }
-    dbm_cppPrintDiff(out, dbm, copy, dim);
-
-    delete[] copy;
+    dbm_cppPrintDiff(out, {dbm, dim}, {copy.data(), dim});
 
     return out;
 }
-void dbm_printCloseDiff(FILE* out, const raw_t* dbm, cindex_t dim)
+void dbm_printCloseDiff(FILE* file, const raw_t* dbm, cindex_t dim)
 {
-    OUT2OS();
-    dbm_cppPrintCloseDiff(os, dbm, dim);
+    dbm_cppPrintCloseDiff(file_ostream{file}, {dbm, dim});
 }
 
 /* check for infinity values
@@ -226,87 +227,73 @@ std::ostream& dbm_cppPrintRaw(std::ostream& out, raw_t c)
 {
     return dbm_cppPrintBound(out << (dbm_rawIsWeak(c) ? "<=" : "<"), dbm_raw2bound(c));
 }
-void dbm_printRaw(FILE* out, raw_t c)
-{
-    OUT2OS();
-    dbm_cppPrintRaw(os, c);
-}
+void dbm_printRaw(FILE* file, raw_t c) { dbm_cppPrintRaw(file_ostream{file}, c); }
 
 /* Test for infinity and valid values.
  */
-std::ostream& dbm_cppPrintBound(std::ostream& out, int32_t bound)
+std::ostream& dbm_cppPrintBound(std::ostream& os, int32_t bound)
 {
     if (bound == dbm_INFINITY) {
-        return out << "INF";
+        return os << "INF";
     } else if (bound == -dbm_INFINITY) {
-        return out << "-INF";
+        return os << "-INF";
     } else if (bound > dbm_INFINITY || bound < -dbm_INFINITY) {
-        return out << "illegal";
+        return os << "illegal";
     } else {
-        return out << bound;
+        return os << bound;
     }
 }
-void dbm_printBound(FILE* out, int32_t bound)
-{
-    OUT2OS();
-    dbm_cppPrintBound(os, bound);
-}
+void dbm_printBound(FILE* file, int32_t bound) { dbm_cppPrintBound(file_ostream{file}, bound); }
 
 /* Format: [a b c]
  * Print 1st element separately and other preceded by ' '.
  */
-std::ostream& dbm_cppPrintRaws(std::ostream& out, const raw_t* data, size_t size)
+std::ostream& dbm_cppPrintRaws(std::ostream& os, const raw_t* data, size_t size)
 {
     assert(size == 0 || data);
 
-    out << '[';
-    if (size) {
+    os << '[';
+    if (size != 0) {
         size_t i;
-        dbm_cppPrintRaw(out, data[0]);
+        dbm_cppPrintRaw(os, data[0]);
         for (i = 1; i < size; ++i) {
-            dbm_cppPrintRaw(out << ' ', data[i]);
+            dbm_cppPrintRaw(os << ' ', data[i]);
         }
     }
-    return out << ']';
+    return os << ']';
 }
-void dbm_printRaws(FILE* out, const raw_t* data, size_t size)
-{
-    OUT2OS();
-    dbm_cppPrintRaws(os, data, size);
-}
+void dbm_printRaws(FILE* file, const raw_t* data, size_t size) { dbm_cppPrintRaws(file_ostream{file}, data, size); }
 
 /* Print with the format [a b c]
  */
-std::ostream& dbm_cppPrintBounds(std::ostream& out, const int32_t* data, size_t size)
+std::ostream& dbm_cppPrintBounds(std::ostream& os, const int32_t* data, size_t size)
 {
     assert(size == 0 || data);
 
-    out << '[';
+    os << '[';
     for (size_t i = 0; i < size; ++i) {
         if (i > 0)
-            out << ' ';
-        dbm_cppPrintBound(out, data[i]);
+            os << ' ';
+        dbm_cppPrintBound(os, data[i]);
     }
-    return out << ']';
+    return os << ']';
 }
-void dbm_printBounds(FILE* out, const int32_t* data, size_t size)
+void dbm_printBounds(FILE* file, const int32_t* data, size_t size)
 {
-    OUT2OS();
-    dbm_cppPrintBounds(os, data, size);
+    dbm_cppPrintBounds(file_ostream{file}, data, size);
 }
 
-std::ostream& dbm_cppPrintConstraints(std::ostream& out, const constraint_t* c, size_t n)
+std::ostream& dbm_cppPrintConstraints(std::ostream& os, const constraint_t* c, size_t n)
 {
     assert(c);
     for (size_t i = 0; i < n; ++i) {
         if (i > 0)
-            out << ' ';
-        dbm_cppPrintRaw(out << '(' << c[i].i << ")-(" << c[i].j << ')', c[i].value);
+            os << ' ';
+        dbm_cppPrintRaw(os << '(' << c[i].i << ")-(" << c[i].j << ')', c[i].value);
     }
-    return out;
+    return os;
 }
-void dbm_printConstraints(FILE* out, const constraint_t* c, size_t n)
+void dbm_printConstraints(FILE* file, const constraint_t* c, size_t n)
 {
-    OUT2OS();
-    dbm_cppPrintConstraints(os, c, n);
+    dbm_cppPrintConstraints(file_ostream{file}, c, n);
 }

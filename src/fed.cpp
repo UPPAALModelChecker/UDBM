@@ -56,6 +56,7 @@ using namespace std::placeholders;  // _1, _2, etc for std::bind
 
 // Default subtraction.
 #ifndef SUBTRACTION_ALGORITHM
+// NOLINTNEXTLINE
 #define SUBTRACTION_ALGORITHM 3
 #endif
 
@@ -258,7 +259,7 @@ namespace dbm
         dbmlist_t result;
         bool isMutable = false;
         uint32_t i = 0, j = 0, c = 0;
-        uint32_t k = static_cast<uint32_t>(nbConstraints);
+        auto k = static_cast<uint32_t>(nbConstraints);
 
         if (nbConstraints == 0)
             return result;
@@ -277,14 +278,14 @@ namespace dbm
                 {
                     indices[c++] = i | (j << 16);  // accept i,j
                 }
-                if (!--k)
+                if (--k == 0)
                     goto indices_read;
                 assert(count);
             }
             j += count;  // unread bits
         }
     indices_read:
-        if (!c)
+        if (c == 0)
             goto finish_subtract;
         nbConstraints = c;  // number of accepted constraints
 
@@ -302,7 +303,7 @@ namespace dbm
                     return result.append(fdbm1);
                 }
                 if (dbm2[ci * dim + cj] >= dbm1[ci * dim + cj]) {
-                    if (!--nbConstraints)
+                    if (--nbConstraints == 0)
                         goto finish_subtract;
                     // Playing with the order is sometimes better, sometimes worse.
                     indices[k] = indices[nbConstraints];
@@ -347,7 +348,7 @@ namespace dbm
             if (dbm2[i * dim + j] < dbm1[i * dim + j]) {
                 raw_t negConstraint = dbm_negRaw(dbm2[i * dim + j]);
                 assert(negConstraint < dbm1[j * dim + i]);  // checked before
-                if (!nbConstraints)                         // is last constraint?
+                if (nbConstraints == 0)                     // is last constraint?
                 {
                     dbm_tighten(isMutable ? dbm1 : fdbm1->dbmt().getCopy(), dim, j, i, negConstraint);
                     INC();
@@ -365,7 +366,7 @@ namespace dbm
 #warning "Subtraction: Result not disjoint."
 #endif
             }
-        } while (nbConstraints);
+        } while (nbConstraints != 0);
 
         /************** Deallocate remainder left and return result ****************/
     finish_subtract:
@@ -458,8 +459,8 @@ namespace dbm
     // Not inlined to reduce code size since fdbm_allocator expands a lot.
     fdbm_t* fdbm_t::create(fdbm_t* nxt)
     {
-        assert(sizeof(alloc_fdbm_t) == sizeof(fdbm_t));
-        fdbm_t* fdbm = reinterpret_cast<fdbm_t*>(fdbm_allocator.allocate());
+        static_assert(sizeof(alloc_fdbm_t) == sizeof(fdbm_t));
+        auto* fdbm = reinterpret_cast<fdbm_t*>(fdbm_allocator.allocate());
         fdbm->next = nxt;
         return fdbm;
     }
@@ -485,11 +486,11 @@ namespace dbm
 
     fdbm_t* fdbm_t::append(fdbm_t* start, fdbm_t* end)
     {
-        if (!start)
+        if (start == nullptr)
             return end;
-        if (end) {
+        if (end != nullptr) {
             fdbm_t* fdbm;
-            for (fdbm = start; fdbm->next; fdbm = fdbm->next)
+            for (fdbm = start; fdbm->next != nullptr; fdbm = fdbm->next)
                 ;
             fdbm->next = end;
         }
@@ -505,7 +506,7 @@ namespace dbm
         RECORD_STAT();
         for (fdbm_t** i = &fhead; *i != nullptr;) {
             fdbm_t** j = &arg.fhead;
-            if (!*j)
+            if (*j == nullptr)
                 break;  // stop all
             do {
                 switch ((*i)->const_dbmt().relation((*j)->const_dbmt())) {
@@ -582,7 +583,7 @@ namespace dbm
             // Jump already (assumed) reduced head.
             fdbm_t** fi;
             for (fi = head; jumpi != 0; --jumpi) {
-                if (!*fi)
+                if (*fi == nullptr)
                     return;
                 fi = (*fi)->getNextMutable();
             }
@@ -595,10 +596,10 @@ namespace dbm
                     const raw_t* dbm1 = dbmi.const_dbm();
                     const raw_t* dbm2 = dbmj.const_dbm();
                     cindex_t nbOK = (dim <= 2) ? 1 : 0;
-                    int superset = 1, subset = 1;
+                    bool superset = true, subset = true;
 
                     for (cindex_t i = 1; i < dim; ++i) {
-                        cindex_t constraintsOK = 0;
+                        bool constraintsOK = false;
                         for (cindex_t j = 0; j < i; ++j) {
                             uint32_t ij = i * dim + j;
                             uint32_t ji = j * dim + i;
@@ -617,16 +618,16 @@ namespace dbm
                             }
 
                             // Relation by the way :)
-                            subset &= dbm1[ij] <= dbm2[ij];
-                            superset &= dbm1[ij] >= dbm2[ij];
-                            subset &= dbm1[ji] <= dbm2[ji];
-                            superset &= dbm1[ji] >= dbm2[ji];
+                            subset &= (dbm1[ij] <= dbm2[ij]);
+                            superset &= (dbm1[ij] >= dbm2[ij]);
+                            subset &= (dbm1[ji] <= dbm2[ji]);
+                            superset &= (dbm1[ji] >= dbm2[ji]);
 
                             // Compatible constraints
-                            constraintsOK = constraintsOK | ((dbm1[ij] == dbm2[ij]) &  // | possible
-                                                             (dbm1[ji] == dbm2[ji]));
+                            constraintsOK |= ((dbm1[ij] == dbm2[ij]) &&  // | possible
+                                              (dbm1[ji] == dbm2[ji]));
                         }
-                        nbOK += constraintsOK;
+                        nbOK += constraintsOK ? 1 : 0;
                     }
                     if (subset)  // remove dbmi
                     {
@@ -643,7 +644,7 @@ namespace dbm
                         *fj = (*fj)->removeAndNext();
                         decSize();
                         continue;
-                    } else if ((level || !restricted_merge) ? nbOK > 0 : nbOK + 2 >= dim) {
+                    } else if ((level != 0 || !restricted_merge) ? nbOK > 0 : nbOK + 2 >= dim) {
                         RECORD_SUBSTAT("mergeable");
                         dbm_t convex = dbmi;
                         convex += dbmj;
@@ -653,7 +654,7 @@ namespace dbm
                         // if ((fed_t(convex) -= dbmi) <= dbmj)
                         fed_t fc(convex);
                         bool safeMerge = (fc -= dbmi) <= dbmj;
-                        if (!safeMerge && level) {
+                        if (!safeMerge && level != 0) {
                             fc -= dbmj;
                             assert(!fc.isEmpty());
                             if (level == 1) {
@@ -774,8 +775,8 @@ namespace dbm
     // Not inlined to reduce code size since ifed_allocator expands a lot.
     ifed_t* ifed_t::create(cindex_t dim, size_t size, fdbm_t* head)
     {
-        assert(sizeof(ifed_t) == sizeof(alloc_ifed_t));
-        ifed_t* ifed = reinterpret_cast<ifed_t*>(ifed_allocator.allocate());
+        static_assert(sizeof(ifed_t) == sizeof(alloc_ifed_t));
+        auto* ifed = reinterpret_cast<ifed_t*>(ifed_allocator.allocate());
         ifed->refCounter = 1;
         ifed->fedSize = size;
         ifed->dim = dim;
@@ -800,7 +801,7 @@ namespace dbm
         uint32_t ddim = getDimension();
         uint32_t i = 0;
         ddim *= ddim;
-        for (const fdbm_t* fdbm = fhead; fdbm; fdbm = fdbm->getNext()) {
+        for (const fdbm_t* fdbm = fhead; fdbm != nullptr; fdbm = fdbm->getNext()) {
             hashValue[i++] = hash_computeI32(fdbm->const_dbmt().const_dbm(), ddim, ddim);
         }
         std::sort(hashValue.data(), hashValue.data() + i);
@@ -854,7 +855,7 @@ namespace dbm
     {
         for (const_iterator iter = begin(); !iter.null(); ++iter) {
             // cheat on the const because this does not modify the DBM
-            // itself. This pospones copies of ifed_t and dbm_t.
+            // itself. This postpones copies of ifed_t and dbm_t.
             const_cast<dbm_t&>(*iter).intern();
         }
     }
@@ -1083,11 +1084,11 @@ namespace dbm
             i = 0;
             do {
                 subset &= crossRel[i];
-            } while (++i < thisSize && subset);
+            } while (++i < thisSize && subset != 0);
             i = 0;
             do {
                 superset &= crossRel[i];
-            } while (++i < argSize && superset);
+            } while (++i < argSize && superset != 0);
 
             // Result:
             // SUBSET if all DBMs of this <= some DBM of arg
@@ -1203,11 +1204,11 @@ namespace dbm
         } else if (getDimension() != arg.getDimension()) {
             return base_DIFFERENT;
         } else {
-            bool thisIncluded = isSubtractionEmpty(arg);
-            bool argIncluded = arg.isSubtractionEmpty(*this);
+            auto thisIncluded = isSubtractionEmpty(arg) ? 1u : 0u;
+            auto argIncluded = arg.isSubtractionEmpty(*this) ? 1u : 0u;
 
             // Accumulate results
-            assert(base_SUPERSET == 1 && base_SUBSET == 2);
+            static_assert(base_SUPERSET == 1 && base_SUBSET == 2);
             assert((thisIncluded | argIncluded | 1) == 1);
 
             return (relation_t)((thisIncluded << 1) | argIncluded);
@@ -1221,11 +1222,11 @@ namespace dbm
         if (getDimension() != arg.getDimension()) {
             return base_DIFFERENT;
         } else {
-            bool thisIncluded = isSubtractionEmpty(arg);
-            bool argIncluded = arg.isSubtractionEmpty(*this);
+            auto thisIncluded = isSubtractionEmpty(arg) ? 1u : 0u;
+            auto argIncluded = arg.isSubtractionEmpty(*this) ? 1u : 0u;
 
             // Accumulate results
-            assert(base_SUPERSET == 1 && base_SUBSET == 2);
+            static_assert(base_SUPERSET == 1 && base_SUBSET == 2);
             assert((thisIncluded | argIncluded | 1) == 1);
 
             return (relation_t)((thisIncluded << 1) | argIncluded);
@@ -1240,11 +1241,11 @@ namespace dbm
         if (dim != getDimension()) {
             return base_DIFFERENT;
         } else {
-            bool thisIncluded = isSubtractionEmpty(arg, dim);
-            bool argIncluded = isSubtractionEmpty(arg, dim, *this);
+            auto thisIncluded = isSubtractionEmpty(arg, dim) ? 1u : 0u;
+            auto argIncluded = isSubtractionEmpty(arg, dim, *this) ? 1u : 0u;
 
             // Accumulate results
-            assert(base_SUPERSET == 1 && base_SUBSET == 2);
+            static_assert(base_SUPERSET == 1 && base_SUBSET == 2);
             assert((thisIncluded | argIncluded | 1) == 1);
 
             return (relation_t)((thisIncluded << 1) | argIncluded);
@@ -1824,7 +1825,7 @@ namespace dbm
     {
         assert(isOK());
 
-        if (!stopped) {
+        if (stopped == nullptr) {
             return up();
         }
 
@@ -1838,7 +1839,7 @@ namespace dbm
     {
         assert(isOK());
 
-        if (!stopped) {
+        if (stopped == nullptr) {
             return down();
         }
 
@@ -2100,7 +2101,7 @@ namespace dbm
                     ifedPtr->incSize();
                     fdbm = current->getNextMutable();  // and continue
                 }
-            } while (*fdbm);
+            } while (*fdbm != nullptr);
         }
         return *this;
     }
@@ -2127,9 +2128,9 @@ namespace dbm
                 for (fdbm_t** fj = (*fi)->getNextMutable(); *fj != nullptr;) {
                     const dbm_t& dbmj = (*fj)->const_dbmt();
                     const raw_t* dbm2 = dbmj.const_dbm();
-                    int subset = 1, superset = 1;
-                    int compatible = (dim <= 2);
-                    int symCompatible = compatible;
+                    bool subset = true, superset = true;
+                    bool compatible = (dim <= 2);
+                    bool symCompatible = compatible;
                     for (cindex_t i = 1; i < dim; ++i) {
                         for (cindex_t j = 0; j < i; ++j) {
                             uint32_t ij = i * dim + j;
@@ -2151,13 +2152,13 @@ namespace dbm
                             }
 #endif
                             // Check DBMs, no jump everything goes in the pipeline.
-                            int comp1 = dbm1[ij] == dbm2[ij];
+                            bool comp1 = dbm1[ij] == dbm2[ij];
                             compatible |= comp1;
                             subset &= dbm1[ij] <= dbm2[ij];
                             superset &= dbm1[ij] >= dbm2[ij];
-                            int comp2 = dbm1[ji] == dbm2[ji];
+                            bool comp2 = dbm1[ji] == dbm2[ji];
                             compatible |= comp2;
-                            symCompatible |= comp1 & comp2;
+                            symCompatible |= comp1 && comp2;
                             subset &= dbm1[ji] <= dbm2[ji];
                             superset &= dbm1[ji] >= dbm2[ji];
                         }
@@ -2424,7 +2425,7 @@ namespace dbm
                     break;
                 }
             }
-            if (dbm1) {
+            if (dbm1 != nullptr) {
             retry:
                 // Possible backward delay of point in dbm1
                 double delay = fed_diff(point[1] - totalDelay, dbm1[1]);
@@ -2470,7 +2471,7 @@ namespace dbm
         // Special case.
         if (dim == 1 && !isEmpty()) {
             *t = 0.0;
-            if (minVal && isStrict) {
+            if (minVal != nullptr && isStrict != nullptr) {
                 *minVal = 0;
                 *isStrict = false;
             }
@@ -2478,20 +2479,20 @@ namespace dbm
         }
 
         *t = HUGE_VAL;
-        if (minVal && isStrict) {
+        if (minVal != nullptr && isStrict != nullptr) {
             *minVal = HUGE_VAL;
             *isStrict = true;
         }
         double di = HUGE_VAL;
         double bound = std::numeric_limits<double>::quiet_NaN();
         bool strict = false;
-        double* boundPtr = minVal ? &bound : nullptr;
-        bool* strictPtr = isStrict ? &strict : nullptr;
+        double* boundPtr = minVal != nullptr ? &bound : nullptr;
+        bool* strictPtr = isStrict != nullptr ? &strict : nullptr;
         for (const_iterator i = begin(); !i.null(); ++i) {
             i->getMinDelay(point, dim, &di, boundPtr, strictPtr, stopped);
             if (di < *t) {
                 *t = di;
-                if (minVal && isStrict) {
+                if (minVal != nullptr && isStrict != nullptr) {
                     *minVal = bound;
                     *isStrict = strict;
                 }
@@ -2533,7 +2534,7 @@ namespace dbm
         // Get min delay first.
         if (!getMinDelay(point, dim, min, minVal, minStrict, stopped)) {
             *max = 0.0;
-            if (maxVal && maxStrict) {
+            if (maxVal != nullptr && maxStrict != nullptr) {
                 *maxVal = 0.0;
                 *maxStrict = false;
             }
@@ -2542,12 +2543,12 @@ namespace dbm
 
         *max = *min;
         assert(*min >= 0.0);
-        if (maxVal && maxStrict) {
+        if (maxVal != nullptr && maxStrict != nullptr) {
             *maxVal = *max;
             *maxStrict = false;
         }
 
-        bool interval = maxVal && maxStrict && minVal && minStrict;
+        bool interval = maxVal != nullptr && maxStrict != nullptr && minVal != nullptr && minStrict != nullptr;
         if (interval) {
             if (*minStrict) {
                 *maxVal = base_addEpsilon(*minVal, base_EPSILON);
@@ -2561,14 +2562,14 @@ namespace dbm
         std::vector<double> pt(dim);
         pt[0] = point[0];
         double currentDelay = *min;
-        double waitMaxValue = minVal && minStrict ? *minVal : *min;
+        double waitMaxValue = minVal != nullptr && minStrict != nullptr ? *minVal : *min;
         // If we need to wait at least >min or >=min, then at most <=max to start with.
 
         const raw_t* dbm1 = nullptr;
     retry:
         for (const_iterator k = begin(); !k.null(); ++k) {
             for (cindex_t i = 1; i < dim; ++i) {
-                pt[i] = stopped && base_readOneBit(stopped, i) ? point[i] : point[i] + currentDelay;
+                pt[i] = stopped != nullptr && ONE == base_readOneBit(stopped, i) ? point[i] : point[i] + currentDelay;
             }
             const raw_t* dbm = k->const_dbm();
             if (dbm != dbm1 && dbm_isRealPointIncluded(pt.data(), dbm, dim)) {
@@ -2816,7 +2817,7 @@ namespace dbm
         } else if (bad.size() == 1) {
             return predt(bad.const_dbmt(), restrict);
         } else if (bad.isEmpty()) {
-            return restrict ? down() &= restrict : down();
+            return restrict != nullptr ? down() &= restrict : down();
         } else if (!isEmpty()) {
             fed_t result(getDimension());
             for (const_iterator goods = begin(); !goods.null(); ++goods) {
@@ -2824,14 +2825,14 @@ namespace dbm
                 const_iterator bads = bad.begin();
                 dbm_t downGood = *goods;
                 downGood.down();
-                if (restrict) {
+                if (restrict != nullptr) {
                     downGood &= restrict;
                 }
                 fed_t intersecPredt = downGood;
                 if (downGood.intersects(*bads)) {
                     dbm_t downBad = *bads;
                     downBad.down();
-                    if (restrict) {
+                    if (restrict != nullptr) {
                         intersecPredt -= (downBad &= restrict);
                         intersecPredt.steal(((downBad &= *goods) - *bads).down() &= restrict);
                     } else {
@@ -2845,7 +2846,7 @@ namespace dbm
                         dbm_t downBad = *bads;
                         downBad.down();
                         fed_t part = downGood;
-                        if (restrict) {
+                        if (restrict != nullptr) {
                             part -= (downBad &= restrict);
                             part.steal(((downBad &= *goods) - *bads).down() &= restrict);
                         } else {
@@ -2876,7 +2877,7 @@ namespace dbm
         assert(getDimension() == bad.getDimension());
 
         if (bad.isEmpty()) {
-            return restrict ? down() &= restrict : down();
+            return restrict != nullptr ? down() &= restrict : down();
         } else if (!isEmpty()) {
             dbm_t downBad = bad;
             bool downBadOK = false;
@@ -2885,20 +2886,20 @@ namespace dbm
             for (const_iterator goods = begin(); !goods.null(); ++goods) {
                 dbm_t downGood = *goods;
                 downGood.down();
-                if (restrict) {
+                if (restrict != nullptr) {
                     downGood &= restrict;
                 }
                 fed_t intersecPredt = downGood;
                 if (downGood.intersects(bad)) {
                     if (!downBadOK) {
                         downBad.down();
-                        if (restrict) {
+                        if (restrict != nullptr) {
                             downBad &= restrict;
                         }
                         downBadOK = true;
                     }
                     intersecPredt -= downBad;
-                    if (restrict) {
+                    if (restrict != nullptr) {
                         intersecPredt.steal(((fed_t(downBad) &= *goods) -= bad).down() &= restrict);
                     } else {
                         intersecPredt.steal(((fed_t(downBad) &= *goods) -= bad).down());
@@ -2932,7 +2933,7 @@ namespace dbm
             for (const_iterator goods = begin(); !goods.null(); ++goods) {
                 dbm_t downGood = *goods;
                 downGood.down();
-                if (restrict) {
+                if (restrict != nullptr) {
                     downGood &= restrict;
                 }
                 fed_t intersecPredt = downGood;
@@ -2940,13 +2941,13 @@ namespace dbm
                     if (!downBadOK) {
                         downBad.copyFrom(bad, dim);
                         downBad.down();
-                        if (restrict) {
+                        if (restrict != nullptr) {
                             downBad &= restrict;
                         }
                         downBadOK = true;
                     }
                     intersecPredt -= downBad;
-                    if (restrict) {
+                    if (restrict != nullptr) {
                         intersecPredt.steal(((fed_t(downBad) &= *goods) -= bad).down() &= restrict);
                     } else {
                         intersecPredt.steal(((fed_t(downBad) &= *goods) -= bad).down());
@@ -3589,7 +3590,7 @@ namespace dbm
                         mingraph = true;  // Don't compute twice!
                         nb = dbm_cleanBitMatrix(arg, dim, minDBM.data(), dbm_analyzeForMinDBM(arg, dim, minDBM.data()));
                         assert(nb == base_countBitsN(minDBM.data(), minSize));
-                        if (!nb)  // That means we remove everything.
+                        if (nb == 0)  // That means we remove everything.
                         {
                             ifed()->setEmpty();
                             return;
@@ -3603,7 +3604,7 @@ namespace dbm
                     result.append(current);
                 }
                 current = next;
-            } while (next);
+            } while (next != nullptr);
             ifed()->reset(result);
         }
     }
@@ -3636,7 +3637,7 @@ namespace dbm
                     result.append(current);
                 }
                 current = next;
-            } while (next);
+            } while (next != nullptr);
             ifed()->reset(result);
         }
     }

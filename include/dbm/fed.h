@@ -14,6 +14,8 @@
 #ifndef INCLUDE_DBM_FED_H
 #define INCLUDE_DBM_FED_H
 
+#include "dbm_raw.hpp"
+
 #include "dbm/ClockAccessor.h"
 #include "dbm/config.h"
 #include "dbm/dbm.h"
@@ -266,6 +268,7 @@ namespace dbm
         /// @return a read-write access pointer to the internal DBM.
         /// @post return non null pointer iff getDimension() > 0
         raw_t* getDBM();
+        writer getDBM_writer() { return {getDBM(), pdim()}; }
 
         /** Compute the minimal set of constraints to represent
          * this DBM.
@@ -351,6 +354,7 @@ namespace dbm
         relation_t relation(const dbm_t& arg) const;
         relation_t relation(const fed_t& arg) const;
         relation_t relation(const raw_t* arg, cindex_t dim) const;
+        relation_t relation(reader arg) const { return relation(arg, arg.get_dim()); }
 
         /// Exact (expensive) relations (for fed_t only).
 
@@ -422,6 +426,7 @@ namespace dbm
         bool constrain(cindex_t i, cindex_t j, int32_t b, bool isStrict);
         bool constrain(const constraint_t& c);
         bool constrain(const constraint_t* c, size_t n);
+        bool constrain(const std::vector<constraint_t>& c) { return constrain(c.data(), c.size()); }
         bool constrain(const cindex_t* table, const constraint_t* c, size_t n);
         bool constrain(const cindex_t* table, const std::vector<constraint_t>&);
 
@@ -652,10 +657,12 @@ namespace dbm
         /// Note: const_dbm() and dbm() have different assertions.
         /// @pre !isEmpty()
         const raw_t* const_dbm() const;
+        reader dbm_read() const { return {const_dbm(), pdim()}; }
 
         /// Mutable access to the DBM matrix.
         /// @pre isMutable()
         raw_t* dbm();
+        writer dbm_write() { return {dbm(), pdim()}; }
 
         /// @return dimension with @pre isEmpty()
         cindex_t edim() const;
@@ -668,9 +675,11 @@ namespace dbm
 
         /// Set and return a new writable DBM, @pre !isEmpty()
         raw_t* getNew();
+        writer getNew_write() { return {getNew(), pdim()}; }
 
         /// Set and return a writable copy of this DBM, @pre !isEmpty()
         raw_t* getCopy();
+        writer getCopy_write() { return {getCopy(), pdim()}; }
 
     private:
         /// @return idbmPtr as an int.
@@ -709,6 +718,7 @@ namespace dbm
         /// Copy its DBM and return the matrix.
         /// @pre !isEmpty() && !tryMutable()
         raw_t* icopy(cindex_t dim);
+        writer icopy_write(cindex_t dim) { return {icopy(dim), dim}; }
 
         /// Widen a DBM w.r.t. drift, see fed_t.
         dbm_t& driftWiden();
@@ -1478,12 +1488,13 @@ namespace dbm
 
             /// Access to the matrix as for fed_t
             const raw_t* operator()() const;
+            operator dbm::reader() const;
             raw_t operator()(cindex_t i, cindex_t j) const;
 
             /// Increment iterator, @pre !null()
             const_iterator& operator++();
 
-            /// Test if there are DBMs left on the list.
+            /// Test if there are DBMs left on the list. TODO: get rid of this in favor of simple ranged-for
             bool null() const;
 
             /// @return true if there is another DBM after, @pre !null()

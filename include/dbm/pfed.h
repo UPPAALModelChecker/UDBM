@@ -270,7 +270,7 @@ namespace dbm
          * The destructor decrements the reference count and deallocates
          * the priced DBM when the count reaches zero.
          */
-        ~pfed_t();
+        ~pfed_t() noexcept;
 
         /**
          * Constrain x(i) to value.
@@ -397,23 +397,25 @@ namespace dbm
         /**
          * Returns an iterator to the first zone of the federation.
          */
-        const_iterator begin() const;
+        const_iterator cbegin() const;
+        const_iterator begin() const { return cbegin(); }
 
         /**
          * Returns an iterator to the position after the last zone of
          * the federation.
          */
-        const_iterator end() const;
+        const_iterator cend() const;
+        const_iterator end() const { return cend(); }
 
         /**
          * Returns a mutable iterator to the beginning of the federation.
          */
-        iterator beginMutable();
+        iterator begin();
 
         /**
          * Returns a mutable iterator to the end of the federation.
          */
-        iterator endMutable();
+        iterator end();
 
         /**
          * Erases a DBM from the federation and returns an iterator to
@@ -542,8 +544,7 @@ namespace dbm
     template <typename Predicate>
     inline void pfed_t::erase_if(Predicate p)
     {
-        iterator first = beginMutable();
-        iterator last = endMutable();
+        auto first = begin(), last = end();
         while (first != last) {
             if (p(*first)) {
                 first = erase(first);
@@ -556,8 +557,7 @@ namespace dbm
     template <typename Predicate>
     void pfed_t::erase_if_not(Predicate p)
     {
-        iterator first = beginMutable();
-        iterator last = endMutable();
+        auto first = begin(), last = end();
         while (first != last) {
             if (p(*first)) {
                 ++first;
@@ -582,21 +582,21 @@ namespace dbm
         }
     }
 
-    inline pfed_t::iterator pfed_t::beginMutable()
+    inline pfed_t::iterator pfed_t::begin()
     {
         prepare();
         return ptr->zones.begin();
     }
 
-    inline pfed_t::iterator pfed_t::endMutable()
+    inline pfed_t::iterator pfed_t::end()
     {
         prepare();
         return ptr->zones.end();
     }
 
-    inline pfed_t::const_iterator pfed_t::begin() const { return ptr->zones.begin(); }
+    inline pfed_t::const_iterator pfed_t::cbegin() const { return ptr->zones.cbegin(); }
 
-    inline pfed_t::const_iterator pfed_t::end() const { return ptr->zones.end(); }
+    inline pfed_t::const_iterator pfed_t::cend() const { return ptr->zones.cend(); }
 
     inline cindex_t pfed_t::getDimension() const { return ptr->dim; }
 
