@@ -20,7 +20,6 @@
 #include "debug/utils.h"
 
 #include <random>
-#include <ctime>
 
 #include <doctest/doctest.h>
 
@@ -43,7 +42,7 @@ static inline void GEN(dbm::writer dbm) { dbm_generate(dbm, dbm.get_dim(), RANGE
 static inline dbm::writer NEW(cindex_t dim) { return {new raw_t[dim * dim], dim}; }
 
 // Delete DBM
-static inline void FREE(raw_t* ptr) { delete[] ptr; }
+static inline void FREE(const raw_t* ptr) { delete[] ptr; }
 
 // Check pointer
 static inline void POINTER(dbm_t& dbm) { CHECK(dbm.isEmpty() == (dbm() == nullptr)); }
@@ -194,8 +193,8 @@ static void test(const cindex_t dim)
         if (rand() % 10 > 0)
             dbm_generateSuperset(dbm, dbm, dim);
         b = dbm;
-        CHECK(a <= dbm);
-        CHECK(c <= dbm);
+        CHECK(a <= dbm.get());
+        CHECK(c <= dbm.get());
         CHECK(a <= b);
         CHECK(c <= b);
         CHECK(b >= a);
@@ -203,8 +202,8 @@ static void test(const cindex_t dim)
         if (a != b) {
             ab_equal = false;
             c2 = true;
-            CHECK(a < dbm);
-            CHECK(c < dbm);
+            CHECK(a < dbm.get());
+            CHECK(c < dbm.get());
             CHECK(a < b);
             CHECK(c < b);
             CHECK(b > a);
@@ -218,13 +217,13 @@ static void test(const cindex_t dim)
         a.setZero();
         CHECK(a() == d());
         d.nil();
-        CHECK(a == dbm);
+        CHECK(a == dbm.get());
         CHECK(a.isZero());
 
         // init
         dbm_init(dbm, dim);
         a.setInit();
-        CHECK(a == dbm);
+        CHECK(a == dbm.get());
         CHECK(a.isInit());
 
         // convex union, recall: c==d <= b
@@ -299,7 +298,7 @@ static void test(const cindex_t dim)
         }
 
         // constrain
-        CHECK(a == dbm);
+        CHECK(a == dbm.get());
         for (k = 7; k > 0 && !dbm_generatePoint(pt.data(), dbm, dim); --k)
             ;
         if (k > 0) {
@@ -331,7 +330,7 @@ static void test(const cindex_t dim)
             b &= cnstr;
             CHECK(a == b);
             CHECK(dbm_constrainN(dbm, dim, cnstr.data(), k));
-            CHECK(a == dbm);
+            CHECK(a == dbm.get());
             c = b;
             b &= cnstr;
             CHECK(b() == c());
@@ -367,13 +366,13 @@ static void test(const cindex_t dim)
         CHECK(a <= down(a));
         CHECK(b == down(a));
         CHECK(c == up(a));
-        CHECK(a == dbm);
+        CHECK(a == dbm.get());
         CHECK(c.isUnbounded());
         dbm_up(dbm, dim);
-        CHECK(c == dbm);
+        CHECK(c == dbm.get());
         a.copyTo(dbm, dim);
         dbm_down(dbm, dim);
-        CHECK(b == dbm);
+        CHECK(b == dbm.get());
 
         // updates: only for dim > 1
         if (dim > 1) {
@@ -387,14 +386,14 @@ static void test(const cindex_t dim)
             a(i) = 0;
             CHECK(a() == b());
             dbm_updateValue(dbm, dim, i, 0);
-            CHECK(a == dbm);
+            CHECK(a == dbm.get());
             a(i) = 1;
             CHECK(a() != b());  // mutable copy used
             b = a;
             a(i) = 1;
             CHECK(a() == b());
             dbm_updateValue(dbm, dim, i, 1);
-            CHECK(a == dbm);
+            CHECK(a == dbm.get());
             // other updates: need 2 clocks != 0 -> dim >= 3
             if (dim >= 3) {
                 int32_t inc = rand() % 100;
@@ -410,7 +409,7 @@ static void test(const cindex_t dim)
                 a(i) = a(j);
                 CHECK(ptr == a());
                 dbm_updateClock(dbm, dim, i, j);
-                CHECK(a == dbm);
+                CHECK(a == dbm.get());
                 b = a;
                 a(i) = a(j) + 0;
                 CHECK(a() == b());
@@ -421,14 +420,14 @@ static void test(const cindex_t dim)
                 CHECK(a == b);
                 a(i) += inc;
                 dbm_updateIncrement(dbm, dim, i, inc);
-                CHECK(a == dbm);
+                CHECK(a == dbm.get());
                 // update
                 ptr = a();
                 a(i) = a(i) + 0;
                 CHECK(a() == ptr);
                 a(i) = a(j) + inc;
                 dbm_update(dbm, dim, i, j, inc);
-                CHECK(a == dbm);
+                CHECK(a == dbm.get());
             }
         }
 
@@ -440,14 +439,14 @@ static void test(const cindex_t dim)
         b.freeAllUp();
         CHECK(ptr == b());
         dbm_freeAllUp(dbm, dim);
-        CHECK(b == dbm);
+        CHECK(b == dbm.get());
         b = freeAllDown(a);
         ptr = b();
         b.freeAllDown();
         CHECK(ptr == b());
         a.copyTo(dbm, dim);
         dbm_freeAllDown(dbm, dim);
-        CHECK(b == dbm);
+        CHECK(b == dbm.get());
         k = rand() % dim;
         if (k != 0) {
             c7 = true;
@@ -457,14 +456,14 @@ static void test(const cindex_t dim)
             CHECK(ptr == c());
             a.copyTo(dbm, dim);
             dbm_freeDown(dbm, dim, k);
-            CHECK(c == dbm);
+            CHECK(c == dbm.get());
             c = freeUp(a, k);
             ptr = c();
             c.freeUp(k);
             CHECK(ptr == c());
             a.copyTo(dbm, dim);
             dbm_freeUp(dbm, dim, k);
-            CHECK(c == dbm);
+            CHECK(c == dbm.get());
         }
         d = relaxUp(a);
         ptr = d();
@@ -472,7 +471,7 @@ static void test(const cindex_t dim)
         CHECK(ptr == d());
         a.copyTo(dbm, dim);
         dbm_relaxUp(dbm, dim);
-        CHECK(d == dbm);
+        CHECK(d == dbm.get());
         CHECK(a <= d);
         d = relaxDown(a);
         ptr = d();
@@ -480,7 +479,7 @@ static void test(const cindex_t dim)
         CHECK(ptr == d());
         a.copyTo(dbm, dim);
         dbm_relaxDown(dbm, dim);
-        CHECK(d == dbm);
+        CHECK(d == dbm.get());
         CHECK(a <= d);
         k = rand() % dim;
         // k == 0 ok
@@ -490,7 +489,7 @@ static void test(const cindex_t dim)
         CHECK(ptr == d());
         a.copyTo(dbm, dim);
         dbm_relaxUpClock(dbm, dim, k);
-        CHECK(d == dbm);
+        CHECK(d == dbm.get());
         CHECK(a <= d);
         d = relaxDownClock(a, k);
         ptr = d();
@@ -498,7 +497,7 @@ static void test(const cindex_t dim)
         CHECK(ptr == d());
         a.copyTo(dbm, dim);
         dbm_relaxDownClock(dbm, dim, k);
-        CHECK(d == dbm);
+        CHECK(d == dbm.get());
         CHECK(a <= d);
 
         // extrapolations
@@ -535,7 +534,7 @@ static void test(const cindex_t dim)
                 dbm_diagonalExtrapolateLUBounds(dbm, dim, lower.data(), upper.data());
                 break;
             }
-            CHECK(b == dbm);
+            CHECK(b == dbm.get());
             CHECK(a <= b);
         }
     }

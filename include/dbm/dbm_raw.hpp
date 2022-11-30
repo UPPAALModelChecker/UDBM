@@ -15,9 +15,14 @@ namespace dbm
 
     public:
         reader(const raw_t* dbm, cindex_t dim): dbm{dbm}, dim{dim} {}
+        const raw_t* get() const { return dbm; }  ///< TODO: needed only for doctest-2.4.8/NIX, can be removed later
+        /** Returns the number of dimensions/clocks in this DBM. */
         cindex_t get_dim() const { return dim; }
+        /** Returns the {i,j} bound of DBM. */
         raw_t at(cindex_t i, cindex_t j) const { return dbm[i * dim + j]; }
+        /** Checks if the dbm has data. */
         operator bool() const { return dbm != nullptr && dim != 0; }
+        /** Converts to raw_t pointer (compatibility with C function calls). */
         operator const raw_t*() const { return dbm; }
     };
 
@@ -29,7 +34,10 @@ namespace dbm
 
     public:
         writer(raw_t* dbm, cindex_t dim): dbm{dbm}, dim{dim} {}
+        raw_t* get() const { return dbm; }  ///< needed only for doctest-2.4.8/NIX, can be removed later
+        /** Returns the number of dimensions/clocks in this DBM. */
         cindex_t get_dim() const { return dim; }
+        /** Returns the {i,j} bound of DBM. */
         raw_t& at(cindex_t i, cindex_t j) { return dbm[i * dim + j]; }
         /** Emulate pointer assignment. */
         writer& operator=(raw_t* ptr)
@@ -63,19 +71,19 @@ namespace dbm
             dbm += offset;
             return *this;
         }
-        /** Emulate pointer iteration. */
+        /** Emulate pointer/iterator pre-increment. */
         writer& operator++()
         {
             ++dbm;
             return *this;
         }
-        /** Emulate pointer. */
+        /** Emulate pointer/iterator. */
         raw_t& operator*() { return *dbm; }
-        /** Emulate pointer. */
+        /** Emulate pointer/iterator. */
         raw_t* operator->() { return dbm; }
         /** Check if not null. */
         operator bool() const { return dbm != nullptr && dim != 0; }
-        /** Convert to C pointer access. */
+        /** Converts to raw_t pointer (compatibility with C function calls). */
         operator raw_t*() { return dbm; }
         /** Convert to read-only access. */
         operator reader() { return {dbm, dim}; }
