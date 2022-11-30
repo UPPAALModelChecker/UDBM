@@ -215,9 +215,9 @@ namespace dbm
     class pfed_t
     {
     public:
-        typedef std::list<pdbm_t>::const_iterator const_iterator;
+        using const_iterator = std::list<pdbm_t>::const_iterator;
 
-        typedef std::list<pdbm_t>::iterator iterator;
+        using iterator = std::list<pdbm_t>::iterator;
 
     protected:
         struct pfed_s

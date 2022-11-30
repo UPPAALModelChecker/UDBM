@@ -10,14 +10,8 @@
 #include "dbm/pfed.h"
 
 #include <algorithm>
-#include <functional>  // std::bind
 #include <numeric>
 #include <stdexcept>
-
-// using std::bind;
-using std::accumulate;
-using std::find_if;
-using namespace std::placeholders;  // _1, _2, etc for std::bind
 
 namespace dbm
 {
@@ -88,14 +82,15 @@ namespace dbm
 
     bool pfed_t::constrain(cindex_t i, cindex_t j, raw_t constraint)
     {
-        // lambda x . pdbm_constrain1(x, ptr->dim, i, j, constraint)
-        erase_if_not(bind(pdbm_constrain1, _1, ptr->dim, i, j, constraint));
+        erase_if_not(
+            [dim = ptr->dim, i, j, constraint](PDBM& pdbm) { return pdbm_constrain1(pdbm, dim, i, j, constraint); });
         return !isEmpty();
     }
 
     bool pfed_t::constrain(const constraint_t* constraints, size_t n)
     {
-        erase_if_not(bind(pdbm_constrainN, _1, ptr->dim, constraints, n));
+        erase_if_not(
+            [dim = ptr->dim, constraints, n](PDBM& pdbm) { return pdbm_constrainN(pdbm, dim, constraints, n); });
         return !isEmpty();
     }
 
@@ -103,10 +98,9 @@ namespace dbm
 
     int32_t pfed_t::getInfimum() const
     {
-        /* The binary operator used in the following accumulation is
-         * lambda inf zone.min(inf, pdbm_getInfimum(zone, ptr->dim));
-         */
-        return accumulate(cbegin(), cend(), INT_MAX, bind(min, _1, bind(pdbm_getInfimum, _2, ptr->dim)));
+        return std::accumulate(cbegin(), cend(), INT_MAX, [dim = ptr->dim](const int32_t a, const PDBM pdbm) {
+            return min(a, pdbm_getInfimum(pdbm, dim));
+        });
     }
 
     int32_t pfed_t::getInfimumValuation(IntValuation& valuation, const bool* free) const
@@ -128,32 +122,43 @@ namespace dbm
 
     bool pfed_t::satisfies(cindex_t i, cindex_t j, raw_t constraint) const
     {
-        return find_if(begin(), end(), bind(pdbm_satisfies, _1, ptr->dim, i, j, constraint)) != end();
+        return std::find_if(begin(), end(), [dim = ptr->dim, i, j, constraint](const pdbm_t& pdbm) {
+                   return pdbm_satisfies(pdbm, dim, i, j, constraint);
+               }) != end();
     }
 
-    bool pfed_t::isUnbounded() const { return find_if(begin(), end(), bind(pdbm_isUnbounded, _1, ptr->dim)) != end(); }
+    bool pfed_t::isUnbounded() const
+    {
+        return std::find_if(begin(), end(),
+                            [dim = ptr->dim](const pdbm_t& pdbm) { return pdbm_isUnbounded(pdbm, dim); }) != end();
+    }
 
     uint32_t pfed_t::hash(uint32_t seed) const
     {
-        /* The binary operator used in the following accumulation is
-         * lambda seed zone . pdbm_hash(zone, ptr->dim, seed)
-         */
-        return accumulate(begin(), end(), seed, bind(pdbm_hash, _2, ptr->dim, _1));
+        return std::accumulate(begin(), end(), seed, [dim = ptr->dim](uint32_t seed, const pdbm_t& pdbm) {
+            return pdbm_hash(pdbm, dim, seed);
+        });
     }
 
     bool pfed_t::contains(const IntValuation& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsInt, _1, ptr->dim, valuation.data())) != end();
+        return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
+                   return pdbm_containsInt(pdbm, dim, valuation.data());
+               }) != end();
     }
 
     bool pfed_t::contains(const DoubleValuation& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsDouble, _1, ptr->dim, valuation.data())) != end();
+        return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
+                   return pdbm_containsDouble(pdbm, dim, valuation.data());
+               }) != end();
     }
 
     bool pfed_t::containsWeakly(const IntValuation& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsIntWeakly, _1, ptr->dim, valuation.data())) != end();
+        return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
+                   return pdbm_containsIntWeakly(pdbm, dim, valuation.data());
+               }) != end();
     }
 
     relation_t pfed_t::relation(const pfed_t& b) const
@@ -358,11 +363,10 @@ namespace dbm
 
     int32_t pfed_t::getCostOfValuation(const IntValuation& valuation) const
     {
-        /* The binary operator used in the following accumulation is
-         * lambda x y . min(x, pdbm_getCostOfValuation(y, dim, val))
-         */
-        return accumulate(cbegin(), cend(), INT_MAX,
-                          bind(min, _1, bind(pdbm_getCostOfValuation, _2, ptr->dim, valuation.data())));
+        return std::accumulate(cbegin(), cend(), INT_MAX,
+                               [dim = ptr->dim, &valuation](int32_t sum, const pdbm_t& pdbm) {
+                                   return min(sum, pdbm_getCostOfValuation(pdbm, dim, valuation.data()));
+                               });
     }
 
     void pfed_t::relax()

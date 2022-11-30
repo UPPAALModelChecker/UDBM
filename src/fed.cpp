@@ -22,10 +22,7 @@
 #include "base/doubles.h"
 
 #include <forward_list>
-#include <functional>
 #include <cmath>
-
-using namespace std::placeholders;  // _1, _2, etc for std::bind
 
 // This is to print how some DBM reductions perform.
 #if defined(SHOW_STATS) && defined(VERBOSE)
@@ -2714,12 +2711,14 @@ namespace dbm
 
         for (fdbm_t* fi = ifed()->head(); fi != nullptr; fi = fi->getNext()) {
             // a)
-            std::forward_list<constraint_t> sat;
-            transform(begin, end, front_inserter(sat), std::bind(sat_collect, fi, _1));
+            auto sat = std::forward_list<constraint_t>{};
+            std::transform(begin, end, std::front_inserter(sat),
+                           [fi](const constraint_t& constraint) { return sat_collect(fi, constraint); });
             // b)
             fi->dbmt().extrapolateMaxBounds(max);
             // c)
-            std::for_each(sat.begin(), sat.end(), std::bind(sat_assert, fi, _1));
+            for (const auto& constraint : sat)
+                sat_assert(fi, constraint);
         }
 
         // 3) Try to merge back if possible.
@@ -2734,8 +2733,7 @@ namespace dbm
         assert(bitSrc && bitDst && table);
         assert(*bitSrc & *bitDst & 1);  // ref clock in both
 
-        if (!base_areBitsEqual(bitSrc, bitDst, bitSize))  // pre-condition
-        {
+        if (!base_areBitsEqual(bitSrc, bitDst, bitSize)) {  // pre-condition
             cindex_t newDim = base_countBitsN(bitDst, bitSize);
             if (isEmpty()) {
                 base_bits2indexTable(bitDst, bitSize, table);
