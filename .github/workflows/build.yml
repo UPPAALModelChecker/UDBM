@@ -50,9 +50,9 @@ jobs:
     - name: Build and test
       run: |
           export CTEST_OUTPUT_ON_FAILURE=1
-          cmake -DTESTING=yes -DSTATIC=$STATIC  -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release -DENABLE_DBM_NEW=${{ matrix.newdbm }} -DCMAKE_PREFIX_PATH=$(pwd)/local -B build -S .
+          cmake -DUDBM_WITH_TESTS=ON -DUDBM_STATIC=$STATIC  -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release -DENABLE_DBM_NEW=${{ matrix.newdbm }} -DCMAKE_PREFIX_PATH=$(pwd)/local -B build -S .
           cmake --build build
-          (cd build/test ; ctest)
+          (cd build ; ctest)
   build-win-native:
     runs-on: windows-latest
     steps:
@@ -64,10 +64,10 @@ jobs:
           bash ./getlibs.sh
     - name: Build and test
       run: |
-          cmake -DCMAKE_BUILD_TYPE=Release -DTESTING=yes "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_PREFIX_PATH=$(pwd)/local -B build -S .
+          export CTEST_OUTPUT_ON_FAILURE=1
+          cmake -DCMAKE_BUILD_TYPE=Release -DUDBM_WITH_TESTS=ON "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_PREFIX_PATH=$(pwd)/local -B build -S .
           cmake --build build --config Release
-          cd build
-          ctest --output-on-failure -C Release
+          (cd build ; ctest)
   build-macos:
     runs-on: macos-latest
     strategy:
@@ -81,9 +81,9 @@ jobs:
     - name: Build and test
       run: |
           export CTEST_OUTPUT_ON_FAILURE=1
-          cmake -DTESTING=yes -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$(pwd)/local -B build -S .
+          cmake -DUDBM_WITH_TESTS=ON -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$(pwd)/local -B build -S .
           cmake --build build
-          (cd build/test ; ctest)
+          (cd build ; ctest)
   build-nix:
     runs-on: ubuntu-latest
     steps:
