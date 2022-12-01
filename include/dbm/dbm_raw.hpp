@@ -10,16 +10,26 @@ namespace dbm
     /** Non-owning raw DBM wrapper for read-only/const access to raw bounds. Drop-in replacement for "const raw_t*". */
     class reader
     {
-        const raw_t* dbm;
-        cindex_t dim;
+        const raw_t* dbm{nullptr};
+        cindex_t dim{0};
 
     public:
+        reader() = default;
         reader(const raw_t* dbm, cindex_t dim): dbm{dbm}, dim{dim} {}
         const raw_t* get() const { return dbm; }  ///< TODO: needed only for doctest-2.4.8/NIX, can be removed later
         /** Returns the number of dimensions/clocks in this DBM. */
         cindex_t get_dim() const { return dim; }
-        /** Returns the {i,j} bound of DBM. */
+        /** Returns the raw bound at {i,j} of DBM which includes the strictness bit. */
         raw_t at(cindex_t i, cindex_t j) const { return dbm[i * dim + j]; }
+        /** Returns the integer bound at {i,j} of DBM with strictness bit removed. */
+        int32_t bound(cindex_t i, cindex_t j) const { return dbm_raw2bound(at(i, j)); }
+        /** Returns true if the bound at {i,j} is strict ("<"). */
+        bool is_strict(cindex_t i, cindex_t j) const { return dbm_rawIsStrict(at(i, j)); }
+        /** Returns true if the bound at {i,j} is weak ("<="). */
+        bool is_weak(cindex_t i, cindex_t j) const { return dbm_rawIsWeak(at(i, j)); }
+        /** Trivial comparison. */
+        bool operator==(const reader& other) const { return dbm == other.dbm && dim == other.dim; }
+        bool operator!=(const reader& other) const { return !(*this == other); }
         /** Checks if the dbm has data. */
         operator bool() const { return dbm != nullptr && dim != 0; }
         /** Converts to raw_t pointer (compatibility with C function calls). */
@@ -29,16 +39,26 @@ namespace dbm
     /** Non-owning raw DBM wrapper with mutable access to raw bounds. Drop-in replacement for "raw_t*". */
     class writer
     {
-        raw_t* dbm;
-        cindex_t dim;
+        raw_t* dbm{nullptr};
+        cindex_t dim{0};
 
     public:
+        writer() = default;
         writer(raw_t* dbm, cindex_t dim): dbm{dbm}, dim{dim} {}
         raw_t* get() const { return dbm; }  ///< needed only for doctest-2.4.8/NIX, can be removed later
         /** Returns the number of dimensions/clocks in this DBM. */
         cindex_t get_dim() const { return dim; }
         /** Returns the {i,j} bound of DBM. */
         raw_t& at(cindex_t i, cindex_t j) { return dbm[i * dim + j]; }
+        /** Returns the {i,j} bound of DBM. */
+        raw_t at(cindex_t i, cindex_t j) const { return dbm[i * dim + j]; }
+        /** Returns the integer bound at {i,j} of DBM with strictness bit removed. */
+        int32_t bound(cindex_t i, cindex_t j) const { return dbm_raw2bound(at(i, j)); }
+        /** Returns just the strictness bit of the bound at {i,j} of the DBM. */
+        bool is_strict(cindex_t i, cindex_t j) const { return dbm_rawIsStrict(at(i, j)); }
+        /** Trivial comparison. */
+        bool operator==(const writer& other) const { return dbm == other.dbm && dim == other.dim; }
+        bool operator!=(const writer& other) const { return !(*this == other); }
         /** Emulate pointer assignment. */
         writer& operator=(raw_t* ptr)
         {

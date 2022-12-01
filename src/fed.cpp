@@ -940,7 +940,7 @@ namespace dbm
 
         int32_t max = 0;
         for (const_iterator i = begin(); !i.null(); ++i) {
-            int32_t bound = dbm_raw2bound((*i)(x, 0));
+            int32_t bound = i->bound(x, 0);
             if (bound > max) {
                 max = bound;
             }
@@ -2414,15 +2414,15 @@ namespace dbm
 
         double totalDelay = 0.0;
         if (dim > 1) {
-            const raw_t* dbm1 = nullptr;
+            auto dbm1 = dbm::reader{};
             // First find a DBM containing this point
             for (const_iterator i = begin(); !i.null(); ++i) {
                 if (i->contains(point, dim)) {
-                    dbm1 = i->const_dbm();
+                    dbm1 = i->dbm_read();
                     break;
                 }
             }
-            if (dbm1 != nullptr) {
+            if (dbm1) {
             retry:
                 // Possible backward delay of point in dbm1
                 double delay = fed_diff(point[1] - totalDelay, dbm1[1]);
@@ -2433,21 +2433,20 @@ namespace dbm
                     totalDelay = delay;
 
                     // Find dbm2 to continue the delay and retry with a new dbm1
-                    const raw_t* dbm2 = nullptr;
+                    auto dbm2 = dbm::reader{};
                     for (const_iterator i = begin(); !i.null(); ++i) {
-                        dbm2 = i->const_dbm();
+                        dbm2 = i->dbm_read();
                         if (dbm1 != dbm2) {
                             // Check if we can continue with the delay through
                             // another DBM: forall i, -dbm1.lower[i] <= dbm2.upper[i]
                             cindex_t j;
                             for (j = 2; j < dim; ++j) {
                                 if (dbm_negRaw(dbm1[j]) > dbm2[j * dim] ||  // DBM 'continuous'
-                                    point[j] > (dbm_raw2bound(dbm2[j * dim]) + 0.5)) {
+                                    point[j] > (dbm2.bound(j, 0) + 0.5)) {
                                     break;  // cannot
                                 }
                             }
-                            if (j == dim)  // all lower1 <= upper2
-                            {
+                            if (j == dim) {   // all lower1 <= upper2
                                 dbm1 = dbm2;  // continue on dbm2
                                 goto retry;
                             }
@@ -2568,7 +2567,7 @@ namespace dbm
             for (cindex_t i = 1; i < dim; ++i) {
                 pt[i] = stopped != nullptr && ONE == base_readOneBit(stopped, i) ? point[i] : point[i] + currentDelay;
             }
-            const raw_t* dbm = k->const_dbm();
+            auto dbm = k->dbm_read();
             if (dbm != dbm1 && dbm_isRealPointIncluded(pt.data(), dbm, dim)) {
                 // Then try to delay and stay inside k.
                 double d = HUGE_VAL;
@@ -2576,9 +2575,9 @@ namespace dbm
                 bool isStrict = true;
                 for (cindex_t i = 1; i < dim; ++i) {
                     if (dbm[i * dim] < dbm_LS_INFINITY) {
-                        double di = (double)dbm_raw2bound(dbm[i * dim]) - (pt[i] - pt[0]);
-                        double valuei = (double)dbm_raw2bound(dbm[i * dim]) - (point[i] - point[0]);
-                        bool isStricti = dbm_rawIsStrict(dbm[i * dim]);
+                        double di = (double)dbm.bound(i, 0) - (pt[i] - pt[0]);
+                        double valuei = (double)dbm.bound(i, 0) - (point[i] - point[0]);
+                        bool isStricti = dbm.is_strict(i, 0);
                         assert(di >= 0.0);
                         if (isStricti) {
                             double di0 = di;

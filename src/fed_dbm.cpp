@@ -92,7 +92,7 @@ namespace dbm
 
         const cindex_t dim = pdim();
         std::vector<uint32_t> mingraph = std::vector<uint32_t>(bits2intsize(dim * dim));
-        const raw_t* dbm = const_dbm();
+        auto dbm = dbm_read();
         size_t n = full
                        ? dbm_fillBitMatrix(dbm, dim, mingraph.data())
                        : dbm_cleanBitMatrix(dbm, dim, mingraph.data(), dbm_analyzeForMinDBM(dbm, dim, mingraph.data()));
@@ -125,43 +125,42 @@ namespace dbm
                             base_resetOneBit(mingraph.data(), j * dim);
 
                             // xj == b
-                            snprintf(buffer, sizeof(buffer), "==%d", -dbm_raw2bound(dbm[j]));
+                            snprintf(buffer, sizeof(buffer), "==%d", -dbm.bound(0, j));
                             str += access.getClockName(j);
                             str += buffer;
                         } else  // b < xj, b <= xj
                         {
-                            snprintf(buffer, sizeof(buffer), "%d%s", -dbm_raw2bound(dbm[j]),
-                                     dbm_rawIsStrict(dbm[j]) ? "<" : "<=");
+                            snprintf(buffer, sizeof(buffer), "%d%s", -dbm.bound(0, j),
+                                     dbm.is_strict(0, j) ? "<" : "<=");
                             str += buffer;
                             str += access.getClockName(j);
                         }
                     } else {
                         // xi-xj == b ?
-                        if (dbm_addFiniteRaw(dbm[i * dim + j], dbm[j * dim + i]) == dbm_LE_ZERO) {
+                        if (dbm_addFiniteRaw(dbm.at(i, j), dbm.at(j, i)) == dbm_LE_ZERO) {
                             assert(n);
                             n -= base_getOneBit(mingraph.data(), j * dim + i);
                             base_resetOneBit(mingraph.data(), j * dim + i);
 
                             // xi == xj
-                            if (j > 0 && dbm[i * dim + j] == dbm_LE_ZERO) {
+                            if (j > 0 && dbm.at(i, j) == dbm_LE_ZERO) {
                                 str += access.getClockName(i);
                                 str += "==";
                                 str += access.getClockName(j);
                                 goto consume_n;
                             }
                             // == b
-                            snprintf(buffer, sizeof(buffer), "==%d", dbm_raw2bound(dbm[i * dim + j]));
+                            snprintf(buffer, sizeof(buffer), "==%d", dbm.bound(i, j));
                         } else {
                             // xi < xj, xi <= xj
-                            if (j > 0 && dbm_raw2bound(dbm[i * dim + j]) == 0) {
+                            if (j > 0 && dbm.bound(i, j) == 0) {
                                 str += access.getClockName(i);
-                                str += dbm_rawIsStrict(dbm[i * dim + j]) ? "<" : "<=";
+                                str += dbm.is_strict(i, j) ? "<" : "<=";
                                 str += access.getClockName(j);
                                 goto consume_n;
                             }
                             // < b, <= b
-                            snprintf(buffer, sizeof(buffer), "%s%d",
-                                     dbm_rawIsStrict(dbm[i * dim + j]) ? "<" : "<=", dbm_raw2bound(dbm[i * dim + j]));
+                            snprintf(buffer, sizeof(buffer), "%s%d", dbm.is_strict(i, j) ? "<" : "<=", dbm.bound(i, j));
                         }
 
                         if (j == 0)  // xi < b, xi <= b
@@ -215,8 +214,7 @@ namespace dbm
         auto dbm = dbm_read();
         const cindex_t dim = pdim();
         for (cindex_t i = 1; i < dim; ++i) {
-            if (dbm_rawIsWeak(dbm.at(i, 0)) && dbm_rawIsWeak(dbm.at(0, i)) &&
-                dbm.at(i, 0) == dbm_weakNegRaw(dbm.at(0, i))) {
+            if (dbm.is_weak(i, 0) && dbm.is_weak(0, i) && dbm.at(i, 0) == dbm_weakNegRaw(dbm.at(0, i))) {
                 return false;
             }
         }
@@ -431,7 +429,7 @@ namespace dbm
             if (dbm.at(i, 0) < dbm_LS_INFINITY) {
                 // dbm.at(i,cost) <= dbm.at(i,0) + dbm.at(0,cost) with dbm.at(0,cost) <= 0
                 assert(dbm.at(i, cost) < dbm_LS_INFINITY);
-                bound = std::max(bound, dbm_raw2bound(dbm.at(i, 0)) - dbm_raw2bound(dbm.at(i, cost)));
+                bound = std::max(bound, dbm.bound(i, 0) - dbm.bound(i, cost));
             }
         }
 
@@ -1272,7 +1270,7 @@ namespace dbm
             bool isMutable = false;
             // see dbm.c
             for (i = 0; i < dim; ++i) {
-                if (dbm.at(i, clock) < dbm_LS_INFINITY && dbm_rawIsStrict(dbm.at(i, clock))) {
+                if (dbm.at(i, clock) < dbm_LS_INFINITY && dbm.is_strict(i, clock)) {
                     raw_t wik = dbm_weakRaw(dbm.at(i, clock));
                     for (j = 0; j < dim; ++j)
                         if (j != clock)  // dbm[i,clock] not weakened!
@@ -1315,7 +1313,7 @@ namespace dbm
             bool isMutable = false;
             // see dbm.c
             for (i = 0; i < dim; ++i) {
-                if (dbm.at(clock, i) < dbm_LS_INFINITY && dbm_rawIsStrict(dbm.at(clock, i))) {
+                if (dbm.at(clock, i) < dbm_LS_INFINITY && dbm.is_strict(clock, i)) {
                     raw_t wki = dbm_weakRaw(dbm.at(clock, i));
                     for (j = 0; j < dim; ++j)
                         if (j != clock)  // dbm[i,clock] not weakened!
@@ -1399,7 +1397,7 @@ namespace dbm
             }
             return false;
         }
-        const raw_t* dbm = const_dbm();
+        auto dbm = dbm_read();
 
         // Special case, covers dim == 1.
         if (dbm_isRealPointIncluded(point, dbm, dim)) {
@@ -1415,12 +1413,12 @@ namespace dbm
 
         for (cindex_t k = 1; k < dim; ++k) {
             // Try to reach up to this lower bound.
-            double di = (point[0] - point[k]) - (double)dbm_raw2bound(dbm[k]);
+            double di = (point[0] - point[k]) - (double)dbm.bound(0, k);
 
             if (di >= 0.0)  // Consider only future.
             {
                 double value = di;
-                bool isStrict = dbm_rawIsStrict(dbm[k]);
+                bool isStrict = dbm.is_strict(0, k);
 
                 // Need to get into the DBM if the bound is strict.
                 if (isStrict) {
@@ -1487,11 +1485,11 @@ namespace dbm
         if (isEmpty()) {
             return false;
         }
-        const raw_t* dbm = const_dbm();
+        auto dbm = dbm_read();
         for (cindex_t k = 1; k < dim; ++k) {
-            if (dbm[k * dim] != dbm_LS_INFINITY && !(stopped != nullptr && ONE == base_readOneBit(stopped, k))) {
-                bool isStrict = dbm_rawIsStrict(dbm[k * dim]);
-                auto bound = (double)dbm_raw2bound(dbm[k * dim]);
+            if (dbm.at(k, 0) != dbm_LS_INFINITY && !(stopped != nullptr && ONE == base_readOneBit(stopped, k))) {
+                bool isStrict = dbm.is_strict(k, 0);
+                auto bound = (double)dbm.bound(k, 0);
                 double d = bound - (point[k] - point[0]);
                 if (d < 0.0) {
                     return false;
@@ -1525,7 +1523,7 @@ namespace dbm
             *t = max;
             return true;
         }
-        const raw_t* dbm = const_dbm();
+        auto dbm = dbm_read();
 
         *t = 0.0;
         auto* pt = (double*)point;  // Cheat.
@@ -1533,12 +1531,11 @@ namespace dbm
 
         for (cindex_t k = 1; k < dim; ++k) {
             // Try to reach down to this lower bound.
-            double di = (double)dbm_raw2bound(dbm[k]) - point[0] + point[k];
+            double di = (double)dbm.bound(0, k) - point[0] + point[k];
 
-            if (di >= 0.0)  // Consider only past.
-            {
+            if (di >= 0.0) {  // Consider only past.
                 // Need to stay inside the DBM if the bound is strict.
-                if (dbm_rawIsStrict(dbm[k])) {
+                if (dbm.is_strict(0, k)) {
                     di = base_subtractEpsilon(di, base_EPSILON);
                 }
 
@@ -1575,8 +1572,7 @@ namespace dbm
         assert(idbmPtr != nullptr && bitSrc && bitDst && table);
         assert(*bitSrc & *bitDst & 1);  // ref clock in both
 
-        if (!base_areBitsEqual(bitSrc, bitDst, bitSize))  // pre-condition
-        {
+        if (!base_areBitsEqual(bitSrc, bitDst, bitSize)) {  // pre-condition
             cindex_t newDim = base_countBitsN(bitDst, bitSize);
             assert(newDim);
             if (isEmpty()) {
@@ -1664,10 +1660,10 @@ namespace dbm
         for (cindex_t i = 1; i < dim; ++i) {
             if (freeC[i]) {
                 // Derive lower and upper bounds for this clock.
-                bool lStrict = dbm_rawIsStrict(cdbm.at(0, i));
-                double lower = -dbm_raw2bound(cdbm.at(0, i));
-                bool uStrict = dbm_rawIsStrict(cdbm.at(i, 0));
-                double upper = dbm_raw2bound(cdbm.at(i, 0));
+                bool lStrict = cdbm.is_strict(0, i);
+                double lower = -cdbm.bound(0, i);
+                bool uStrict = cdbm.is_strict(i, 0);
+                double upper = cdbm.bound(i, 0);
                 double bound;
 
                 for (cindex_t j = 1; j < dim; j++) {
@@ -1675,16 +1671,16 @@ namespace dbm
                         continue;
                     }
 
-                    bound = dbm_raw2bound(cdbm.at(i, j)) + cval[j];
+                    bound = cdbm.bound(i, j) + cval[j];
                     if (bound < upper || (bound <= upper && !uStrict)) {
                         upper = bound;
-                        uStrict = dbm_rawIsStrict(cdbm.at(i, j));
+                        uStrict = cdbm.is_strict(i, j);
                     }
 
-                    bound = cval[j] - dbm_raw2bound(cdbm.at(j, i));
+                    bound = cval[j] - cdbm.bound(j, i);
                     if (bound > lower || (bound >= lower && !lStrict)) {
                         lower = bound;
-                        lStrict = dbm_rawIsStrict(cdbm.at(j, i));
+                        lStrict = cdbm.is_strict(j, i);
                     }
                 }
 

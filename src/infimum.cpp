@@ -7,6 +7,7 @@
 #include "base/bitstring.h"
 #include "debug/macros.h"
 
+#include <algorithm>
 #include <stdexcept>
 #include <cstdlib>
 
@@ -246,8 +247,9 @@ static void printAllRates(const int32_t *rates, uint32_t dim)
  * The initial solution includes computing the initial node potentials.
  *
  */
-static void findInitialSpanningTreeSolution(const raw_t* dbm, const int32_t* rates, Tree& tree)
+static void findInitialSpanningTreeSolution(dbm::reader dbm, const int32_t* rates, Tree& tree)
 {
+    assert(dbm.get_dim() == tree.size());
     uint32_t dim = tree.size();
     Node* last = tree.data() + dim;
     Node* node = &tree[0];
@@ -267,10 +269,10 @@ static void findInitialSpanningTreeSolution(const raw_t* dbm, const int32_t* rat
 
         if (b(rates, i) < 0) {  // -rate(i) < 0
             node->inbound = true;
-            node->potential = -dbm_raw2bound(dbm[i]);
+            node->potential = -dbm.bound(0, i);
         } else {  // -rate(i) >= 0
             node->inbound = false;
-            node->potential = dbm_raw2bound(dbm[i * dim]);
+            node->potential = dbm.bound(i, 0);
         }
     }
     // printAllNodeInfo(tree, rates, dim);
@@ -519,7 +521,6 @@ static void updateSpanningTree(Node* k, Node* l, Node* leave, Node* root, int32_
  */
 static auto enteringArcDanzig(const std::vector<arc_t>& arcs, const Tree& tree, dbm::reader dbm)
 {
-    uint32_t dim = tree.size();
     auto best = arcs.end();
     int32_t lowest_reduced_cost = 0;
     for (auto it = arcs.begin(); it != arcs.end(); ++it) {
@@ -679,20 +680,7 @@ static void testAndRemoveArtificialArcs(dbm::reader dbm, const int32_t* rates, T
     }
 }
 
-/**
- * Returns true if and only if all elements in [first, last) are
- * non-negative.
- */
-static bool allPositive(const int32_t* first, const int32_t* last)
-{
-    while (first != last) {
-        if (*first < 0) {
-            return false;
-        }
-        first++;
-    }
-    return true;
-}
+static const auto is_non_negative = [](const int32_t& n) { return n >= 0; };
 
 /*
  * Takes a priced zone and computes that infimum value of the dual
@@ -766,7 +754,7 @@ static void infimumNetSimplex(dbm::reader dbm, const int32_t* rates, Tree& tree)
  */
 int32_t pdbm_infimum(dbm::reader dbm, uint32_t dim, uint32_t offsetCost, const int32_t* rates)
 {
-    if (allPositive(rates, rates + dim)) {
+    if (std::all_of(rates, rates + dim, is_non_negative)) {
         return offsetCost;
     }
 
@@ -792,7 +780,7 @@ int32_t pdbm_infimum(dbm::reader dbm, uint32_t dim, uint32_t offsetCost, const i
 
 void pdbm_infimum(dbm::reader dbm, uint32_t dim, uint32_t offsetCost, const int32_t* rates, int32_t* valuation)
 {
-    if (allPositive(rates, rates + dim)) {
+    if (std::all_of(rates, rates + dim, is_non_negative)) {
         valuation[0] = 0;
         for (uint32_t i = 1; i < dim; ++i)
             valuation[i] = -dbm.at(0, i);

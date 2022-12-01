@@ -9,9 +9,9 @@
 
 #include <doctest/doctest.h>
 
-void printConstraint(const raw_t constraint, const double i, const double j)
+void printConstraint(const raw_t raw, const double i, const double j)
 {
-    std::cout << i << (dbm_rawIsStrict(constraint) ? "<" : "<=") << j << "+" << dbm_raw2bound(constraint) << std::endl;
+    std::cout << i << (dbm_rawIsStrict(raw) ? "<" : "<=") << j << "+" << dbm_raw2bound(raw) << std::endl;
 }
 
 void printViolatingConstraint(dbm::reader dbm, const double* pt)
@@ -20,11 +20,11 @@ void printViolatingConstraint(dbm::reader dbm, const double* pt)
     for (cindex_t i = 0; i < dim; ++i) {
         for (cindex_t j = 0; j < dim; ++j) {
             if (dbm.at(i, j) < dbm_LS_INFINITY) {
-                double bound = dbm_raw2bound(dbm.at(i, j));
+                double bound = dbm.bound(i, j);
                 /* if strict: !(pi-pj < bij) -> false
                  * if weak  : !(pi-pj <= bij) -> false
                  */
-                if (dbm_rawIsStrict(dbm.at(i, j))) {
+                if (dbm.is_strict(i, j)) {
                     // if (pt[i] >= pt[j]+bound) return false;
                     if (IS_GE(pt[i], pt[j] + bound))
                         printConstraint(dbm.at(i, j), pt[i], pt[j]);

@@ -69,10 +69,6 @@ namespace dbm
         return ptr->zones.erase(i);
     }
 
-    //#define for_each__(Z)     for (iterator Z = beginMutable(), Z_ = endMutable(); Z != Z_; zone++)
-    //#define for_each_(Z)      for (iterator Z = beginMutable(), Z_ = endMutable(); Z != Z_;)
-    //#define for_each_const(Z) for (const_iterator Z = begin(), Z_ = end(); Z != Z_; zone++)
-
     bool pfed_t::constrain(cindex_t i, uint32_t value)
     {
         constraint_t c[2] = {constraint_t{i, 0, dbm_bound2raw(value, dbm_WEAK)},

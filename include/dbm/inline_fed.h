@@ -954,6 +954,8 @@ namespace dbm
         assert(i < getDimension() && j < getDimension() && !isEmpty());
         return const_dbm()[i * pdim() + j];
     }
+    inline int32_t dbm_t::bound(cindex_t i, cindex_t j) const { return dbm_raw2bound(this->operator()(i, j)); }
+    inline bool dbm_t::is_strict(cindex_t i, cindex_t j) const { return dbm_rawIsStrict(this->operator()(i, j)); }
 
     inline const raw_t* dbm_t::operator[](cindex_t i) const
     {

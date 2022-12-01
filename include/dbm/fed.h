@@ -257,9 +257,13 @@ namespace dbm
         /// @post non null pointer iff !isEmpty()
         const raw_t* operator()() const;
 
-        /// @return DBM[i,j]
+        /// @return raw entry in DBM[i,j]
         /// @pre !isEmpty() && i < getDimension() && j < getDimension() otherwise segfault.
         raw_t operator()(cindex_t i, cindex_t j) const;
+        /// @return the bound at [i,j]
+        int32_t bound(cindex_t i, cindex_t j) const;
+        /// @return true if the bound at [i,j] is strict
+        bool is_strict(cindex_t i, cindex_t j) const;
 
         /// @return row DBM[i]
         /// @pre !isEmpty() && i < getDimension()
