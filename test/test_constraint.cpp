@@ -1,6 +1,7 @@
 #include "dbm/constraints.h"
 
 #include <algorithm>
+#include <set>
 #include <vector>
 
 #include <doctest/doctest.h>
@@ -22,4 +23,14 @@ TEST_CASE("Constraint operators")
     REQUIRE(std::is_sorted(vec_sort2.begin(), vec_sort2.end()));
     CHECK(std::includes(vec_sort2.begin(), vec_sort2.end(), vec_sort.begin(), vec_sort.end()));
     CHECK(!std::includes(vec_sort.begin(), vec_sort.end(), vec_sort2.begin(), vec_sort2.end()));
+
+    const auto set = std::set(vec.begin(), vec.end());
+    const auto set1 = std::set(vec_sort.begin(), vec_sort.end());
+    const auto set2 = std::set(vec_sort2.begin(), vec_sort2.end());
+    CHECK(std::includes(set.begin(), set.end(), set1.begin(), set1.end()));
+    CHECK(std::includes(set1.begin(), set1.end(), set.begin(), set.end()));
+    CHECK(!std::includes(set.begin(), set.end(), set2.begin(), set2.end()));
+    CHECK(std::includes(set2.begin(), set2.end(), set.begin(), set.end()));
+    CHECK(!std::includes(set1.begin(), set1.end(), set2.begin(), set2.end()));
+    CHECK(std::includes(set2.begin(), set2.end(), set1.begin(), set1.end()));
 }
