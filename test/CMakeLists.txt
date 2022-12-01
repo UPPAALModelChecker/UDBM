@@ -14,7 +14,7 @@ foreach(source ${test_c_sources})
   target_link_libraries(${test_target} ${libs})
 endforeach()
 
-file(GLOB test_cpp_sources test_fed.cpp test_fed_dbm.cpp test_fp_intersection.cpp test_valuation.cpp)
+file(GLOB test_cpp_sources test_fed.cpp test_fed_dbm.cpp test_fp_intersection.cpp test_valuation.cpp test_constraint.cpp)
 foreach(source ${test_cpp_sources})
   get_filename_component(test_target ${source} NAME_WE)
   add_executable(${test_target} ${source})
@@ -38,5 +38,6 @@ add_test(NAME test_mingraph_1_10_1 COMMAND test_mingraph 1 10 1) # failing test
 set_tests_properties(test_mingraph_1_10_1 PROPERTIES TIMEOUT 45) # 39s on Win64
 add_test(NAME test_valuation COMMAND test_valuation)
 add_test(NAME test_allocation COMMAND test_allocation)
+add_test(NAME test_constraint COMMAND test_constraint)
 
 set_tests_properties(test_dbm_1_10 test_fed PROPERTIES TIMEOUT 1200)

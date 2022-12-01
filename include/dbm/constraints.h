@@ -293,6 +293,8 @@ static inline bool dbm_areConstraintsEqual(constraint_t c1, constraint_t c2)
 }
 
 #ifdef __cplusplus
+}  // extern "C"
+
 inline bool operator==(const constraint_t& c1, const constraint_t& c2)
 {
     return c1.i == c2.i && c1.j == c2.j && c1.value == c2.value;
@@ -310,10 +312,6 @@ inline bool operator<(const constraint_t& c1, const constraint_t& c2)
             return c1.value < c2.value;
     }
     return false;
-}
-#endif  // C++
-
-#ifdef __cplusplus
 }
 #endif
 
