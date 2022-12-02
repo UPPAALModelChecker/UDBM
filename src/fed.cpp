@@ -1304,13 +1304,15 @@ namespace dbm
     {
         assert(isOK());
         assert(arg.isOK());
-        assert(arg.getDimension() == getDimension());
 
         if (sameAs(arg)) {
             return *this;
         } else if (isEmpty()) {
+            assert(getDimension() == 1 || getDimension() == arg.getDimension());
+            setDimension(arg.getDimension());
             *this = arg;
         } else if (!arg.isEmpty()) {
+            assert(arg.getDimension() == getDimension());
             setMutable();
             cindex_t dim = getDimension();
             for (const_iterator iter = arg.begin(); !iter.null(); ++iter) {
@@ -1325,11 +1327,13 @@ namespace dbm
     fed_t& fed_t::operator|=(const dbm_t& arg)
     {
         assert(isOK());
-        assert(getDimension() == arg.getDimension());
 
         if (isEmpty()) {
+            assert(getDimension() == 1 || getDimension() == arg.getDimension());
+            setDimension(arg.getDimension());
             *this = arg;
         } else if (!arg.isEmpty()) {
+            assert(getDimension() == arg.getDimension());
             setMutable();
             if (removeIncludedIn(arg.const_dbm(), getDimension())) {
                 ifed()->insert(arg);
