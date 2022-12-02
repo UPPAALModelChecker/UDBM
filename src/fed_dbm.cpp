@@ -107,7 +107,7 @@ namespace dbm
         str += "(";
         for (cindex_t i = 0; i < dim; ++i) {
             for (cindex_t j = 0; j < dim; ++j) {
-                if (ONE == base_readOneBit(mingraph.data(), i * dim + j)) {
+                if (base_readOneBit(mingraph.data(), i * dim + j) != 0) {
                     assert(i != j);  // Not part of mingraph.
 
                     // Conjunction of constraints.
@@ -1432,7 +1432,7 @@ namespace dbm
                     double dt = isStrict ? base_addEpsilon(value, 1e-6 * base_EPSILON) : value;
                     pt[0] = point[0];
                     for (cindex_t i = 1; i < dim; ++i) {
-                        pt[i] = stopped != nullptr && ONE == base_readOneBit(stopped, i) ? point[i] : point[i] + dt;
+                        pt[i] = stopped != nullptr && base_readOneBit(stopped, i) != 0 ? point[i] : point[i] + dt;
                     }
 
                     // Check if point + di would be inside.
@@ -1449,7 +1449,7 @@ namespace dbm
                             // And validate di.
                             for (cindex_t i = 1; i < dim; ++i) {
                                 pt[i] =
-                                    stopped != nullptr && ONE == base_readOneBit(stopped, i) ? point[i] : point[i] + di;
+                                    stopped != nullptr && base_readOneBit(stopped, i) != 0 ? point[i] : point[i] + di;
                             }
                             if (dbm_isRealPointIncluded(pt.data(), dbm, dim)) {
                                 *t = di;
@@ -1487,7 +1487,7 @@ namespace dbm
         }
         auto dbm = dbm_read();
         for (cindex_t k = 1; k < dim; ++k) {
-            if (dbm.at(k, 0) != dbm_LS_INFINITY && !(stopped != nullptr && ONE == base_readOneBit(stopped, k))) {
+            if (dbm.at(k, 0) != dbm_LS_INFINITY && !(stopped != nullptr && base_readOneBit(stopped, k) != 0)) {
                 bool isStrict = dbm.is_strict(k, 0);
                 auto bound = (double)dbm.bound(k, 0);
                 double d = bound - (point[k] - point[0]);

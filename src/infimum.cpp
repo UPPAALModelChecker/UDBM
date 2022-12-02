@@ -699,7 +699,7 @@ static void infimumNetSimplex(dbm::reader dbm, const int32_t* rates, Tree& tree)
     auto arc_it = arcs.begin();
     for (uint32_t i = 0; i < dim; i++) {
         for (uint32_t j = 0; j < dim; j++) {
-            if (ONE == base_readOneBit(bitMatrix.data(), i * dim + j)) {
+            if (base_readOneBit(bitMatrix.data(), i * dim + j) != 0) {
                 arc_it->i = i;
                 arc_it->j = j;
                 ++arc_it;

@@ -2565,7 +2565,7 @@ namespace dbm
     retry:
         for (const_iterator k = begin(); !k.null(); ++k) {
             for (cindex_t i = 1; i < dim; ++i) {
-                pt[i] = stopped != nullptr && ONE == base_readOneBit(stopped, i) ? point[i] : point[i] + currentDelay;
+                pt[i] = stopped != nullptr && base_readOneBit(stopped, i) != 0 ? point[i] : point[i] + currentDelay;
             }
             auto dbm = k->dbm_read();
             if (dbm != dbm1 && dbm_isRealPointIncluded(pt.data(), dbm, dim)) {
