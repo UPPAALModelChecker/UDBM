@@ -2160,15 +2160,13 @@ namespace dbm
                             superset &= dbm1[ji] >= dbm2[ji];
                         }
                     }
-                    if (subset)  // fi <= fj -> remove fi, put back removedj, reloop
-                    {
+                    if (subset) {  // fi <= fj -> remove fi, put back removedj, reloop
                         CERR(GREEN(THIN) "X" NORMAL);
                         *fi = (*fi)->removeAndNext();
                         ifedPtr->decSize();
                         ifedPtr->stealFromToEnd(fi, *removedj.ifedPtr);
                         goto new_convexi;
-                    } else if (superset)  // fi >= fj -> remove fj, continue
-                    {
+                    } else if (superset) {  // fi >= fj -> remove fj, continue
                         CERR(GREEN(THIN) "x" NORMAL);
                         *fj = (*fj)->removeAndNext();
                         ifedPtr->decSize();
@@ -2200,8 +2198,7 @@ namespace dbm
                     }
                 }  // for(fj..)
 
-                if (removedj.size() > 0)  // otherwise convexi == dbmi
-                {
+                if (removedj.size() > 0) {  // otherwise convexi == dbmi
                     // 2nd pass to compare only with convexi
                     for (fdbm_t** fj = (*fi)->getNextMutable(); *fj != nullptr;) {
                         const dbm_t& dbmj = (*fj)->const_dbmt();
@@ -2229,8 +2226,7 @@ namespace dbm
                         convexi.nil();
                         (newFed -= tooMuch.mergeReduce()).mergeReduce();
                         assert(dbmi.le(newFed));
-                        if (newFed.size() <= removedj.size())  // <= because dbmi not in removedj
-                        {
+                        if (newFed.size() <= removedj.size()) {  // <= because dbmi not in removedj
                             CERR(GREEN(BOLD) "R(" << (1 + removedj.size() - newFed.size()) << ")" NORMAL);
                             *fi = (*fi)->removeAndNext();  // remove fi since inside newFed
                             ifedPtr->decSize();

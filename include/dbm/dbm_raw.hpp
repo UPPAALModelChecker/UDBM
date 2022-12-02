@@ -59,12 +59,6 @@ namespace dbm
         /** Trivial comparison. */
         bool operator==(const writer& other) const { return dbm == other.dbm && dim == other.dim; }
         bool operator!=(const writer& other) const { return !(*this == other); }
-        /** Emulate pointer assignment. */
-        writer& operator=(raw_t* ptr)
-        {
-            dbm = ptr;
-            return *this;
-        }
         /** Emulate pointer arithmetic. */
         writer operator+(std::ptrdiff_t offset) const
         {

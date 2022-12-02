@@ -580,7 +580,7 @@ int32_t pdbm_getInfimumValuation(const PDBM pdbm, cindex_t dim, int32_t* valuati
      */
     if (free != nullptr) {
         dbm_copy(copy.data(), dbm, dim);
-        dbm = copy.data();
+        dbm = {copy.data(), dim};
 
         for (uint32_t i = 1; i < dim; i++) {
             if (!free[i]) {
