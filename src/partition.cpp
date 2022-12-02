@@ -157,13 +157,12 @@ namespace dbm
             index = (index + 1) & mask;
         }
 
-        if (table[index] != nullptr)  // New entry;
+        if (table[index] == nullptr)  // New entry;
         {
             table[index] = new entry_t(id, newi);
             nbEntries++;
             newi.nil();
-        } else  // Add to existing entry.
-        {
+        } else {  // Add to existing entry.
             size_t s = table[index]->fed.size();
             REDUCE_SKIP(table[index]->fed.appendEnd(newi), s);
         }
