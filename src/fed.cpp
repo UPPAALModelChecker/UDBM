@@ -22,6 +22,7 @@
 #include "base/doubles.h"
 
 #include <forward_list>
+#include <sstream>
 #include <cmath>
 
 // This is to print how some DBM reductions perform.
@@ -811,21 +812,22 @@ namespace dbm
 
     void fed_t::heuristicMergeReduce(bool active) { restricted_merge = active; }
 
-    std::string fed_t::toString(const ClockAccessor& access, bool full) const
+    std::ostream& fed_t::print(std::ostream& os, const ClockAccessor& access, bool full) const
     {
-        if (isEmpty()) {
-            return "false";
-        }
-        std::string str;
-        bool isFirst = true;
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (!isFirst) {
-                str += " || ";
-            }
-            str += i->toString(access, full);
-            isFirst = false;
-        }
-        return str;
+        if (isEmpty())
+            return os << "false";
+        auto it = begin(), e = end();
+        it->print(os, access, full);
+        while (++it != e)
+            it->print(os << " || ", access, full);
+        return os;
+    }
+
+    std::string fed_t::str(const ClockAccessor& access, bool full) const
+    {
+        auto os = std::ostringstream{};
+        print(os, access, full);
+        return os.str();
     }
 
     bool fed_t::hasZero() const

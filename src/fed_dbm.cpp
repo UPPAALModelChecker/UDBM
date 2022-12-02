@@ -18,6 +18,7 @@
 #include "base/bitstring.h"
 #include "base/doubles.h"
 
+#include <sstream>
 #include <vector>
 #include <cmath>
 
@@ -84,11 +85,10 @@ namespace dbm
         return dim * dim - dim;
     }
 
-    std::string dbm_t::toString(const ClockAccessor& access, bool full) const
+    std::ostream& dbm_t::print(std::ostream& os, const ClockAccessor& access, bool full) const
     {
-        if (isEmpty()) {
-            return "false";
-        }
+        if (isEmpty())
+            return os << "false";
 
         const cindex_t dim = pdim();
         std::vector<uint32_t> mingraph = std::vector<uint32_t>(bits2intsize(dim * dim));
@@ -96,24 +96,20 @@ namespace dbm
         size_t n = full
                        ? dbm_fillBitMatrix(dbm, dim, mingraph.data())
                        : dbm_cleanBitMatrix(dbm, dim, mingraph.data(), dbm_analyzeForMinDBM(dbm, dim, mingraph.data()));
-        if (n == 0) {
-            return "true";
-        }
+        if (n == 0)
+            return os << "true";
 
-        char buffer[32];
-        std::string str;
         bool firstConstraint = true;
 
-        str += "(";
+        os << "(";
         for (cindex_t i = 0; i < dim; ++i) {
             for (cindex_t j = 0; j < dim; ++j) {
                 if (base_readOneBit(mingraph.data(), i * dim + j) != 0) {
                     assert(i != j);  // Not part of mingraph.
 
                     // Conjunction of constraints.
-                    if (!firstConstraint) {
-                        str += " && ";
-                    }
+                    if (!firstConstraint)
+                        os << " && ";
                     firstConstraint = false;
 
                     // Write constraints xi-xj <|<= DBM[i,j]
@@ -125,15 +121,9 @@ namespace dbm
                             base_resetOneBit(mingraph.data(), j * dim);
 
                             // xj == b
-                            snprintf(buffer, sizeof(buffer), "==%d", -dbm.bound(0, j));
-                            str += access.getClockName(j);
-                            str += buffer;
-                        } else  // b < xj, b <= xj
-                        {
-                            snprintf(buffer, sizeof(buffer), "%d%s", -dbm.bound(0, j),
-                                     dbm.is_strict(0, j) ? "<" : "<=");
-                            str += buffer;
-                            str += access.getClockName(j);
+                            os << access.getClockName(j) << "==" << -dbm.bound(0, j);
+                        } else {  // b < xj, b <= xj
+                            os << -dbm.bound(0, j) << (dbm.is_strict(0, j) ? "<" : "<=") << access.getClockName(j);
                         }
                     } else {
                         // xi-xj == b ?
@@ -142,41 +132,33 @@ namespace dbm
                             n -= base_getOneBit(mingraph.data(), j * dim + i);
                             base_resetOneBit(mingraph.data(), j * dim + i);
 
-                            // xi == xj
-                            if (j > 0 && dbm.at(i, j) == dbm_LE_ZERO) {
-                                str += access.getClockName(i);
-                                str += "==";
-                                str += access.getClockName(j);
-                                goto consume_n;
+                            if (j > 0 && dbm.at(i, j) == dbm_LE_ZERO) {  // xi == xj
+                                os << access.getClockName(i) << "==" << access.getClockName(j);
+                            } else {
+                                if (j == 0) {        // xi < b, xi <= b
+                                    assert(i != 0);  // 0,0 never part of mingraph
+                                    os << access.getClockName(i);
+                                } else {  // xi-xj < b, xi-xj <= b
+                                    os << access.getClockName(i) << "-" << access.getClockName(j);
+                                }
+                                os << "==" << dbm.bound(i, j);
                             }
-                            // == b
-                            snprintf(buffer, sizeof(buffer), "==%d", dbm.bound(i, j));
                         } else {
-                            // xi < xj, xi <= xj
-                            if (j > 0 && dbm.bound(i, j) == 0) {
-                                str += access.getClockName(i);
-                                str += dbm.is_strict(i, j) ? "<" : "<=";
-                                str += access.getClockName(j);
-                                goto consume_n;
+                            if (j > 0 && dbm.bound(i, j) == 0) {  // xi < xj, xi <= xj
+                                os << access.getClockName(i) << (dbm.is_strict(i, j) ? "<" : "<=")
+                                   << access.getClockName(j);
+                            } else {
+                                if (j == 0) {        // xi < b, xi <= b
+                                    assert(i != 0);  // 0,0 never part of mingraph
+                                    os << access.getClockName(i);
+                                } else {  // xi-xj < b, xi-xj <= b
+                                    os << access.getClockName(i) << "-" << access.getClockName(j);
+                                }
+                                // < b, <= b
+                                os << (dbm.is_strict(i, j) ? "<" : "<=") << dbm.bound(i, j);
                             }
-                            // < b, <= b
-                            snprintf(buffer, sizeof(buffer), "%s%d", dbm.is_strict(i, j) ? "<" : "<=", dbm.bound(i, j));
-                        }
-
-                        if (j == 0)  // xi < b, xi <= b
-                        {
-                            assert(i != 0);  // 0,0 never part of mingraph
-                            str += access.getClockName(i);
-                            str += buffer;
-                        } else  // xi-xj < b, xi-xj <= b
-                        {
-                            str += access.getClockName(i);
-                            str += "-";
-                            str += access.getClockName(j);
-                            str += buffer;
                         }
                     }
-                consume_n:
                     assert(n);
                     --n;  // Consumed one constraint.
                     if (n == 0)
@@ -185,9 +167,15 @@ namespace dbm
             }
         }
     stop_loops:
-        str += ")";
+        os << ")";
+        return os;
+    }
 
-        return str;
+    std::string dbm_t::str(const ClockAccessor& access, bool full) const
+    {
+        auto os = std::ostringstream{};
+        print(os, access, full);
+        return os.str();
     }
 
     dbm_t dbm_t::makeUnbounded(const int32_t* low, cindex_t dim)

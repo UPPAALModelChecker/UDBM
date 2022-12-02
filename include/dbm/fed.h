@@ -190,11 +190,11 @@ namespace dbm
         /// @return the dimension of this DBM.
         cindex_t getDimension() const;
 
-        /// @return string representation of the
-        /// constraints of this DBM. A clock
-        /// is always positive, so "true" simply means
-        /// all clocks positive.
-        std::string toString(const ClockAccessor&, bool full = false) const;
+        /// Prints a textual representation of the DBM constraints.
+        /// A Clock is always positive, so "true" simply means alll clocks positive.
+        std::ostream& print(std::ostream&, const ClockAccessor&, bool full = false) const;
+        /// @return string representation of the constraints of this DBM. See #print(std::ostream&,...)
+        std::string str(const ClockAccessor&, bool full = false) const;
 
         /** Make an unbounded DBM with the lower bounds set to low
          * (strict constraints).
@@ -836,11 +836,11 @@ namespace dbm
         /// @return true if a point in the federation can delay.
         bool canDelay() const;
 
-        /// @return string representation of the
-        /// constraints of this federation. A clock
-        /// is always positive, so "true" simply means
-        /// all clocks positive.
-        std::string toString(const ClockAccessor&, bool full = false) const;
+        /// Prints a textual representation of the constraints of this federation.
+        /// A clock is always positive, so "true" simply means all clocks positive.
+        std::ostream& print(std::ostream& os, const ClockAccessor&, bool full = false) const;
+        /// @return a string representation, see print(std::ostream&,...)
+        std::string str(const ClockAccessor&, bool full = false) const;
 
         /** Computes the biggest lower cost in the zone.
          *  This corresponds to the value
