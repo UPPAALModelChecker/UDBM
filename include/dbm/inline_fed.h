@@ -461,10 +461,10 @@ namespace dbm
     class dbmlist_t
     {
     public:
-        dbmlist_t(): fedSize(0), fhead(nullptr) {}
-        dbmlist_t(size_t size, fdbm_t* flist): fedSize(size), fhead(flist) {}
-        dbmlist_t(const raw_t* arg, cindex_t dim): fedSize(1), fhead(fdbm_t::create(arg, dim)) {}
-        dbmlist_t(const dbm_t& arg): fedSize(1), fhead(fdbm_t::create(arg)) {}
+        dbmlist_t() = default;
+        dbmlist_t(size_t size, fdbm_t* flist): fedSize{size}, fhead{flist} {}
+        dbmlist_t(const raw_t* arg, cindex_t dim): fedSize{1}, fhead{fdbm_t::create(arg, dim)} {}
+        dbmlist_t(const dbm_t& arg): fedSize{1}, fhead{fdbm_t::create(arg)} {}
 
         /// Append a list of fdbm_t.
         dbmlist_t& append(dbmlist_t& arg)
@@ -617,8 +617,8 @@ namespace dbm
 #endif
 
     protected:
-        size_t fedSize;  //< size of the federation
-        fdbm_t* fhead;   //< federation head of the list (1st DBM)
+        size_t fedSize{0};       //< size of the federation
+        fdbm_t* fhead{nullptr};  //< federation head of the list (1st DBM)
     };
 
     class ifed_t : public dbmlist_t

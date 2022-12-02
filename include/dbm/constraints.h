@@ -279,9 +279,6 @@ static inline constraint_t dbm_negConstraint(constraint_t c)
     c.value = dbm_negRaw(c.value);
     return c;
 }
-#ifdef __cplusplus
-inline constraint_t operator!(const constraint_t& c) { return dbm_negConstraint(c); }
-#endif  // C++
 
 /** Equality of constraints.
  * @param c1, c2: constraints.
@@ -295,12 +292,17 @@ static inline bool dbm_areConstraintsEqual(constraint_t c1, constraint_t c2)
 #ifdef __cplusplus
 }  // extern "C"
 
+/** Constraint negation operator computes a negated constraint. */
+inline constraint_t operator!(const constraint_t& c) { return dbm_negConstraint(c); }
+
+/** Simple memberwise equality check. */
 inline bool operator==(const constraint_t& c1, const constraint_t& c2)
 {
     return c1.i == c2.i && c1.j == c2.j && c1.value == c2.value;
 }
 inline bool operator!=(const constraint_t& c1, const constraint_t& c2) { return !(c1 == c2); }
 
+/** Default ordering to support std::set and std::includes. */
 inline bool operator<(const constraint_t& c1, const constraint_t& c2)
 {
     if (c1.i < c2.i)
