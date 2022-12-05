@@ -2373,45 +2373,32 @@ namespace dbm
 
         double totalDelay = 0.0;
         if (dim > 1) {
-            auto dbm1 = dbm::reader{};
             // First find a DBM containing this point
-            for (const auto& i : *this) {
-                if (i.contains(point, dim)) {
-                    dbm1 = i.dbm_read();
-                    break;
-                }
-            }
-            if (dbm1) {
-            retry:
+            auto it = std::find_if(begin(), end(), [point, dim](const dbm_t& dbm) { return dbm.contains(point, dim); });
+            while (it != end()) {
+                const auto dbm1 = it->dbm_read();
                 // Possible backward delay of point in dbm1
                 double delay = fed_diff(point[1] - totalDelay, dbm1[1]);
-                for (cindex_t j = 2; j < dim; ++j) {
+                for (cindex_t j = 2; j < dim; ++j)
                     delay = std::min(delay, fed_diff(point[j] - totalDelay, dbm1[j]));
-                }
                 if (totalDelay < delay) {
                     totalDelay = delay;
-
                     // Find dbm2 to continue the delay and retry with a new dbm1
-                    auto dbm2 = dbm::reader{};
-                    for (const auto& i : *this) {
-                        dbm2 = i.dbm_read();
+                    it = std::find_if(begin(), end(), [dbm1, point, dim](const dbm_t& dbm) {
+                        auto dbm2 = dbm.dbm_read();
                         if (dbm1 != dbm2) {
-                            // Check if we can continue with the delay through
-                            // another DBM: forall i, -dbm1.lower[i] <= dbm2.upper[i]
-                            cindex_t j;
-                            for (j = 2; j < dim; ++j) {
+                            // Check if we can continue with the delay through another DBM:
+                            // forall i, -dbm1.lower[i] <= dbm2.upper[i]
+                            for (cindex_t j = 2; j < dim; ++j)
                                 if (dbm_negRaw(dbm1[j]) > dbm2[j * dim] ||  // DBM 'continuous'
-                                    point[j] > (dbm2.bound(j, 0) + 0.5)) {
-                                    break;  // cannot
-                                }
-                            }
-                            if (j == dim) {   // all lower1 <= upper2
-                                dbm1 = dbm2;  // continue on dbm2
-                                goto retry;
-                            }
+                                    point[j] > (dbm2.bound(j, 0) + 0.5))
+                                    return false;  // cannot
+                            return true;           // all lower1 <= upper2, continue on dbm2
                         }
-                    }
-                }
+                        return false;
+                    });
+                } else
+                    break;
             }
         }
         return totalDelay;

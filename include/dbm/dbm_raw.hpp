@@ -10,11 +10,10 @@ namespace dbm
     /** Non-owning raw DBM wrapper for read-only/const access to raw bounds. Drop-in replacement for "const raw_t*". */
     class reader
     {
-        const raw_t* dbm{nullptr};
-        cindex_t dim{0};
+        const raw_t* dbm;
+        cindex_t dim;
 
     public:
-        reader() = default;
         reader(const raw_t* dbm, cindex_t dim): dbm{dbm}, dim{dim} {}
         const raw_t* get() const { return dbm; }  ///< TODO: needed only for doctest-2.4.8/NIX, can be removed later
         /** Returns the number of dimensions/clocks in this DBM. */
@@ -39,11 +38,10 @@ namespace dbm
     /** Non-owning raw DBM wrapper with mutable access to raw bounds. Drop-in replacement for "raw_t*". */
     class writer
     {
-        raw_t* dbm{nullptr};
-        cindex_t dim{0};
+        raw_t* dbm;
+        cindex_t dim;
 
     public:
-        writer() = default;
         writer(raw_t* dbm, cindex_t dim): dbm{dbm}, dim{dim} {}
         raw_t* get() const { return dbm; }  ///< needed only for doctest-2.4.8/NIX, can be removed later
         /** Returns the number of dimensions/clocks in this DBM. */
