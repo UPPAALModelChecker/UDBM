@@ -453,12 +453,12 @@ namespace dbm
         assert(getDimension() == fed.getDimension());
 
         const cindex_t dim = getDimension();
-        for (fed_t::const_iterator iter = fed.begin(); !iter.null(); ++iter) {
-            assert(!iter->isEmpty());
+        for (const auto& iter : fed) {
+            assert(!iter.isEmpty());
             if (isEmpty()) {
-                newCopy(*iter);
+                newCopy(iter);
             } else {
-                ptr_convexUnion(iter->const_dbm(), dim);
+                ptr_convexUnion(iter.const_dbm(), dim);
             }
         }
         return *this;
@@ -880,7 +880,7 @@ namespace dbm
             RECORD_SUBSTAT("trivial empty");
             return false;
         } else {
-            fed_t::const_iterator iter = fed.begin();
+            fed_t::const_iterator iter = fed.begin(), e = fed.end();
             const cindex_t dim = pdim();
             assert(iter != fed.end());
             do {
@@ -888,7 +888,7 @@ namespace dbm
                     RECORD_SUBSTAT("maybe yes");
                     return true;
                 }
-            } while (!(++iter).null());
+            } while (++iter != e);
             RECORD_SUBSTAT("no");
             return false;
         }

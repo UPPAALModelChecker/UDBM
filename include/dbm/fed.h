@@ -1421,6 +1421,12 @@ namespace dbm
         class iterator
         {
         public:
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = dbm_t;
+            using difference_type = std::ptrdiff_t;
+            using pointer = value_type*;
+            using reference = value_type&;
+
             /// End of list.
             static const fdbm_t* ENDF;
 
@@ -1432,10 +1438,10 @@ namespace dbm
             iterator(ifed_t* fed);
 
             /// Dereference to dbm_t, @pre !null()
-            dbm_t& operator*() const;
+            reference operator*() const;
 
             /// Dereference to dbm_t*, @pre !null()
-            dbm_t* operator->() const;
+            pointer operator->() const;
 
             /// Mutable access to the matrix as for fed_t, @pre !null()
             raw_t* operator()() const;
@@ -1443,9 +1449,6 @@ namespace dbm
 
             /// Increment iterator, @pre !null()
             iterator& operator++();
-
-            /// Test if there are DBMs left on the list.
-            bool null() const;
 
             /// @return true if there is another DBM after, @pre !null()
             bool hasNext() const;
@@ -1476,6 +1479,12 @@ namespace dbm
         class const_iterator
         {
         public:
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = const dbm_t;
+            using difference_type = std::ptrdiff_t;
+            using pointer = value_type*;
+            using reference = value_type&;
+
             /// Const iterator for end of list.
             static const const_iterator ENDI;
 
@@ -1485,10 +1494,10 @@ namespace dbm
             const_iterator();
 
             /// Dereference to dbm_t
-            const dbm_t& operator*() const;
+            reference operator*() const;
 
             /// Dereference to dbm_t*, @pre !null()
-            const dbm_t* operator->() const;
+            pointer operator->() const;
 
             /// Access to the matrix as for fed_t
             const raw_t* operator()() const;
@@ -1498,9 +1507,6 @@ namespace dbm
             /// Increment iterator, @pre !null()
             const_iterator& operator++();
 
-            /// Test if there are DBMs left on the list. TODO: get rid of this in favor of simple ranged-for
-            bool null() const;
-
             /// @return true if there is another DBM after, @pre !null()
             bool hasNext() const;
 
@@ -1509,18 +1515,27 @@ namespace dbm
             bool operator!=(const const_iterator& arg) const;
 
         private:
-            const fdbm_t* fdbm;  /// list of DBMs
+            const fdbm_t* fdbm{nullptr};  /// list of DBMs
         };
 
         /// Access to iterators. Limitation: you cannot modify the original
         /// fed_t object otherwise the iterator will be invalidated. In
         /// addition, you cannot copy the original either if the non const
         /// iterator is used.
-
         const_iterator begin() const;
-        const const_iterator end() const;
-        iterator beginMutable();
-        const iterator endMutable() const;
+        const_iterator end() const;
+        /** @return DBM iterator with mutable access, see also as_mutable for ranged-based loop. */
+        iterator begin_mutable();
+        iterator end_mutable();
+        /** Helper struct used in range-base loop with mutable access. */
+        struct mutable_range
+        {
+            iterator b, e;
+            iterator begin() { return b; }
+            iterator end() { return e; }
+        };
+        /** @return the original range of DBMs with mutable access for range-based loop. */
+        mutable_range as_mutable() { return {begin_mutable(), end_mutable()}; }
 
         // Standard erase method for the iterator.
         iterator erase(iterator& iter);

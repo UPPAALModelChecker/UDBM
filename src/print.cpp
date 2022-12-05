@@ -18,12 +18,6 @@
 #include "io/FileStreamBuffer.h"
 #include "base/bitstring.h"
 
-/* For debugging */
-static inline void ASSERT_DIAG_OK(raw_t* DBM, cindex_t DIM)
-{
-    ASSERT(dbm_isDiagonalOK(DBM, DIM), dbm_print(stderr, DBM, DIM));
-}
-
 /** For easy conversion FILE* to ostream */
 class file_ostream
 {
@@ -68,12 +62,11 @@ namespace dbm
             }
             os << '\n';
         } else {
-            for (dbm::fed_t::const_iterator iter(fed); !iter.null();) {
-                dbm_cppPrint(os, iter);
-                ++iter;
-                if (!iter.null()) {
-                    os << _print_prefix << (_ruby_format ? ",matrix\\\n" : ",\n");
-                }
+            auto it = fed.begin(), e = fed.end();
+            if (it != e) {
+                dbm_cppPrint(os, it);
+                while (++it != e)
+                    dbm_cppPrint(os << _print_prefix << (_ruby_format ? ",matrix\\\n" : ",\n"), it);
             }
         }
 

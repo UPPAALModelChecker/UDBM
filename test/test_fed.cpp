@@ -67,9 +67,8 @@ T rand_int(T mx)
 static bool test_isPointIn(const int32_t* pt, const fed_t& fed, cindex_t dim)
 {
     bool inside = false;
-    for (fed_t::const_iterator iter(fed); !iter.null(); ++iter) {
+    for (const auto& iter : fed)
         inside = inside || dbm_isPointIncluded(pt, iter(), dim);
-    }
     return inside;
 }
 
@@ -82,9 +81,8 @@ static bool test_isPointIn(const int32_t* pt, const fed_t& fed, cindex_t dim)
 static bool test_isRealPointIn(const double* pt, const fed_t& fed, cindex_t dim)
 {
     bool inside = false;
-    for (fed_t::const_iterator iter(fed); !iter.null(); ++iter) {
+    for (const auto& iter : fed)
         inside = inside || dbm_isRealPointIncluded(pt, iter(), dim);
-    }
     return inside;
 }
 
@@ -313,22 +311,22 @@ static void test_setZero(cindex_t dim)
     CHECK(dim > 0);
     CHECK(fed.size() == 1);
     CHECK(!fed.isEmpty());
-    fed_t::const_iterator iter(fed);
-    CHECK(!iter.null());
+    fed_t::const_iterator iter = fed.begin(), e = fed.end();
+    CHECK(iter != e);
     CHECK((*iter).isZero());
     ++iter;
-    CHECK(iter.null());
+    CHECK(iter == e);
     fed.nil();
     CHECK(fed.isEmpty());
     fed.setDimension(dim);
     fed.setZero();
     iter = fed_t::const_iterator(fed);
-    CHECK(!iter.null());
+    CHECK(iter != e);
     CHECK((*iter).isZero());
     CHECK((*iter).getDimension() == fed.getDimension());
     CHECK(fed.getDimension() == dim);
     ++iter;
-    CHECK(iter.null());
+    CHECK(iter == e);
 }
 
 // Test setInit
@@ -340,22 +338,22 @@ static void test_setInit(cindex_t dim)
     CHECK(dim > 0);
     CHECK(fed.size() == 1);
     CHECK(!fed.isEmpty());
-    fed_t::const_iterator iter(fed);
-    CHECK(!iter.null());
+    fed_t::const_iterator iter = fed.begin(), e = fed.end();
+    CHECK(iter != e);
     CHECK((*iter).isInit());
     ++iter;
-    CHECK(iter.null());
+    CHECK(iter == e);
     fed.nil();
     CHECK(fed.isEmpty());
     fed.setDimension(dim);
     fed.setInit();
     iter = fed_t::const_iterator(fed);
-    CHECK(!iter.null());
+    CHECK(iter != e);
     CHECK((*iter).isInit());
     CHECK((*iter).getDimension() == fed.getDimension());
     CHECK(fed.getDimension() == dim);
     ++iter;
-    CHECK(iter.null());
+    CHECK(iter == e);
 }
 
 // Test copy -- no real copy, since copy on write!
@@ -372,18 +370,16 @@ static void test_copy(cindex_t dim, size_t size)
         CHECK(fed1.getDimension() == fed2.getDimension());
         CHECK(fed1.size() == fed2.size());
         CHECK(fed2.hash() == h);
-        for (fed_t::const_iterator iter(fed1); !iter.null(); ++iter) {
-            CHECK(fed2.hasSame(*iter));
-        }
+        for (const auto& iter : fed1)
+            CHECK(fed2.hasSame(iter));
         fed1.nil();
         fed1 = fed2;  // copy
         CHECK(fed1.hash() == h);
         CHECK(fed1.getDimension() == dim);
         CHECK(fed1.getDimension() == fed2.getDimension());
         CHECK(fed1.size() == fed2.size());
-        for (fed_t::const_iterator iter(fed1); !iter.null(); ++iter) {
-            CHECK(fed2.hasSame(*iter));
-        }
+        for (const auto& iter : fed1)
+            CHECK(fed2.hasSame(iter));
         // preview on relations
         CHECK(fed1 == fed2);
         CHECK(fed1 >= fed2);
@@ -415,8 +411,8 @@ static void test_union(cindex_t dim, size_t size)
     uint32_t k;
     for (k = 0; k < NB_LOOPS; ++k) {
         PROGRESS();
-        fed_t fed1(test_gen(dim, size));
-        fed_t fed2(test_gen(dim, size));
+        fed_t fed1 = test_gen(dim, size);
+        fed_t fed2 = test_gen(dim, size);
         fed_t fed3 = fed1;
         uint32_t h = fed1.hash();
         fed1 |= fed2;
@@ -428,9 +424,9 @@ static void test_union(cindex_t dim, size_t size)
         CHECK(fed1.ge(fed2));
         CHECK(fed1 >= fed2);
         CHECK(fed3.hash() == h);  // no side effect with ref etc..
-        for (fed_t::const_iterator iter(fed2); !iter.null(); ++iter) {
-            CHECK(*iter <= fed1);
-            fed3 |= *iter;
+        for (const auto& iter : fed2) {
+            CHECK(iter <= fed1);
+            fed3 |= iter;
         }
         CHECK(fed1 == fed3);
         CHECK(fed1 >= fed3);
@@ -453,9 +449,8 @@ static void test_union(cindex_t dim, size_t size)
         fed1.reduce();
         fed2 = test_genArg(size, fed1);
         fed1.removeIncludedIn(fed2);
-        for (fed_t::const_iterator iter(fed1); !iter.null(); ++iter) {
-            CHECK(!(*iter <= fed2));
-        }
+        for (const auto& iter : fed1)
+            CHECK(!(iter <= fed2));
     }
 }
 
@@ -528,13 +523,13 @@ static void test_intersection(cindex_t dim, size_t size)
         CHECK(fed3.le(fed2));
         CHECK(fed4.le(fed1));
         CHECK(fed4.le(dbm2));
-        for (fed_t::const_iterator iter(fed3); !iter.null(); ++iter) {
-            CHECK(iter->le(fed1));
-            CHECK(iter->le(fed2));
+        for (const auto& iter : fed3) {
+            CHECK(iter.le(fed1));
+            CHECK(iter.le(fed2));
         }
-        for (fed_t::const_iterator iter(fed4); !iter.null(); ++iter) {
-            CHECK(iter->le(fed1));
-            CHECK(iter->le(dbm2));
+        for (const auto& iter : fed4) {
+            CHECK(iter.le(fed1));
+            CHECK(iter.le(dbm2));
         }
         if (fed3.isEmpty()) {
             std::vector<double> pt(dim);
@@ -597,17 +592,17 @@ static void test_constrain(cindex_t dim, size_t size)
                 CHECK((fed1 && constraints[i]));
             if (!(fed1 && constraints[i]))
                 CHECK(fed1.isEmpty());
-            for (fed_t::const_iterator iter(fed1); !iter.null(); ++iter) {
-                CHECK((*iter && constraints[i]));
+            for (const auto& iter : fed1) {
+                CHECK((iter && constraints[i]));
                 if (n1 != 0)
-                    CHECK((*iter && onec));
+                    CHECK((iter && onec));
             }
         }
         CHECK(fed2.hash() == h);
-        for (fed_t::iterator iter = fed2.beginMutable(); !iter.null(); ++iter) {
-            iter->constrain(constraints.data(), nb);
+        for (auto& iter : fed2.as_mutable()) {
+            iter.constrain(constraints.data(), nb);
             if (n1 != 0)
-                *iter &= onec;
+                iter &= onec;
         }
         fed2.removeEmpty();  // invariant of fed_t
         CHECK(fed1.hash() == fed2.hash());
@@ -649,9 +644,8 @@ static void test_up(cindex_t dim, size_t size)
         if (!fed1.isUnbounded())
             CHECK(dim == 0);
         CHECK(fed2.hash() == h);
-        for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
-            iter2->up();
-        }
+        for (auto& iter2 : fed2.as_mutable())
+            iter2.up();
         CHECK(fed1 == fed2);
         CHECK(fed2 == fed1);
         fed1.reduce();
@@ -684,9 +678,8 @@ static void test_down(cindex_t dim, size_t size)
         uint32_t h = fed1.hash();
         CHECK(fed2 <= fed1.down());
         CHECK(fed2.hash() == h);
-        for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
-            iter2->down();
-        }
+        for (auto& iter2 : fed2.as_mutable())
+            iter2.down();
         CHECK(fed1 == fed2);
         CHECK(fed2 == fed1);
         fed1.reduce();
@@ -724,9 +717,8 @@ static void test_freeClock(cindex_t dim, size_t size)
             cindex_t c = rand_int(dim - 1) + 1;  // not ref clock
             CHECK(fed2 <= fed1.freeClock(c));
             CHECK(fed2.hash() == h);
-            for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
-                iter2->freeClock(c);
-            }
+            for (auto& iter2 : fed2.as_mutable())
+                iter2.freeClock(c);
             CHECK(fed1 == fed2);
             CHECK(fed2 == fed1);
             fed1.reduce();
@@ -786,9 +778,8 @@ static void test_updateValue(cindex_t dim, size_t size)
                 CHECK((fed1 - fed2).isEmpty());
                 CHECK((fed2 - fed1).isEmpty());
             }
-            for (fed_t::iterator iter = fed3.beginMutable(); !iter.null(); ++iter) {
-                iter->updateValue(c, v);
-            }
+            for (auto& iter : fed3.as_mutable())
+                iter.updateValue(c, v);
             CHECK(h == fed3.reduce().hash());
             CHECK(fed1 == fed3);
             CHECK(fed3 == fed1);
@@ -844,9 +835,8 @@ static void test_updateClock(cindex_t dim, size_t size)
                 CHECK((fed1 - fed2).isEmpty());
                 CHECK((fed2 - fed1).isEmpty());
             }
-            for (fed_t::iterator iter = fed3.beginMutable(); !iter.null(); ++iter) {
-                iter->updateClock(c1, c2);
-            }
+            for (auto& iter : fed3.as_mutable())
+                iter.updateClock(c1, c2);
             CHECK(fed1 == fed3);
             CHECK(fed3 == fed1);
             CHECK(fed1.eq(fed3));
@@ -884,7 +874,7 @@ static void test_updateIncrement(cindex_t dim, size_t size)
             fed_t fed3 = fed1;
             uint32_t h = fed1.hash();
             cindex_t c = rand_int(dim - 1) + 1;
-            cindex_t v = rand_int(50);
+            int32_t v = rand_int(50);
             fed1.updateIncrement(c, v);
             fed2(c) += v;
             CHECK(fed3.hash() == h);
@@ -905,9 +895,8 @@ static void test_updateIncrement(cindex_t dim, size_t size)
                 CHECK((fed1 - fed2).isEmpty());
                 CHECK((fed2 - fed1).isEmpty());
             }
-            for (fed_t::iterator iter = fed3.beginMutable(); !iter.null(); ++iter) {
-                iter->updateIncrement(c, v);
-            }
+            for (auto& iter : fed3.as_mutable())
+                iter.updateIncrement(c, v);
             CHECK(fed1 == fed3);
             CHECK(fed3 == fed1);
             CHECK(fed1.eq(fed3));
@@ -946,7 +935,7 @@ static void test_update(cindex_t dim, size_t size)
             uint32_t h = fed1.hash();
             cindex_t c1 = rand_int(dim - 1) + 1;
             cindex_t c2 = rand_int(dim - 1) + 1;
-            cindex_t v = rand_int(50);
+            int32_t v = rand_int(50);
             fed1.update(c1, c2, v);
             fed2(c1) = fed2(c2) + v;
             CHECK(fed3.hash() == h);
@@ -967,9 +956,8 @@ static void test_update(cindex_t dim, size_t size)
                 CHECK((fed1 - fed2).isEmpty());
                 CHECK((fed2 - fed1).isEmpty());
             }
-            for (fed_t::iterator iter = fed3.beginMutable(); !iter.null(); ++iter) {
-                iter->update(c1, c2, v);
-            }
+            for (auto& iter : fed3.as_mutable())
+                iter.update(c1, c2, v);
             CHECK(fed1 == fed3);
             CHECK(fed3 == fed1);
             CHECK(fed1.eq(fed3));
@@ -1078,8 +1066,8 @@ static void test_isUnbounded(cindex_t dim, size_t size)
         PROGRESS();
         fed_t fed(test_gen(dim, size));
         bool testu = false;
-        for (fed_t::const_iterator iter(fed); !iter.null(); ++iter) {
-            if (iter->isUnbounded()) {
+        for (const auto& iter : fed) {
+            if (iter.isUnbounded()) {
                 testu = true;
                 break;
             }
@@ -1142,9 +1130,8 @@ static void test_freeAllUp(cindex_t dim, size_t size)
         if (!fed1.isUnbounded())
             CHECK(dim == 0);
         CHECK(fed2.hash() == h);
-        for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
-            iter2->freeAllUp();
-        }
+        for (auto& iter2 : fed2.as_mutable())
+            iter2.freeAllUp();
         CHECK(fed1 == fed2);
         CHECK(fed2 == fed1);
         fed1.reduce();
@@ -1178,9 +1165,8 @@ static void test_freeAllDown(cindex_t dim, size_t size)
         CHECK(fed2 <= fed1.freeAllDown());
         CHECK(down(fed2) <= fed1);
         CHECK(fed2.hash() == h);
-        for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
-            iter2->freeAllDown();
-        }
+        for (auto& iter2 : fed2.as_mutable())
+            iter2.freeAllDown();
         CHECK(fed1 == fed2);
         CHECK(fed2 == fed1);
         fed1.reduce();
@@ -1217,9 +1203,8 @@ static void test_freeDown(cindex_t dim, size_t size)
             cindex_t c = rand_int(dim - 1) + 1;  // not ref clock
             CHECK(fed2 <= fed1.freeDown(c));
             CHECK(fed2.hash() == h);
-            for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
-                iter2->freeDown(c);
-            }
+            for (auto& iter2 : fed2.as_mutable())
+                iter2.freeDown(c);
             CHECK(fed1 == fed2);
             CHECK(fed2 == fed1);
             fed1.reduce();
@@ -1257,9 +1242,8 @@ static void test_freeUp(cindex_t dim, size_t size)
             cindex_t c = rand_int(dim - 1) + 1;  // not ref clock
             CHECK(fed2 <= fed1.freeUp(c));
             CHECK(fed2.hash() == h);
-            for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
-                iter2->freeUp(c);
-            }
+            for (auto& iter2 : fed2.as_mutable())
+                iter2.freeUp(c);
             CHECK(fed1 == fed2);
             CHECK(fed2 == fed1);
             fed1.reduce();
@@ -1293,9 +1277,8 @@ static void test_relaxUp(cindex_t dim, size_t size)
         uint32_t h = fed1.hash();
         CHECK(fed2 <= fed1.relaxUp());
         CHECK(fed2.hash() == h);
-        for (fed_t::iterator iter2 = fed2.beginMutable(); !iter2.null(); ++iter2) {
-            iter2->relaxUp();
-        }
+        for (auto& iter2 : fed2.as_mutable())
+            iter2.relaxUp();
         CHECK(fed1 == fed2);
         CHECK(fed2 == fed1);
         fed1.reduce();
@@ -1418,9 +1401,8 @@ static void test_subtract(cindex_t dim, size_t size)
         CHECK(fed2.hash() == h2);
         fed1 -= fed2;
         CHECK(fed3.hash() == h1);
-        for (fed_t::const_iterator iter(fed2); !iter.null(); ++iter) {
-            fed3 -= *iter;
-        }
+        for (const auto& iter : fed2)
+            fed3 -= iter;
         CHECK(fed3.eq(fed1));
         for (int count = 0; count < 500; ++count) {
             if (test_generatePoint(pt.data(), fed1)) {  // points in fed1 not in fed2
@@ -1544,7 +1526,8 @@ static void test(int dim, int size)
 
 TEST_CASE("Federation")
 {
-    int start, end, size, seed;
+    int start, end, size;
+    unsigned int seed;
 
     SUBCASE("start=1 end=1 size=7 random seed")
     {

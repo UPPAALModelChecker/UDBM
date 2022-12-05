@@ -21,6 +21,7 @@
 #include "base/bitstring.h"
 #include "base/doubles.h"
 
+#include <algorithm>  // find_if
 #include <forward_list>
 #include <sstream>
 #include <cmath>
@@ -832,30 +833,20 @@ namespace dbm
 
     bool fed_t::hasZero() const
     {
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (i->hasZero()) {
-                return true;
-            }
-        }
-        return false;
+        return std::find_if(begin(), end(), [](const auto& i) { return i.hasZero(); }) != end();
     }
 
     bool fed_t::canDelay() const
     {
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (i->canDelay()) {
-                return true;
-            }
-        }
-        return false;
+        return std::find_if(begin(), end(), [](auto& i) { return i.canDelay(); }) != end();
     }
 
     void fed_t::intern()
     {
-        for (const_iterator iter = begin(); !iter.null(); ++iter) {
+        for (const auto& iter : *this) {
             // cheat on the const because this does not modify the DBM
             // itself. This postpones copies of ifed_t and dbm_t.
-            const_cast<dbm_t&>(*iter).intern();
+            const_cast<dbm_t&>(iter).intern();
         }
     }
 
@@ -897,8 +888,8 @@ namespace dbm
 
         int32_t bound = -dbm_INFINITY;
 
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            int32_t partial = i->getUpperMinimumCost(cost);
+        for (const auto& i : *this) {
+            int32_t partial = i.getUpperMinimumCost(cost);
             if (partial < dbm_INFINITY) {
                 bound = std::max(bound, partial);
             }
@@ -916,8 +907,8 @@ namespace dbm
         raw_t* dbm = res.dbm();
         assert(!res.isEmpty());
         for (cindex_t i = 1; i < dim; ++i) {
-            for (const_iterator j = begin(); !j.null(); ++j) {
-                raw_t c = j->const_dbm()[i];
+            for (const auto& j : *this) {
+                raw_t c = j.const_dbm()[i];
                 if (dbm[i] > c) {
                     dbm[i] = c;
                 }
@@ -931,7 +922,7 @@ namespace dbm
         assert(isOK());
         assert(!isEmpty());
 
-        for (iterator i = beginMutable(); !i.null();) {
+        for (iterator i = begin_mutable(), e = end_mutable(); i != e;) {
             if (i->intersectionAxis(x)) {
                 ++i;
             } else {
@@ -941,8 +932,8 @@ namespace dbm
         }
 
         int32_t max = 0;
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            int32_t bound = i->bound(x, 0);
+        for (const auto& i : *this) {
+            int32_t bound = i.bound(x, 0);
             if (bound > max) {
                 max = bound;
             }
@@ -998,8 +989,8 @@ namespace dbm
             return false;
         } else {
             cindex_t dim = getDimension();
-            for (const_iterator iter = begin(); !iter.null(); ++iter) {
-                if (!dbm_isSubsetEq(iter->const_dbm(), arg.const_dbm(), dim)) {
+            for (const auto& iter : *this) {
+                if (!dbm_isSubsetEq(iter.const_dbm(), arg.const_dbm(), dim)) {
                     return false;
                 }
             }
@@ -1020,8 +1011,8 @@ namespace dbm
             return false;
         } else {
             cindex_t dim = getDimension();
-            for (const_iterator iter = begin(); !iter.null(); ++iter) {
-                if (dbm_isSupersetEq(iter->const_dbm(), arg.const_dbm(), dim)) {
+            for (const auto& iter : *this) {
+                if (dbm_isSupersetEq(iter.const_dbm(), arg.const_dbm(), dim)) {
                     return true;
                 }
             }
@@ -1143,8 +1134,8 @@ namespace dbm
             uint32_t subset = base_SUBSET;
             uint32_t superset = 0;
 
-            for (const_iterator iter = begin(); !iter.null(); ++iter) {
-                relation_t rel = dbm_relation(iter->const_dbm(), arg, dim);
+            for (const auto& iter : *this) {
+                relation_t rel = dbm_relation(iter.const_dbm(), arg, dim);
                 subset &= rel;
                 superset |= rel & base_SUPERSET;
             }
@@ -1162,8 +1153,8 @@ namespace dbm
         if (isEmpty()) {
             return false;
         } else {
-            for (const_iterator iter = begin(); !iter.null(); ++iter) {
-                if (dbm_isSupersetEq(iter->const_dbm(), arg, dim)) {
+            for (const auto& iter : *this) {
+                if (dbm_isSupersetEq(iter.const_dbm(), arg, dim)) {
                     return true;
                 }
             }
@@ -1181,8 +1172,8 @@ namespace dbm
         if (isEmpty()) {
             return true;
         } else {
-            for (const_iterator iter = begin(); !iter.null(); ++iter) {
-                if (!dbm_isSubsetEq(iter->const_dbm(), arg, dim)) {
+            for (const auto& iter : *this) {
+                if (!dbm_isSubsetEq(iter.const_dbm(), arg, dim)) {
                     return false;
                 }
             }
@@ -1279,9 +1270,9 @@ namespace dbm
         assert(isOK());
 
         if (size() > 1) {
-            iterator iter = beginMutable();
+            iterator iter = begin_mutable(), e = end_mutable();
             dbm_t& first = *iter;
-            for (++iter; !iter.null(); iter.remove()) {
+            for (++iter; iter != e; iter.remove()) {
                 first += *iter;
             }
         }
@@ -1292,11 +1283,11 @@ namespace dbm
     {
         assert(isOK());
 
-        fed_t copy(getDimension());
+        auto copy = fed_t{getDimension()};
 
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            copy.add(*i);
-            i->driftWiden();
+        for (auto& i : as_mutable()) {
+            copy.add(i);
+            i.driftWiden();
         }
 
         return append(copy);
@@ -1317,11 +1308,9 @@ namespace dbm
             assert(arg.getDimension() == getDimension());
             setMutable();
             cindex_t dim = getDimension();
-            for (const_iterator iter = arg.begin(); !iter.null(); ++iter) {
-                if (removeIncludedIn(iter->const_dbm(), dim)) {
-                    ifed()->insert(*iter);
-                }
-            }
+            for (const auto& iter : arg)
+                if (removeIncludedIn(iter.const_dbm(), dim))
+                    ifed()->insert(iter);
         }
         return *this;
     }
@@ -1440,13 +1429,10 @@ namespace dbm
         convexHull();
         if (!arg.isEmpty()) {
             // Compute convex hull of the argument.
-            // We could use += fed_t(arg).convexHull() but
-            // we don't need the copy.
-
+            // We could use += fed_t(arg).convexHull() but we don't need the extra copy.
             dbm_t hull = arg.const_dbmt();
-            for (const_iterator i = ++arg.begin(); !i.null(); ++i) {
+            for (const_iterator i = ++arg.begin(), e = arg.end(); i != e; ++i)
                 hull += *i;
-            }
             if (isEmpty()) {
                 *this = hull;
             } else {
@@ -1503,13 +1489,13 @@ namespace dbm
         } else if (!isEmpty()) {
             setMutable();
             dbmlist_t result;  // empty to start with
-            const_iterator i = arg.begin();
+            const_iterator i = arg.begin(), e = arg.end();
             const dbm_t& arg1 = *i;  // treat 1st DBM last to avoid a copy
             cindex_t dim = getDimension();
 
             // compute result = union_i(this & arg[i]) with arg[i] = ith DBM of arg.
             size_t s;
-            for (++i; !i.null(); ++i) {
+            for (++i; i != e; ++i) {
                 // result.unionWith(ifed()->copyList().intersection(*i, dim));
                 s = result.size();
                 result.appendEnd(ifed()->copyList().intersection(*i, dim)).mergeReduce(dim, s);
@@ -1565,15 +1551,14 @@ namespace dbm
 #ifndef ENABLE_STORE_MINGRAPH
             cindex_t dim = getDimension();
 #endif
-            for (const_iterator i = arg.begin(); !i.null(); ++i) {
+            for (const auto& i : arg) {
 #ifdef ENABLE_STORE_MINGRAPH
-                ptr_subtract(*i);
+                ptr_subtract(i);
 #else
                 ptr_subtract(i->const_dbm(), dim);
 #endif
-                if (isEmpty()) {
+                if (isEmpty())
                     break;
-                }
             }
         }
         return *this;
@@ -1633,16 +1618,15 @@ namespace dbm
         if (!arg.isEmpty()) {
             setMutable();
             cindex_t dim = getDimension();
-            for (const_iterator i = arg.begin(); !i.null(); ++i) {
-                if (!canSkipSubtract(i->const_dbm(), dim)) {
+            for (const auto& i : arg) {
+                if (!canSkipSubtract(i.const_dbm(), dim)) {
 #if ENABLE_STORE_MINGRAPH
-                    ptr_subtract(*i);
+                    ptr_subtract(i);
 #else
-                    ptr_subtract(i->const_dbm(), dim);
+                    ptr_subtract(i.const_dbm(), dim);
 #endif
-                    if (isEmpty()) {
+                    if (isEmpty())
                         return *this;
-                    }
                 }
             }
         }
@@ -1690,7 +1674,7 @@ namespace dbm
     bool fed_t::constrain(cindex_t i, int32_t value)
     {
         assert(isOK());
-        for (iterator it = beginMutable(); !it.null();) {
+        for (iterator it = begin_mutable(), e = end_mutable(); it != e;) {
             if (it->ptr_constrain(i, value)) {
                 ++it;
             } else {
@@ -1703,7 +1687,7 @@ namespace dbm
     bool fed_t::constrain(cindex_t i, cindex_t j, raw_t c)
     {
         assert(isOK());
-        for (iterator it = beginMutable(); !it.null();) {
+        for (iterator it = begin_mutable(), e = end_mutable(); it != e;) {
             if (it->ptr_constrain(i, j, c)) {
                 ++it;
             } else {
@@ -1723,7 +1707,7 @@ namespace dbm
             return constrain(c->i, c->j, c->value);
         }
 
-        for (iterator it = beginMutable(); !it.null();) {
+        for (iterator it = begin_mutable(), e = end_mutable(); it != e;) {
             if (it->ptr_constrain(c, n)) {
                 ++it;
             } else {
@@ -1736,7 +1720,7 @@ namespace dbm
     bool fed_t::constrain(const cindex_t* table, const constraint_t* c, size_t n)
     {
         assert(isOK());
-        for (iterator it = beginMutable(); !it.null();) {
+        for (iterator it = begin_mutable(), e = end_mutable(); it != e;) {
             if (it->ptr_constrain(table, c, n)) {
                 ++it;
             } else {
@@ -1749,7 +1733,7 @@ namespace dbm
     bool fed_t::constrain(const cindex_t* table, const std::vector<constraint_t>& vec)
     {
         assert(isOK());
-        for (iterator it = beginMutable(); !it.null();) {
+        for (iterator it = begin_mutable(), e = end_mutable(); it != e;) {
             if (it->ptr_constrain(table, &vec[0], vec.size())) {
                 ++it;
             } else {
@@ -1776,11 +1760,11 @@ namespace dbm
 
             // check cross-intersections
             cindex_t dim = getDimension();
-            for (const_iterator i = begin(); !i.null(); ++i) {
+            for (const auto& i : *this) {
                 uint32_t j = 0;
                 do {
                     assert(argDBM[j]);
-                    if (dbm_haveIntersection(i->const_dbm(), argDBM[j], dim)) {
+                    if (dbm_haveIntersection(i.const_dbm(), argDBM[j], dim)) {
                         return true;
                     }
                 } while (++j < argSize);
@@ -1807,8 +1791,8 @@ namespace dbm
         assert(dim == getDimension());
         assertx(dbm_isValid(arg, dim));
 
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (dbm_haveIntersection(i->const_dbm(), arg, dim)) {
+        for (const auto& i : *this) {
+            if (dbm_haveIntersection(i.const_dbm(), arg, dim)) {
                 return true;
             }
         }
@@ -1818,9 +1802,8 @@ namespace dbm
     fed_t& fed_t::up()
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_up();
-        }
+        for (auto& i : as_mutable())
+            i.ptr_up();
         return *this;
     }
 
@@ -1828,13 +1811,10 @@ namespace dbm
     {
         assert(isOK());
 
-        if (stopped == nullptr) {
+        if (stopped == nullptr)
             return up();
-        }
-
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_upStop(stopped);
-        }
+        for (auto& i : as_mutable())
+            i.ptr_upStop(stopped);
         return *this;
     }
 
@@ -1842,76 +1822,66 @@ namespace dbm
     {
         assert(isOK());
 
-        if (stopped == nullptr) {
+        if (stopped == nullptr)
             return down();
-        }
-
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_downStop(stopped);
-        }
+        for (auto& i : as_mutable())
+            i.ptr_downStop(stopped);
         return *this;
     }
 
     fed_t& fed_t::down()
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_down();
-        }
+        for (auto& i : as_mutable())
+            i.ptr_down();
         return *this;
     }
 
     fed_t& fed_t::freeClock(cindex_t clock)
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_freeClock(clock);
-        }
+        for (auto& i : as_mutable())
+            i.ptr_freeClock(clock);
         return *this;
     }
 
     fed_t& fed_t::freeUp(cindex_t clock)
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_freeUp(clock);
-        }
+        for (auto& i : as_mutable())
+            i.ptr_freeUp(clock);
         return *this;
     }
 
     fed_t& fed_t::freeDown(cindex_t clock)
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_freeDown(clock);
-        }
+        for (auto& i : as_mutable())
+            i.ptr_freeDown(clock);
         return *this;
     }
 
     fed_t& fed_t::freeAllUp()
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_freeAllUp();
-        }
+        for (auto& i : as_mutable())
+            i.ptr_freeAllUp();
         return *this;
     }
 
     fed_t& fed_t::freeAllDown()
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_freeAllDown();
-        }
+        for (auto& i : as_mutable())
+            i.ptr_freeAllDown();
         return *this;
     }
 
     void fed_t::updateValue(cindex_t x, int32_t v)
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_updateValue(x, v);
-        }
+        for (auto& i : as_mutable())
+            i.ptr_updateValue(x, v);
     }
 
     void fed_t::updateClock(cindex_t x, cindex_t y)
@@ -1919,9 +1889,8 @@ namespace dbm
         assert(isOK());
         if (x == y)
             return;
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_updateClock(x, y);
-        }
+        for (auto& i : as_mutable())
+            i.ptr_updateClock(x, y);
     }
 
     void fed_t::updateIncrement(cindex_t x, int32_t v)
@@ -1930,9 +1899,8 @@ namespace dbm
         if (v == 0)
             return;
         cindex_t dim = getDimension();
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            dbm_updateIncrement(i->getCopy(), dim, x, v);
-        }
+        for (auto& i : as_mutable())
+            dbm_updateIncrement(i.getCopy(), dim, x, v);
     }
 
     void fed_t::update(cindex_t x, cindex_t y, int32_t v)
@@ -1943,9 +1911,8 @@ namespace dbm
         } else if (x == y) {
             updateIncrement(x, v);
         } else {
-            for (iterator i = beginMutable(); !i.null(); ++i) {
-                i->ptr_update(x, y, v);
-            }
+            for (auto& i : as_mutable())
+                i.ptr_update(x, y, v);
         }
     }
 
@@ -1954,11 +1921,9 @@ namespace dbm
         assert(isOK());
         assert(i < getDimension() && j < getDimension());
 
-        for (const_iterator it = begin(); !it.null(); ++it) {
-            if (it->satisfies(i, j, c)) {
+        for (const auto& it : *this)
+            if (it.satisfies(i, j, c))
                 return true;
-            }
-        }
         return false;
     }
 
@@ -1966,20 +1931,18 @@ namespace dbm
     {
         assert(isOK());
         cindex_t dim = getDimension();
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (dbm_isUnbounded(i->const_dbm(), dim)) {
+        for (const auto& i : *this)
+            if (dbm_isUnbounded(i.const_dbm(), dim))
                 return true;
-            }
-        }
         return false;
     }
 
     fed_t fed_t::getUnbounded() const
     {
         fed_t result(getDimension());
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (i->isUnbounded()) {
-                result |= *i;
+        for (const auto& i : *this) {
+            if (i.isUnbounded()) {
+                result |= i;
             }
         }
         return result;
@@ -1988,38 +1951,33 @@ namespace dbm
     fed_t fed_t::getBounded() const
     {
         fed_t result(getDimension());
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (!i->isUnbounded()) {
-                result |= *i;
-            }
-        }
+        for (const auto& i : *this)
+            if (!i.isUnbounded())
+                result |= i;
         return result;
     }
 
     fed_t& fed_t::relaxUpClock(cindex_t clock)
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_relaxUpClock(clock);
-        }
+        for (auto& i : as_mutable())
+            i.ptr_relaxUpClock(clock);
         return *this;
     }
 
     fed_t& fed_t::relaxDownClock(cindex_t clock)
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_relaxDownClock(clock);
-        }
+        for (auto& i : as_mutable())
+            i.ptr_relaxDownClock(clock);
         return *this;
     }
 
     fed_t& fed_t::relaxAll()
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_relaxAll();
-        }
+        for (auto& i : as_mutable())
+            i.ptr_relaxAll();
         return *this;
     }
 
@@ -2027,8 +1985,8 @@ namespace dbm
     {
         assert(isOK());
         cindex_t dim = getDimension();
-        for (iterator it = beginMutable(); !it.null(); ++it) {
-            raw_t* dbm = it->getCopy();
+        for (auto& it : as_mutable()) {
+            raw_t* dbm = it.getCopy();
             for (cindex_t i = 1; i < dim; ++i) {
                 dbm[i * dim] = (dbm[i * dim] | 1) + 1;  // setweak + 1 => next strict.
             }
@@ -2044,7 +2002,7 @@ namespace dbm
     fed_t& fed_t::tightenDown()
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null();) {
+        for (iterator i = begin_mutable(), e = end_mutable(); i != e;) {
             i->ptr_tightenDown();
             if (i->isEmpty()) {
                 i.removeEmpty();
@@ -2058,7 +2016,7 @@ namespace dbm
     fed_t& fed_t::tightenUp()
     {
         assert(isOK());
-        for (iterator i = beginMutable(); !i.null();) {
+        for (iterator i = begin_mutable(), e = end_mutable(); i != e;) {
             i->ptr_tightenUp();
             if (i->isEmpty()) {
                 i.removeEmpty();
@@ -2277,12 +2235,11 @@ namespace dbm
         assert(isOK());
 
         if (size() > 1) {
-            const_iterator i = begin();
+            const_iterator i = begin(), e = end();
             dbm_t c = *i;
-            for (++i; !i.null(); ++i) {
+            for (++i; i != e; ++i)
                 c += *i;
-            }
-            fed_t newFed(c);
+            auto newFed = fed_t{c};
             fed_t excess = fed_t(c) -= *this;
             c.nil();
 
@@ -2382,8 +2339,8 @@ namespace dbm
         assert(isOK());
         assert(dim == getDimension());
 
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (dbm_isPointIncluded(point, i->const_dbm(), dim)) {
+        for (const auto& i : *this) {
+            if (dbm_isPointIncluded(point, i.const_dbm(), dim)) {
                 return true;
             }
         }
@@ -2395,8 +2352,8 @@ namespace dbm
         assert(isOK());
         assert(dim == getDimension());
 
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (dbm_isRealPointIncluded(point, i->const_dbm(), dim)) {
+        for (const auto& i : *this) {
+            if (dbm_isRealPointIncluded(point, i.const_dbm(), dim)) {
                 return true;
             }
         }
@@ -2418,9 +2375,9 @@ namespace dbm
         if (dim > 1) {
             auto dbm1 = dbm::reader{};
             // First find a DBM containing this point
-            for (const_iterator i = begin(); !i.null(); ++i) {
-                if (i->contains(point, dim)) {
-                    dbm1 = i->dbm_read();
+            for (const auto& i : *this) {
+                if (i.contains(point, dim)) {
+                    dbm1 = i.dbm_read();
                     break;
                 }
             }
@@ -2436,8 +2393,8 @@ namespace dbm
 
                     // Find dbm2 to continue the delay and retry with a new dbm1
                     auto dbm2 = dbm::reader{};
-                    for (const_iterator i = begin(); !i.null(); ++i) {
-                        dbm2 = i->dbm_read();
+                    for (const auto& i : *this) {
+                        dbm2 = i.dbm_read();
                         if (dbm1 != dbm2) {
                             // Check if we can continue with the delay through
                             // another DBM: forall i, -dbm1.lower[i] <= dbm2.upper[i]
@@ -2486,8 +2443,8 @@ namespace dbm
         bool strict = false;
         double* boundPtr = minVal != nullptr ? &bound : nullptr;
         bool* strictPtr = isStrict != nullptr ? &strict : nullptr;
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            i->getMinDelay(point, dim, &di, boundPtr, strictPtr, stopped);
+        for (const auto& i : *this) {
+            i.getMinDelay(point, dim, &di, boundPtr, strictPtr, stopped);
             if (di < *t) {
                 *t = di;
                 if (minVal != nullptr && isStrict != nullptr) {
@@ -2506,8 +2463,8 @@ namespace dbm
 
         *t = 0.0;
         double di = 0.0;
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            i->getMaxBackDelay(point, dim, &di, max);
+        for (const auto& i : *this) {
+            i.getMaxBackDelay(point, dim, &di, max);
             *t = std::max(*t, di);
         }
         return (*t > 0.0);
@@ -2515,8 +2472,8 @@ namespace dbm
 
     bool fed_t::isConstrainedBy(cindex_t i, cindex_t j, raw_t c) const
     {
-        for (const_iterator k = begin(); !k.null(); ++k) {
-            if (k->isConstrainedBy(i, j, c)) {
+        for (const auto& k : *this) {
+            if (k.isConstrainedBy(i, j, c)) {
                 return true;
             }
         }
@@ -2565,11 +2522,11 @@ namespace dbm
 
         const raw_t* dbm1 = nullptr;
     retry:
-        for (const_iterator k = begin(); !k.null(); ++k) {
+        for (const auto& k : *this) {
             for (cindex_t i = 1; i < dim; ++i) {
                 pt[i] = stopped != nullptr && base_readOneBit(stopped, i) != 0 ? point[i] : point[i] + currentDelay;
             }
-            auto dbm = k->dbm_read();
+            auto dbm = k.dbm_read();
             if (dbm != dbm1 && dbm_isRealPointIncluded(pt.data(), dbm, dim)) {
                 // Then try to delay and stay inside k.
                 double d = HUGE_VAL;
@@ -2629,36 +2586,32 @@ namespace dbm
     {
         assert(isOK());
         cindex_t dim = getDimension();
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            dbm_extrapolateMaxBounds(i->getCopy(), dim, max);
-        }
+        for (auto& i : as_mutable())
+            dbm_extrapolateMaxBounds(i.getCopy(), dim, max);
     }
 
     void fed_t::diagonalExtrapolateMaxBounds(const int32_t* max)
     {
         assert(isOK());
         cindex_t dim = getDimension();
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            dbm_diagonalExtrapolateMaxBounds(i->getCopy(), dim, max);
-        }
+        for (auto& i : as_mutable())
+            dbm_diagonalExtrapolateMaxBounds(i.getCopy(), dim, max);
     }
 
     void fed_t::extrapolateLUBounds(const int32_t* lower, const int32_t* upper)
     {
         assert(isOK());
         cindex_t dim = getDimension();
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            dbm_extrapolateLUBounds(i->getCopy(), dim, lower, upper);
-        }
+        for (auto& i : as_mutable())
+            dbm_extrapolateLUBounds(i.getCopy(), dim, lower, upper);
     }
 
     void fed_t::diagonalExtrapolateLUBounds(const int32_t* lower, const int32_t* upper)
     {
         assert(isOK());
         cindex_t dim = getDimension();
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            dbm_diagonalExtrapolateLUBounds(i->getCopy(), dim, lower, upper);
-        }
+        for (auto& i : as_mutable())
+            dbm_diagonalExtrapolateLUBounds(i.getCopy(), dim, lower, upper);
     }
 
     // Helper function for std::transform.
@@ -2753,9 +2706,9 @@ namespace dbm
                 DODEBUG(cindex_t check =)
                 dbm_computeTables(bitSrc, bitDst, bitSize, table, cols.data());
                 assert(check == newDim);
-                for (iterator i = beginMutable(); !i.null(); ++i) {
-                    dbm_t old = *i;                 // *i is not mutable
-                    dbm_updateDBM(i->inew(newDim),  // can call inew
+                for (auto& i : as_mutable()) {
+                    dbm_t old = i;                 // *i is not mutable
+                    dbm_updateDBM(i.inew(newDim),  // can call inew
                                   old.const_dbm(), newDim, oldDim, cols.data());
                 }
                 ifed()->updateDimension(newDim);
@@ -2776,9 +2729,9 @@ namespace dbm
 #endif
         } else {
             cindex_t oldDim = getDimension();
-            for (iterator i = beginMutable(); !i.null(); ++i) {
-                dbm_t old = *i;
-                dbm_updateDBM(i->setNew(newDim), old.const_dbm(), newDim, oldDim, cols);
+            for (auto& i : as_mutable()) {
+                dbm_t old = i;
+                dbm_updateDBM(i.setNew(newDim), old.const_dbm(), newDim, oldDim, cols);
             }
             ifed()->setDimension(newDim);
         }
@@ -2788,8 +2741,8 @@ namespace dbm
     {
         assert(isOK());
 
-        for (iterator i = beginMutable(); !i.null(); ++i) {
-            i->ptr_swapClocks(x, y);
+        for (auto& i : as_mutable()) {
+            i.ptr_swapClocks(x, y);
         }
     }
 
@@ -2819,10 +2772,10 @@ namespace dbm
             return restrict != nullptr ? down() &= restrict : down();
         } else if (!isEmpty()) {
             fed_t result(getDimension());
-            for (const_iterator goods = begin(); !goods.null(); ++goods) {
+            for (const auto& goods : *this) {
                 // Predt for 1st bad.
-                const_iterator bads = bad.begin();
-                dbm_t downGood = *goods;
+                const_iterator bads = bad.begin(), bad_e = bad.end();
+                dbm_t downGood = goods;
                 downGood.down();
                 if (restrict != nullptr) {
                     downGood &= restrict;
@@ -2833,24 +2786,24 @@ namespace dbm
                     downBad.down();
                     if (restrict != nullptr) {
                         intersecPredt -= (downBad &= restrict);
-                        intersecPredt.steal(((downBad &= *goods) - *bads).down() &= restrict);
+                        intersecPredt.steal(((downBad &= goods) - *bads).down() &= restrict);
                     } else {
                         intersecPredt -= downBad;
-                        intersecPredt.steal(((downBad &= *goods) - *bads).down());
+                        intersecPredt.steal(((downBad &= goods) - *bads).down());
                     }
                 }
                 // Intersection with other predt.
-                for (++bads; !bads.null() && !intersecPredt.isEmpty(); ++bads) {
+                for (++bads; bads != bad_e && !intersecPredt.isEmpty(); ++bads) {
                     if (downGood.intersects(*bads)) {
                         dbm_t downBad = *bads;
                         downBad.down();
                         fed_t part = downGood;
                         if (restrict != nullptr) {
                             part -= (downBad &= restrict);
-                            part.steal(((downBad &= *goods) - *bads).down() &= restrict);
+                            part.steal(((downBad &= goods) - *bads).down() &= restrict);
                         } else {
                             part -= downBad;
-                            part.steal(((downBad &= *goods) - *bads).down());
+                            part.steal(((downBad &= goods) - *bads).down());
                         }
                         intersecPredt &= part;
                     }
@@ -2882,8 +2835,8 @@ namespace dbm
             bool downBadOK = false;
 
             fed_t result(getDimension());
-            for (const_iterator goods = begin(); !goods.null(); ++goods) {
-                dbm_t downGood = *goods;
+            for (const auto& goods : *this) {
+                dbm_t downGood = goods;
                 downGood.down();
                 if (restrict != nullptr) {
                     downGood &= restrict;
@@ -2899,9 +2852,9 @@ namespace dbm
                     }
                     intersecPredt -= downBad;
                     if (restrict != nullptr) {
-                        intersecPredt.steal(((fed_t(downBad) &= *goods) -= bad).down() &= restrict);
+                        intersecPredt.steal(((fed_t(downBad) &= goods) -= bad).down() &= restrict);
                     } else {
-                        intersecPredt.steal(((fed_t(downBad) &= *goods) -= bad).down());
+                        intersecPredt.steal(((fed_t(downBad) &= goods) -= bad).down());
                     }
                 }
                 result.steal(intersecPredt);
@@ -2929,8 +2882,8 @@ namespace dbm
             bool downBadOK = false;
 
             fed_t result(dim);
-            for (const_iterator goods = begin(); !goods.null(); ++goods) {
-                dbm_t downGood = *goods;
+            for (const auto& goods : *this) {
+                dbm_t downGood = goods;
                 downGood.down();
                 if (restrict != nullptr) {
                     downGood &= restrict;
@@ -2947,9 +2900,9 @@ namespace dbm
                     }
                     intersecPredt -= downBad;
                     if (restrict != nullptr) {
-                        intersecPredt.steal(((fed_t(downBad) &= *goods) -= bad).down() &= restrict);
+                        intersecPredt.steal(((fed_t(downBad) &= goods) -= bad).down() &= restrict);
                     } else {
-                        intersecPredt.steal(((fed_t(downBad) &= *goods) -= bad).down());
+                        intersecPredt.steal(((fed_t(downBad) &= goods) -= bad).down());
                     }
                 }
                 result.steal(intersecPredt);
@@ -2992,17 +2945,17 @@ namespace dbm
         }
 
         fed_t result(getDimension());
-        for (const_iterator goods = begin(); !goods.null(); ++goods) {
-            const_iterator bads = bad.begin();
-            dbm_t upGood = *goods;
+        for (const auto& goods : *this) {
+            const_iterator bads = bad.begin(), bade = bad.end();
+            dbm_t upGood = goods;
             upGood.up();
-            fed_t intersec(dim);
-            if (!dbm::succt(intersec, *goods, upGood, *bads)) {
+            auto intersec = fed_t{dim};
+            if (!dbm::succt(intersec, goods, upGood, *bads)) {
                 return false;
             }
-            for (++bads; !bads.null() && !intersec.isEmpty(); ++bads) {
-                fed_t i(dim);
-                if (!dbm::succt(i, *goods, upGood, *bads)) {
+            for (++bads; bads != bade && !intersec.isEmpty(); ++bads) {
+                auto i = fed_t{dim};
+                if (!dbm::succt(i, goods, upGood, *bads)) {
                     return false;
                 }
                 intersec &= i;
@@ -3039,7 +2992,7 @@ namespace dbm
             return false;
         } else {
             // baddies
-            const_iterator bads = bad.begin();
+            const_iterator bads = bad.begin(), bad_e = bad.end();
 
             // predt for 1st bad
             dbm_t downBad = *bads;
@@ -3052,10 +3005,9 @@ namespace dbm
                 result.unionWith((goodAndDownBad -= *bads).down());
             }
 
-            if (!(++bads).null()) {
+            if (++bads != bad_e) {
                 // false for sure
-                if (!(*this <= result))  //(!le(result))
-                {
+                if (!(*this <= result)) {  //(!le(result))
                     return false;
                 }
 
@@ -3075,12 +3027,11 @@ namespace dbm
                         fed.unionWith((goodAndDownBad -= *bads).down());
                     }
                     // false for sure
-                    if (!(*this <= fed))  // (!le(fed))
-                    {
+                    if (!(*this <= fed)) {  // (!le(fed))
                         return false;
                     }
                     result &= fed;  // predt(good,union bad) = intersec predt(good,bad)
-                } while (!(++bads).null());
+                } while (++bads != bad_e);
             }
 
             // exact relation wanted
@@ -3097,12 +3048,7 @@ namespace dbm
         } else if (arg.isEmpty()) {
             return true;
         } else {
-            for (const_iterator i = begin(); !i.null(); ++i) {
-                if (*i == arg) {
-                    return true;
-                }
-            }
-            return false;
+            return std::find(begin(), end(), arg) != end();
         }
     }
 
@@ -3114,12 +3060,7 @@ namespace dbm
         if (dim != getDimension()) {
             return false;
         } else {
-            for (const_iterator i = begin(); !i.null(); ++i) {
-                if (*i == arg) {
-                    return true;
-                }
-            }
-            return false;
+            return std::find(begin(), end(), arg) != end();
         }
     }
 
@@ -3127,11 +3068,9 @@ namespace dbm
     {
         assert(isOK());
 
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (i->sameAs(arg)) {
+        for (const auto& i : *this)
+            if (i.sameAs(arg))
                 return true;
-            }
-        }
         return false;
     }
 
@@ -3146,7 +3085,7 @@ namespace dbm
             // it obeys to the API.
             setEmpty();
         } else if (!arg.isEmpty()) {
-            for (iterator i = beginMutable(); !i.null();) {
+            for (iterator i = begin_mutable(), e = end_mutable(); i != e;) {
                 switch (arg.relation(*i)) {
                 case base_EQUAL:     // this dbm == arg
                 case base_SUPERSET:  // this dbm < arg
@@ -3168,7 +3107,7 @@ namespace dbm
         assertx(dbm_isValid(arg, dim));
 
         bool argNotIncluded = true;
-        for (iterator i = beginMutable(); !i.null();) {
+        for (iterator i = begin_mutable(), e = end_mutable(); i != e;) {
             switch (dbm_relation(i->const_dbm(), arg, dim)) {
             case base_EQUAL:   // this dbm == arg
             case base_SUBSET:  // this dbm < arg
@@ -3192,8 +3131,8 @@ namespace dbm
         assert(getDimension() == dim);
         assertx(dbm_isValid(arg, dim));
 
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (dbm_isSubsetEq(i->const_dbm(), arg, dim)) {
+        for (const auto& i : *this) {
+            if (dbm_isSubsetEq(i.const_dbm(), arg, dim)) {
                 return false;
             }
         }
@@ -3351,7 +3290,7 @@ namespace dbm
     {
         assert(clock > 0 && clock < getDimension());
         raw_t max = INT_MIN;
-        for (const_iterator i = begin(); !i.null(); ++i) {
+        for (const auto& i : *this) {
             raw_t val = i(clock, 0);
             if (val > max) {
                 max = val;
@@ -3364,7 +3303,7 @@ namespace dbm
     {
         assert(clock > 0 && clock < getDimension());
         raw_t max = INT_MIN;
-        for (const_iterator i = begin(); !i.null(); ++i) {
+        for (const auto& i : *this) {
             raw_t val = i(0, clock);
             if (val > max) {
                 max = val;
@@ -3381,14 +3320,14 @@ namespace dbm
         }
 
         fed_t result(dim);
-        for (const_iterator k = begin(); !k.null(); ++k) {
-            fed_t part(dim);
+        for (const auto& k : *this) {
+            auto part = fed_t{dim};
             const raw_t* dbm = k();
 
             for (cindex_t j = 1; j < dim; ++j) {
                 raw_t low = dbm[j];
                 if (dbm_rawIsWeak(low)) {
-                    dbm_t copy(*k);
+                    dbm_t copy = k;
                     if (copy.constrain(j, 0, dbm_weakNegRaw(low))) {
                         part.add(copy);
                     }
@@ -3398,8 +3337,8 @@ namespace dbm
         }
 
         if (size() > 1) {
-            for (const_iterator k = begin(); !k.null() && !result.isEmpty(); ++k) {
-                dbm_t copy(*k);
+            for (const auto& k : *this) {
+                dbm_t copy = k;
                 copy.tightenDown();
                 result -= copy;
             }
@@ -3420,14 +3359,14 @@ namespace dbm
             return result;
         }
 
-        for (const_iterator k = begin(); !k.null(); ++k) {
-            fed_t part(dim);
+        for (const auto& k : *this) {
+            auto part = fed_t{dim};
             const raw_t* dbm = k();
 
             for (cindex_t i = 1; i < dim; ++i) {
                 raw_t up = dbm[i * dim];
                 if (dbm_rawIsWeak(up)) {
-                    dbm_t copy(*k);
+                    dbm_t copy = k;
                     if (copy.constrain(0, i, dbm_weakNegRaw(up))) {
                         part.add(copy);
                     }
@@ -3437,8 +3376,8 @@ namespace dbm
         }
 
         if (size() > 1) {
-            for (const_iterator k = begin(); !k.null() && !result.isEmpty(); ++k) {
-                dbm_t copy(*k);
+            for (const auto& k : *this) {
+                dbm_t copy = k;
                 copy.tightenUp();
                 result -= copy;
             }
@@ -3459,14 +3398,14 @@ namespace dbm
             return result;
         }
 
-        for (const_iterator k = begin(); !k.null(); ++k) {
+        for (const auto& k : *this) {
             fed_t part(dim);
             const raw_t* dbm = k();
 
             for (cindex_t i = 1; i < dim; ++i) {
                 raw_t up = dbm[i];
                 if (dbm_rawIsWeak(up)) {
-                    dbm_t copy(*k);
+                    dbm_t copy = k;
                     if (copy.constrain(i, 0, dbm_weakNegRaw(up))) {
                         part.add(copy.down());
                     }
@@ -3482,7 +3421,7 @@ namespace dbm
 
     void fed_t::removeEmpty()
     {
-        for (iterator i = beginMutable(); !i.null();) {
+        for (iterator i = begin_mutable(), e = end_mutable(); i != e;) {
             if (i->isEmpty()) {
                 i.remove();
             } else {
@@ -3493,11 +3432,9 @@ namespace dbm
 
     bool fed_t::hasEmpty() const
     {
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            if (i->isEmpty()) {
+        for (const auto& i : *this)
+            if (i.isEmpty())
                 return true;
-            }
-        }
         return false;
     }
 
@@ -3541,7 +3478,7 @@ namespace dbm
     {
         assert(isOK());
 
-        for (iterator i = beginMutable(); !i.null(); ++i) {
+        for (iterator i = begin_mutable(), e = end_mutable(); i != e; ++i) {
             if (i->sameAs(dbm)) {
                 i.remove();
                 return true;
@@ -3554,8 +3491,8 @@ namespace dbm
     void fed_t::toArray(const raw_t** ar) const
     {
         assert(isOK());
-        for (const_iterator i = begin(); !i.null(); ++i) {
-            *ar++ = i->const_dbm();
+        for (const auto& i : *this) {
+            *ar++ = i.const_dbm();
         }
     }
 
@@ -3570,7 +3507,7 @@ namespace dbm
         assert(isMutable());
 
         size_t minSize = bits2intsize(dim * dim);
-        std::vector<uint32_t> minDBM(minSize);
+        auto minDBM = std::vector<uint32_t>(minSize);
         size_t nb = 0;
         bool mingraph = false;  // Not computed.
 
@@ -3648,13 +3585,11 @@ namespace dbm
     bool fed_t::canSkipSubtract(const raw_t* dbm2, cindex_t dim) const
     {
         RECORD_STAT();
-        for (const_iterator k = begin(); !k.null(); ++k) {
-            const raw_t* dbm1 = k->const_dbm();
-            for (cindex_t i = 1; i < dim; ++i) {
-                if (dbm1[i * dim] <= dbm2[i * dim]) {
+        for (const auto& k : *this) {
+            const raw_t* dbm1 = k.const_dbm();
+            for (cindex_t i = 1; i < dim; ++i)
+                if (dbm1[i * dim] <= dbm2[i * dim])
                     goto next_k;
-                }
-            }
             RECORD_SUBSTAT("skip");
             return true;
         next_k:;

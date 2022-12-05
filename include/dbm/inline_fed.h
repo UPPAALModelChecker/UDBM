@@ -746,7 +746,8 @@ namespace dbm
         /// Insert a dbm, @pre same dimension & not empty.
         void insert(const dbm_t& adbm)
         {
-            assert(adbm.getDimension() == getDimension() && !adbm.isEmpty());
+            assert(!adbm.isEmpty());
+            assert(adbm.getDimension() == getDimension());
             fhead = fdbm_t::create(adbm, fhead);
             incSize();
         }
@@ -1560,12 +1561,6 @@ namespace dbm
         return *this;
     }
 
-    inline bool fed_t::iterator::null() const
-    {
-        assert(fdbm);
-        return *fdbm == nullptr;
-    }
-
     inline bool fed_t::iterator::hasNext() const
     {
         assert(fdbm);
@@ -1611,13 +1606,13 @@ namespace dbm
         ifed->incSize();
     }
 
-    inline fed_t::iterator fed_t::beginMutable()
+    inline fed_t::iterator fed_t::begin_mutable()
     {
         setMutable();
         return fed_t::iterator(ifed());
     }
 
-    inline const fed_t::iterator fed_t::endMutable() const { return fed_t::iterator(); }
+    inline fed_t::iterator fed_t::end_mutable() { return fed_t::iterator(); }
 
     inline fed_t::iterator fed_t::erase(iterator& iter)
     {
@@ -1666,8 +1661,6 @@ namespace dbm
         return *this;
     }
 
-    inline bool fed_t::const_iterator::null() const { return fdbm == nullptr; }
-
     inline bool fed_t::const_iterator::hasNext() const
     {
         assert(fdbm);
@@ -1680,7 +1673,7 @@ namespace dbm
 
     inline fed_t::const_iterator fed_t::begin() const { return fed_t::const_iterator(ifed()->const_head()); }
 
-    inline const fed_t::const_iterator fed_t::end() const { return fed_t::const_iterator::ENDI; }
+    inline fed_t::const_iterator fed_t::end() const { return fed_t::const_iterator::ENDI; }
 
     /***********************************
      * Inlined implementation of fed_t *
