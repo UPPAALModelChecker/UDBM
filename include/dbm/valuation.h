@@ -62,13 +62,19 @@ namespace dbm
             if (values.size() > 1)
                 std::fill(std::next(begin_mutable()), end_mutable(), value);
         }
-        const S& last() const
+        const S& back() const
         {
             assert(!values.empty());
             return values.back();
         }
 
-        const S& last_static() const
+        S& back()
+        {
+            assert(!values.empty());
+            return values.back();
+        }
+
+        const S& back_static() const
         {
             assert(static_size > 0);
             return (*this)[static_size - 1];
