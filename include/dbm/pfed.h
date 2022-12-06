@@ -10,7 +10,7 @@
 #ifndef DBM_PFED_H
 #define DBM_PFED_H
 
-#include "Valuation.h"
+#include "valuation.h"
 
 #include "dbm/priced.h"
 
@@ -340,16 +340,16 @@ namespace dbm
         uint32_t hash(uint32_t seed) const;
 
         /** Returns true iff the federation contains \v. */
-        bool contains(const DoubleValuation& v) const;
+        bool contains(const valuation_fp& v) const;
 
         /** Returns true iff the federation contains \v. */
-        bool contains(const IntValuation& v) const;
+        bool contains(const valuation_int& v) const;
 
         /**
          * Returns true iff the federation contains \v, ignoring
          * strictness of constraints.
          */
-        bool containsWeakly(const IntValuation& v) const;
+        bool containsWeakly(const valuation_int& v) const;
 
         /** Delay with the current delay rate. */
         void up();
@@ -372,7 +372,7 @@ namespace dbm
 
         void incrementCost(int32_t value);
 
-        int32_t getCostOfValuation(const IntValuation& valuation) const;
+        int32_t getCostOfValuation(const valuation_int& valuation) const;
         void relax();
 
         void freeClock(cindex_t clock);
@@ -507,7 +507,7 @@ namespace dbm
          * Returns the infimum of the federation given a partial
          * valuation.
          */
-        int32_t getInfimumValuation(IntValuation& valuation, const bool* free = nullptr) const;
+        int32_t getInfimumValuation(valuation_int& valuation, const bool* free = nullptr) const;
 
         /** Returns the number of zones in the federation. */
         size_t size() const;

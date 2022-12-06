@@ -13,10 +13,10 @@
 //
 ///////////////////////////////////////////////////////////////////
 
-#include "dbm/Valuation.h"
 #include "dbm/fed.h"
 #include "dbm/gen.h"
 #include "dbm/print.h"
+#include "dbm/valuation.h"
 #include "debug/utils.h"
 
 #include <random>
@@ -79,9 +79,9 @@ static void test(const cindex_t dim)
     auto dbm = NEW(dim);
     auto dbm2 = NEW(dim);
     auto cnstr = std::vector<constraint_t>(dim * dim);
-    std::vector<int32_t> lower(dim);
-    std::vector<int32_t> upper(dim);
-    IntValuation pt(dim);
+    auto lower = std::vector<int32_t>(dim);
+    auto upper = std::vector<int32_t>(dim);
+    auto pt = valuation_int{dim};
     // coverage
     bool c1 = false, c2 = false, c4 = false;
     bool c5 = false, c6 = false, c7 = false;
@@ -299,13 +299,13 @@ static void test(const cindex_t dim)
 
         // constrain
         CHECK(a == dbm.get());
-        for (k = 7; k > 0 && !dbm_generatePoint(pt.data(), dbm, dim); --k)
+        for (k = 7; k > 0 && !dbm_generatePoint(pt.get_mutable().data(), dbm, dim); --k)
             ;
         if (k > 0) {
             bool stop = (rand() & 1) != 0;
             c5 = true;
             b = a;
-            CHECK(b.contains(pt.data(), dim));
+            CHECK(b.contains(pt.get()));
             cnstr.resize(dim * dim);
             for (i = 0, k = 0; i < dim; ++i) {
                 for (j = 0; j < dim; ++j) {
@@ -335,7 +335,7 @@ static void test(const cindex_t dim)
             b &= cnstr;
             CHECK(b() == c());
             c.nil();
-            CHECK(a.contains(pt.data(), dim));
+            CHECK(a.contains(pt.get()));
             if (!stop && dim > 1 && k > 0) {
                 c6 = true;
                 CHECK(!a.isUnbounded());

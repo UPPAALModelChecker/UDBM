@@ -521,10 +521,8 @@ namespace dbm
         /// Test point inclusion.
         /// @pre same dimension.
 
-        bool contains(const int32_t* point, cindex_t dim) const;
-        bool contains(const std::vector<int32_t>& point) const { return contains(point.data(), point.size()); }
-        bool contains(const double* point, cindex_t dim) const;
-        bool contains(const std::vector<double>& point) const { return contains(point.data(), point.size()); }
+        bool contains(const std::vector<int32_t>& point) const;
+        bool contains(const std::vector<double>& point) const;
 
         /** Compute the 'almost min' necessary delay from
          * a point to enter this federation. If this point
@@ -611,11 +609,7 @@ namespace dbm
          * if isEmpty() or cval too constrained.
          * @post if freeC != NULL, forall i < dim: freeC[i] = false
          */
-        void getValuation(double* cval, cindex_t dimen, bool* freeC = nullptr) const;
-        void getValuation(std::vector<double>& cval, bool* freeC = nullptr) const
-        {
-            getValuation(cval.data(), cval.size(), freeC);
-        }
+        void getValuation(std::vector<double>& cval, bool* freeC = nullptr) const;
 
         /// Special constructor to copy the result of a pending operation.
         /// @param op: clock operation.
@@ -755,7 +749,7 @@ namespace dbm
         void ptr_relaxAll();
         void ptr_tightenDown();
         void ptr_tightenUp();
-        bool ptr_getValuation(double* cval, cindex_t dimen, bool* freeC) const;
+        bool ptr_getValuation(std::vector<double>& cval, bool* freeC) const;
         void ptr_swapClocks(cindex_t x, cindex_t y);
 
         // Coding of dimPtr:
@@ -1041,6 +1035,7 @@ namespace dbm
         bool constrain(cindex_t i, cindex_t j, int32_t b, bool isStrict);
         bool constrain(const constraint_t& c);
         bool constrain(const constraint_t* c, size_t n);
+        bool constrain(const std::vector<constraint_t>& c) { return constrain(c.data(), c.size()); }
         bool constrain(const cindex_t* table, const constraint_t* c, size_t n);
         bool constrain(const cindex_t* table, const std::vector<constraint_t>&);
 
@@ -1180,8 +1175,8 @@ namespace dbm
         /// in this federation (ie in one of its DBMs).
         /// @pre same dimension.
 
-        bool contains(const int32_t* point, cindex_t dim) const;
-        bool contains(const double* point, cindex_t dim) const;
+        bool contains(const std::vector<int32_t>& point) const;
+        bool contains(const std::vector<double>& point) const;
 
         /** @return the 'almost max' possible delay backward from
          * a point while still staying inside the federation. It
@@ -1192,7 +1187,7 @@ namespace dbm
          * @param point: the point to go backward from.
          * @pre dim = getDimension() && contains(point)
          */
-        double possibleBackDelay(const double* point, cindex_t dim) const;
+        double possibleBackDelay(const std::vector<double>& point) const;
 
         /** Compute the 'almost min' necessary delay from
          * a point to enter this federation. If this point
@@ -1293,19 +1288,14 @@ namespace dbm
          * that are marked free. The point will belong to one
          * DBM of this federation, it is unspecified which one.
          * @param cval: clock valuation to write.
-         * @param freeC: free clocks to write, if freeC == NULL, then
-         * all clocks are considered free.
+         * @param freeC: free clocks to write, if freeC == NULL, then all clocks are considered free.
          * @return cval
          * @throw std::out_of_range if the generation fails
          * if isEmpty() or cval too constrained.
          * @post if freeC != NULL, forall i < dim: freeC[i] = false
          * @pre same dimension.
          */
-        void getValuation(double* cval, cindex_t dimen, bool* freeC = nullptr) const;
-        void getValuation(std::vector<double>& cval, bool* freeC = nullptr) const
-        {
-            getValuation(cval.data(), cval.size(), freeC);
-        }
+        void getValuation(std::vector<double>& cval, bool* freeC = nullptr) const;
 
         /** predt operation: temporal predecessor of this federation
          * avoiding 'bad'. The extra argument 'restrict' is to apply

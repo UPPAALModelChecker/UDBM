@@ -2334,30 +2334,24 @@ namespace dbm
         return *this;
     }
 
-    bool fed_t::contains(const int32_t* point, cindex_t dim) const
+    bool fed_t::contains(const std::vector<int32_t>& point) const
     {
         assert(isOK());
-        assert(dim == getDimension());
+        assert(point.size() == getDimension());
 
-        for (const auto& i : *this) {
-            if (dbm_isPointIncluded(point, i.const_dbm(), dim)) {
-                return true;
-            }
-        }
-        return false;
+        return std::any_of(begin(), end(), [p = point.data(), dim = getDimension()](const dbm_t& dbm) {
+            return dbm_isPointIncluded(p, dbm.const_dbm(), dim);
+        });
     }
 
-    bool fed_t::contains(const double* point, cindex_t dim) const
+    bool fed_t::contains(const std::vector<double>& point) const
     {
         assert(isOK());
-        assert(dim == getDimension());
+        assert(point.size() == getDimension());
 
-        for (const auto& i : *this) {
-            if (dbm_isRealPointIncluded(point, i.const_dbm(), dim)) {
-                return true;
-            }
-        }
-        return false;
+        return std::any_of(begin(), end(), [p = point.data(), dim = getDimension()](const dbm_t& dbm) {
+            return dbm_isRealPointIncluded(p, dbm.const_dbm(), dim);
+        });
     }
 
     static inline double fed_diff(double value, raw_t low)
@@ -2365,32 +2359,32 @@ namespace dbm
         return value - -dbm_raw2bound(low) - (dbm_rawIsStrict(low) ? 0.5 : 0.0);
     }
 
-    double fed_t::possibleBackDelay(const double* point, cindex_t dim) const
+    double fed_t::possibleBackDelay(const std::vector<double>& point) const
     {
         assert(isOK());
-        assert(dim == getDimension());
-        assert(contains(point, dim));
+        assert(point.size() == getDimension());
+        assert(contains(point));
 
         double totalDelay = 0.0;
-        if (dim > 1) {
+        if (point.size() > 1) {
             // First find a DBM containing this point
-            auto it = std::find_if(begin(), end(), [point, dim](const dbm_t& dbm) { return dbm.contains(point, dim); });
+            auto it = std::find_if(begin(), end(), [&point](const dbm_t& dbm) { return dbm.contains(point); });
             while (it != end()) {
                 const auto dbm1 = it->dbm_read();
                 // Possible backward delay of point in dbm1
                 double delay = fed_diff(point[1] - totalDelay, dbm1[1]);
-                for (cindex_t j = 2; j < dim; ++j)
+                for (cindex_t j = 2; j < point.size(); ++j)
                     delay = std::min(delay, fed_diff(point[j] - totalDelay, dbm1[j]));
                 if (totalDelay < delay) {
                     totalDelay = delay;
                     // Find dbm2 to continue the delay and retry with a new dbm1
-                    it = std::find_if(begin(), end(), [dbm1, point, dim](const dbm_t& dbm) {
+                    it = std::find_if(begin(), end(), [dbm1, &point](const dbm_t& dbm) {
                         auto dbm2 = dbm.dbm_read();
                         if (dbm1 != dbm2) {
                             // Check if we can continue with the delay through another DBM:
                             // forall i, -dbm1.lower[i] <= dbm2.upper[i]
-                            for (cindex_t j = 2; j < dim; ++j)
-                                if (dbm_negRaw(dbm1[j]) > dbm2[j * dim] ||  // DBM 'continuous'
+                            for (cindex_t j = 2; j < point.size(); ++j)
+                                if (dbm_negRaw(dbm1[j]) > dbm2[j * point.size()] ||  // DBM 'continuous'
                                     point[j] > (dbm2.bound(j, 0) + 0.5))
                                     return false;  // cannot
                             return true;           // all lower1 <= upper2, continue on dbm2
@@ -2734,13 +2728,12 @@ namespace dbm
     }
 
     // wrapper to throw exceptions
-    void fed_t::getValuation(double* cval, cindex_t dimen, bool* freeC) const
+    void fed_t::getValuation(std::vector<double>& cval, bool* freeC) const
     {
         assert(isOK());
-        if (isEmpty()) {
+        if (isEmpty())
             throw std::out_of_range("No clock valuation for empty federations");
-        }
-        const_dbmt().getValuation(cval, dimen, freeC);
+        const_dbmt().getValuation(cval, freeC);
     }
 
     // predt(union good, union bad) = union_good intersection_bad predt(good, bad)
@@ -3118,12 +3111,8 @@ namespace dbm
         assert(getDimension() == dim);
         assertx(dbm_isValid(arg, dim));
 
-        for (const auto& i : *this) {
-            if (dbm_isSubsetEq(i.const_dbm(), arg, dim)) {
-                return false;
-            }
-        }
-        return true;
+        return std::all_of(begin(), end(),
+                           [arg, dim](const dbm_t& dbm) { return dbm_isSubsetEq(dbm.const_dbm(), arg, dim); });
     }
 
     // this - arg
@@ -3179,8 +3168,7 @@ namespace dbm
         // trivial: one DBM only -> we know the final result
         else if (fed.size() == 1) {
             return false;
-        } else  // not simple
-        {
+        } else {  // not simple
             return (fed_t(dbm_t(dbm, dim)) -= fed).isEmpty();
         }
     }
@@ -3203,7 +3191,7 @@ namespace dbm
             // it's not empty but that costs dim^3.
             if (dbm_haveIntersection(arg1, arg2, dim)) {
                 size_t minSize = bits2intsize(dim * dim);
-                std::vector<uint32_t> minDBM(minSize);
+                auto minDBM = std::vector<uint32_t>(minSize);
                 size_t nb =
                     dbm_cleanBitMatrix(arg2, dim, minDBM.data(), dbm_analyzeForMinDBM(arg2, dim, minDBM.data()));
                 if (nb == 0) {

@@ -1360,16 +1360,16 @@ namespace dbm
         }
     }
 
-    bool dbm_t::contains(const int32_t* point, cindex_t dim) const
+    bool dbm_t::contains(const std::vector<int32_t>& point) const
     {
-        assert(point && getDimension() == dim);
-        return !isEmpty() && dbm_isPointIncluded(point, const_dbm(), dim);
+        assert(getDimension() == point.size());
+        return !isEmpty() && dbm_isPointIncluded(point.data(), const_dbm(), getDimension());
     }
 
-    bool dbm_t::contains(const double* point, cindex_t dim) const
+    bool dbm_t::contains(const std::vector<double>& point) const
     {
-        assert(point && dim == getDimension());
-        return !isEmpty() && dbm_isRealPointIncluded(point, const_dbm(), dim);
+        assert(point.size() == getDimension());
+        return !isEmpty() && dbm_isRealPointIncluded(point.data(), const_dbm(), getDimension());
     }
 
     bool dbm_t::getMinDelay(const double* point, cindex_t dim, double* t, double* minVal, bool* minStrict,
@@ -1609,9 +1609,9 @@ namespace dbm
         }
     }
 
-    void dbm_t::getValuation(double* cval, cindex_t dimen, bool* freeC) const
+    void dbm_t::getValuation(std::vector<double>& cval, bool* freeC) const
     {
-        assert(dimen == getDimension());
+        assert(cval.size() == getDimension());
 
         if (isEmpty()) {
             throw std::out_of_range("No clock valuation for empty DBMs");
@@ -1624,13 +1624,13 @@ namespace dbm
             std::fill(freeClocks, freeClocks + dim, 1);
             freeC = freeClocks;
         }
-        if (!ptr_getValuation(cval, dimen, freeC)) {
+        if (!ptr_getValuation(cval, freeC)) {
             throw std::out_of_range("Clock valuation");
         }
     }
 
     // private: implementation of getValuation
-    bool dbm_t::ptr_getValuation(double* cval, cindex_t dimen, bool* freeC) const
+    bool dbm_t::ptr_getValuation(std::vector<double>& cval, bool* freeC) const
     {
         assert(freeC);
 
@@ -1687,7 +1687,7 @@ namespace dbm
         }
 
         // check the generated point
-        return contains(cval, dimen);
+        return contains(cval);
     }
 
     // this dbm - fed

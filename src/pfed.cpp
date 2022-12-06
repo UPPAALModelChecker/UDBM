@@ -99,18 +99,18 @@ namespace dbm
         });
     }
 
-    int32_t pfed_t::getInfimumValuation(IntValuation& valuation, const bool* free) const
+    int32_t pfed_t::getInfimumValuation(valuation_int& valuation, const bool* free) const
     {
         uint32_t dim = ptr->dim;
         int32_t infimum = INT_MAX;
-        std::vector<int32_t> copy(dim);
+        auto copy = std::vector<int32_t>(dim);
 
         for (const auto& zone : *this) {
-            std::copy(valuation.begin(), valuation.end(), copy.data());
+            std::copy(valuation.begin(), valuation.end(), copy.begin());
             int32_t inf = pdbm_getInfimumValuation(zone, dim, copy.data(), free);
             if (inf < infimum) {
                 infimum = inf;
-                std::copy(copy.data(), copy.data() + dim, valuation.begin());
+                std::copy(copy.begin(), copy.end(), valuation.begin_mutable());
             }
         }
         return infimum;
@@ -136,24 +136,24 @@ namespace dbm
         });
     }
 
-    bool pfed_t::contains(const IntValuation& valuation) const
+    bool pfed_t::contains(const valuation_int& valuation) const
     {
         return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
-                   return pdbm_containsInt(pdbm, dim, valuation.data());
+                   return pdbm_containsInt(pdbm, dim, valuation.get().data());
                }) != end();
     }
 
-    bool pfed_t::contains(const DoubleValuation& valuation) const
+    bool pfed_t::contains(const valuation_fp& valuation) const
     {
         return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
-                   return pdbm_containsDouble(pdbm, dim, valuation.data());
+                   return pdbm_containsDouble(pdbm, dim, valuation.get().data());
                }) != end();
     }
 
-    bool pfed_t::containsWeakly(const IntValuation& valuation) const
+    bool pfed_t::containsWeakly(const valuation_int& valuation) const
     {
         return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
-                   return pdbm_containsIntWeakly(pdbm, dim, valuation.data());
+                   return pdbm_containsIntWeakly(pdbm, dim, valuation.get().data());
                }) != end();
     }
 
@@ -357,11 +357,11 @@ namespace dbm
             pdbm_incrementCost(zone, ptr->dim, value);
     }
 
-    int32_t pfed_t::getCostOfValuation(const IntValuation& valuation) const
+    int32_t pfed_t::getCostOfValuation(const valuation_int& valuation) const
     {
         return std::accumulate(cbegin(), cend(), INT_MAX,
                                [dim = ptr->dim, &valuation](int32_t sum, const pdbm_t& pdbm) {
-                                   return min(sum, pdbm_getCostOfValuation(pdbm, dim, valuation.data()));
+                                   return min(sum, pdbm_getCostOfValuation(pdbm, dim, valuation.get().data()));
                                });
     }
 

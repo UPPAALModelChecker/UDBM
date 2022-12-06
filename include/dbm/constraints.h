@@ -18,10 +18,10 @@
 #ifndef INCLUDE_DBM_CONSTRAINTS_H
 #define INCLUDE_DBM_CONSTRAINTS_H
 
-#include "base/inttypes.h"
-
 #include <assert.h>
 #include <limits.h>
+
+#include <base/inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {

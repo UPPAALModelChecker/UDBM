@@ -10,7 +10,7 @@
 //
 ///////////////////////////////////////////////////////////////////
 
-#include "dbm/Valuation.h"
+#include "dbm/valuation.h"
 
 #include <iostream>
 
@@ -19,12 +19,12 @@
 using namespace std;
 using namespace dbm;
 
-static void test(int size)
+static void test(size_t size)
 {
-    IntValuation iv(size);
-    DoubleValuation dv(size);
+    auto iv = valuation_int{size};
+    auto dv = valuation_fp{size};
 
-    for (int i = 0; i < size; ++i) {
+    for (size_t i = 0; i < size; ++i) {
         CHECK(iv[i] == 0);
         CHECK(dv[i] == 0.0);
     }
@@ -37,7 +37,7 @@ static void test(int size)
         CHECK(dv[0] == 0.0);
     }
 
-    for (int i = 1; i < size; ++i) {
+    for (size_t i = 1; i < size; ++i) {
         CHECK(iv[i] == 1);
         CHECK(dv[i] == 1.1);
     }
@@ -47,6 +47,6 @@ static void test(int size)
 
 TEST_CASE("Valuation")
 {
-    for (int i = 0; i <= 20; ++i)
+    for (size_t i = 0; i <= 20; ++i)
         test(i);
 }

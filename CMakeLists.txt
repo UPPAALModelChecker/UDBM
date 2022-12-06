@@ -5,7 +5,7 @@ include(GNUInstallDirs)
 
 option(UDBM_WITH_TESTS "UDBM Unit tests" OFF)
 option(UDBM_STATIC "Static linking" OFF)
-option(SPP "Stack-Smashing Protector" OFF)
+option(SSP "Stack-Smashing Protector" OFF)
 option(UBSAN "Undefined Behavior Sanitizer" OFF)
 option(ASAN "Address Sanitizer" OFF)
 
