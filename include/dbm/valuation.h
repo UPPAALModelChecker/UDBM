@@ -41,6 +41,18 @@ namespace dbm
          */
         valuation_t(size_t size, size_t dyn = 0): static_size{size}, dynamic_size{dyn}, values(size + dyn) {}
 
+        valuation_t(const valuation_t& other) { *this = other; }
+        valuation_t(valuation_t&&) noexcept = default;
+
+        valuation_t& operator=(const valuation_t<S>& src)
+        {
+            assert(src.static_size == static_size);
+            assert(src.dynamic_size <= dynamic_size);
+            std::copy(src.begin(), src.end(), begin_mutable());                           // copy the common values
+            std::fill(std::next(begin_mutable(), src.dynamic_size), end_mutable(), S{});  // reset remaining
+            return *this;
+        }
+
         /** Add an amount to all the elements of this vector EXCEPT #0 (reference clock).
          * @param value: amount to add.
          */
@@ -102,15 +114,6 @@ namespace dbm
          * user friendly manner than just a vector of numbers.
          */
         std::string str(const ClockAccessor& a) const;
-
-        valuation_t& operator=(const valuation_t<S>& src)
-        {
-            assert(src.static_size == static_size);
-            assert(src.dynamic_size <= dynamic_size);
-            std::copy(src.begin(), src.end(), begin_mutable());                           // copy the common values
-            std::fill(std::next(begin_mutable(), src.dynamic_size), end_mutable(), S{});  // reset remaining
-            return *this;
-        }
 
         /** Extend the number dynamic values by the specified amount. */
         bool extend(size_t n, S value = {})
