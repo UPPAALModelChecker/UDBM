@@ -129,7 +129,8 @@ namespace dbm
         auto begin_mutable() { return values.begin(); }
         auto end_mutable() { return values.end(); }
 
-        const auto& get() const { return values; }
+        operator const std::vector<S>&() const { return values; }
+        operator const S*() const { return values.data(); }
         auto& get_mutable() { return values; }
 
         /** wrap and check */

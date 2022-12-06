@@ -305,7 +305,7 @@ static void test(const cindex_t dim)
             bool stop = (rand() & 1) != 0;
             c5 = true;
             b = a;
-            CHECK(b.contains(pt.get()));
+            CHECK(b.contains(pt));
             cnstr.resize(dim * dim);
             for (i = 0, k = 0; i < dim; ++i) {
                 for (j = 0; j < dim; ++j) {
@@ -335,7 +335,7 @@ static void test(const cindex_t dim)
             b &= cnstr;
             CHECK(b() == c());
             c.nil();
-            CHECK(a.contains(pt.get()));
+            CHECK(a.contains(pt));
             if (!stop && dim > 1 && k > 0) {
                 c6 = true;
                 CHECK(!a.isUnbounded());

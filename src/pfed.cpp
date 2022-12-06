@@ -139,21 +139,21 @@ namespace dbm
     bool pfed_t::contains(const valuation_int& valuation) const
     {
         return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
-                   return pdbm_containsInt(pdbm, dim, valuation.get().data());
+                   return pdbm_containsInt(pdbm, dim, valuation);
                }) != end();
     }
 
     bool pfed_t::contains(const valuation_fp& valuation) const
     {
         return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
-                   return pdbm_containsDouble(pdbm, dim, valuation.get().data());
+                   return pdbm_containsDouble(pdbm, dim, valuation);
                }) != end();
     }
 
     bool pfed_t::containsWeakly(const valuation_int& valuation) const
     {
         return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
-                   return pdbm_containsIntWeakly(pdbm, dim, valuation.get().data());
+                   return pdbm_containsIntWeakly(pdbm, dim, valuation);
                }) != end();
     }
 
@@ -361,7 +361,7 @@ namespace dbm
     {
         return std::accumulate(cbegin(), cend(), INT_MAX,
                                [dim = ptr->dim, &valuation](int32_t sum, const pdbm_t& pdbm) {
-                                   return min(sum, pdbm_getCostOfValuation(pdbm, dim, valuation.get().data()));
+                                   return min(sum, pdbm_getCostOfValuation(pdbm, dim, valuation));
                                });
     }
 
