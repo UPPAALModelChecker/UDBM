@@ -37,7 +37,7 @@
 #define PRINTF(S) printf(S)
 #define ENDL      printf(" \n")
 #else
-#define PRINTF(S) putc('.', stderr)
+#define PRINTF(S) putc('.', stdout)
 #define ENDL
 #endif
 
@@ -880,8 +880,7 @@ static void test_subset(uint32_t size)
  */
 static void test(uint32_t size)
 {
-    fprintf(stderr, "Testing size %u ", size);
-    ENDL;
+    printf("Testing size %u ", size);
     test_generate(size);
     test_init(size);
     test_relation(size);
@@ -909,9 +908,7 @@ static void test(uint32_t size)
     test_zero(size);
     test_subset(size);
 
-#ifndef VERBOSE
-    printf(" \n");
-#endif
+    printf("\n");
 }
 
 int main(int argc, char* argv[])

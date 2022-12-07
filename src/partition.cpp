@@ -17,26 +17,24 @@
 #include "dbm/print.h"
 #endif
 
-#define FTABLE partition_t::fedtable_t
-
 #ifndef REDUCE
-//#define REDUCE convexReduce
-//#define REDUCE partitionReduce
-//#define REDUCE convexReduce().expensiveReduce
-//#define REDUCE expensiveConvexReduce
-#define REDUCE mergeReduce
-//#define REDUCE reduce
-//#define REDUCE expensiveReduce
-//#define REDUCE reduce().mergeReduce
-//#define REDUCE noReduce
+// static inline dbm::fed_t& REDUCE(dbm::fed_t& fed) { return fed.convexReduce(); }
+// static inline dbm::fed_t& REDUCE(dbm::fed_t& fed) { return fed.partitionReduce(); }
+// static inline dbm::fed_t& REDUCE(dbm::fed_t& fed) { return fed.convexReduce().expensiveReduce(); }
+// static inline dbm::fed_t& REDUCE(dbm::fed_t& fed) { return fed.expensiveConvexReduce(); }
+static inline dbm::fed_t& REDUCE(dbm::fed_t& fed) { return fed.mergeReduce(); }
+// static inline dbm::fed_t& REDUCE(dbm::fed_t& fed) { return fed.reduce(); }
+// static inline dbm::fed_t& REDUCE(dbm::fed_t& fed) { return fed.expensiveReduce(); }
+// static inline dbm::fed_t& REDUCE(dbm::fed_t& fed) { return fed.reduce().mergeReduce(); }
+// static inline dbm::fed_t& REDUCE(dbm::fed_t& fed) { return fed.noReduce(); }
 #endif
 #ifndef BIGREDUCE
-#define BIGREDUCE expensiveConvexReduce
+static inline void BIGREDUCE(dbm::fed_t& fed) { fed.expensiveConvexReduce(); }
 #endif
 
-//#define REDUCE_SKIP(S) REDUCE()
-#define REDUCE_SKIP(S) mergeReduce(S)
-//#define REDUCE_SKIP(S) mergeReduce(0,2)
+// static inline void REDUCE_SKIP(dbm::fed_t& fed, size_t s) { REDUCE(fed); }
+static inline void REDUCE_SKIP(dbm::fed_t& fed, size_t s) { fed.mergeReduce(s); }
+// static inline void REDUCE_SKIP(dbm::fed_t& fed, size_t s) { fed.mergeReduce(0,2); }
 
 namespace dbm
 {
@@ -48,7 +46,7 @@ namespace dbm
             entry_t** start = fedTable->getTable();
             entry_t** end = start + fedTable->getSize();
             for (; start < end; ++start) {
-                if (*start)
+                if (*start != nullptr)
                     (*start)->fed.intern();
             }
         }
@@ -69,13 +67,14 @@ namespace dbm
         }
     }
 
-    FTABLE* FTABLE::create(cindex_t dim, bool noP)
+    partition_t::fedtable_t* partition_t::fedtable_t::create(cindex_t dim, bool noP)
     {
         // call placement constructor
-        return new (new char[sizeof(FTABLE) + INIT_SIZE * sizeof(entry_t*)]) FTABLE(dim, noP);
+        return new (new char[sizeof(partition_t::fedtable_t) + INIT_SIZE * sizeof(entry_t*)])
+            partition_t::fedtable_t(dim, noP);
     }
 
-    void FTABLE::remove()
+    void partition_t::fedtable_t::remove()
     {
         assert(refCounter == 0);
 
@@ -83,10 +82,10 @@ namespace dbm
         if (!noPartition) {
             const entry_t* const* start = getBeginTable();
             const entry_t* const* end = getEndTable();
-            for (const entry_t* const* i = start; i < end; ++i)
-                if (*i) {
-                    for (const entry_t* const* j = start; j < end; ++j)
-                        if (*j && i != j) {
+            for (const entry_t* const* i = start; i != end; ++i)
+                if (*i != nullptr) {
+                    for (const entry_t* const* j = start; j != end; ++j)
+                        if (*j != nullptr && i != j) {
                             assert((*i)->fed.getDimension() <= 1 || (((*i)->fed & (*j)->fed).isEmpty()));
                         }
                 }
@@ -103,16 +102,16 @@ namespace dbm
         delete[]((char*)this);
     }
 
-    fed_t FTABLE::get(uint32_t id) const
+    fed_t partition_t::fedtable_t::get(uint32_t id) const
     {
         uint32_t index = id & mask;
-        while (table[index] && table[index]->id != id) {
+        while (table[index] != nullptr && table[index]->id != id) {
             index = (index + 1) & mask;
         }
-        return table[index] ? table[index]->fed : fed_t(getDimension());
+        return table[index] != nullptr ? table[index]->fed : fed_t(getDimension());
     }
 
-    bool FTABLE::add(uintptr_t id, fed_t& fedi)
+    bool partition_t::fedtable_t::add(uintptr_t id, fed_t& fedi)
     {
         // Partition invariant if !noPartition, otherwise keep partition only for id == 0.
         fed_t newi = fedi;
@@ -138,35 +137,34 @@ namespace dbm
         }
 
         // Add new federation to all (cheapest way).
-        if (newi.REDUCE().size() < fedi.size()) {
+        if (REDUCE(newi).size() < fedi.size()) {
             size_t s = all.size();
             if (s > 0) {
                 fed_t copy = newi;
-                all.appendEnd(copy).REDUCE_SKIP(s);
+                REDUCE_SKIP(all.appendEnd(copy), s);
             } else {
                 all = newi;  // newi already reduce.
             }
             fedi.setEmpty();
         } else {
             size_t s = all.size();
-            all.appendEnd(fedi).REDUCE_SKIP(s);
+            REDUCE_SKIP(all.appendEnd(fedi), s);
         }
 
         // Find right entry for id.
         auto index = id & mask;
-        while (table[index] && table[index]->id != id) {
+        while (table[index] != nullptr && table[index]->id != id) {
             index = (index + 1) & mask;
         }
 
-        if (!table[index])  // New entry;
+        if (table[index] == nullptr)  // New entry;
         {
             table[index] = new entry_t(id, newi);
             nbEntries++;
             newi.nil();
-        } else  // Add to existing entry.
-        {
+        } else {  // Add to existing entry.
             size_t s = table[index]->fed.size();
-            table[index]->fed.appendEnd(newi).REDUCE_SKIP(s);
+            REDUCE_SKIP(table[index]->fed.appendEnd(newi), s);
         }
         table[index]->fed.intern();
 
@@ -175,22 +173,21 @@ namespace dbm
     }
 
     // Move the entries to a larger table.
-    FTABLE* FTABLE::larger()
+    partition_t::fedtable_t* partition_t::fedtable_t::larger()
     {
         assert(isMutable());
 
         uint32_t oldN = mask + 1;
         uint32_t newMask = (oldN << 1) - 1;
-        FTABLE* ftab = new  // placement constructor
-            (new char[sizeof(FTABLE) + (newMask + 1) * sizeof(entry_t*)])
-                FTABLE(getDimension(), nbEntries, newMask, noPartition);
+        auto* mem = new char[sizeof(partition_t::fedtable_t) + (newMask + 1) * sizeof(entry_t*)];
+        auto* ftab = new (mem) partition_t::fedtable_t{getDimension(), nbEntries, newMask, noPartition};
         std::fill(ftab->table, ftab->table + (newMask + 1), nullptr);
 
         ftab->all = all;
         for (uint32_t i = 0; i < oldN; ++i)
-            if (table[i]) {
+            if (table[i] != nullptr) {
                 auto j = table[i]->id & newMask;
-                while (ftab->table[j]) {
+                while (ftab->table[j] != nullptr) {
                     j = (j + 1) & newMask;
                 }
                 ftab->table[j] = table[i];
@@ -201,24 +198,24 @@ namespace dbm
         return ftab;
     }
 
-    size_t FTABLE::getNumberOfDBMs() const
+    size_t partition_t::fedtable_t::getNumberOfDBMs() const
     {
         size_t nb = 0;
         const entry_t* const* start = table;
         const entry_t* const* end = start + getSize();
         for (; start < end; ++start) {
-            if (*start)
+            if (*start != nullptr)
                 nb += (*start)->fed.size();
         }
         return nb;
     }
 
     // Deep copy of fedtable_t
-    FTABLE* FTABLE::copy()
+    partition_t::fedtable_t* partition_t::fedtable_t::copy()
     {
         uint32_t n = mask + 1;
-        FTABLE* ftab = new  // placement constructor
-            (new char[sizeof(FTABLE) + n * sizeof(entry_t*)]) FTABLE(getDimension(), nbEntries, mask, noPartition);
+        auto* mem = new char[sizeof(partition_t::fedtable_t) + n * sizeof(entry_t*)];
+        auto* ftab = new (mem) partition_t::fedtable_t{getDimension(), nbEntries, mask, noPartition};
 
         ftab->all = all;
         for (uint32_t i = 0; i < n; ++i) {

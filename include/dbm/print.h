@@ -21,6 +21,8 @@
 
 #ifdef __cplusplus
 
+#include "dbm/dbm_raw.hpp"
+
 #include <iosfwd>
 
 /** Pretty print of a DBM.
@@ -28,7 +30,7 @@
  * @param dim: dimension.
  * @param out: output stream.
  */
-std::ostream& dbm_cppPrint(std::ostream& out, const raw_t* dbm, cindex_t dim);
+std::ostream& dbm_cppPrint(std::ostream& out, dbm::reader dbm);
 
 /** Pretty print of the difference between 2 DBMs:
  * prints 2 DBMS with the difference in color.
@@ -39,7 +41,7 @@ std::ostream& dbm_cppPrint(std::ostream& out, const raw_t* dbm, cindex_t dim);
  * @param out: output stream.
  * @pre same dimension for both DBMs.
  */
-std::ostream& dbm_cppPrintDiff(std::ostream& out, const raw_t* dbm1, const raw_t* dbm2, cindex_t dim);
+std::ostream& dbm_cppPrintDiff(std::ostream& out, dbm::reader dbm1, dbm::reader dbm2);
 
 /** Pretty print of the difference between a DBM
  * and its closure: shows the updates that will be
@@ -48,7 +50,7 @@ std::ostream& dbm_cppPrintDiff(std::ostream& out, const raw_t* dbm1, const raw_t
  * @param dbm: the DBM.
  * @param dim: dimension.
  */
-std::ostream& dbm_cppPrintCloseDiff(std::ostream& out, const raw_t* dbm, cindex_t dim);
+std::ostream& dbm_cppPrintCloseDiff(std::ostream& out, dbm::reader dbm);
 
 /** Pretty print of one clock constraint.
  * @param out: output stream.
@@ -68,7 +70,7 @@ std::ostream& dbm_cppPrintBound(std::ostream& out, int32_t b);
  * @param out: where to print.
  * @pre data is a int32_t[size]
  */
-std::ostream& dbm_cppPrintRaws(std::ostream& out, const raw_t* data, size_t size);
+std::ostream& dbm_cppPrintRaws(std::ostream& out, dbm::reader data);
 
 /** Print a vector of bounds.
  * @param data: the vector of bounds.

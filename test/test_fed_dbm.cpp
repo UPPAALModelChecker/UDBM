@@ -9,473 +9,535 @@
 // Copyright (c) 1995 - 2003, Uppsala University and Aalborg University.
 // All right reserved.
 //
-// $Id: testfeddbm.cpp,v 1.8 2005/05/31 19:35:14 adavid Exp $
+// $Id: test_fed_dbm.cpp,v 1.8 2005/05/31 19:35:14 adavid Exp $
 //
 ///////////////////////////////////////////////////////////////////
 
-// Tests are always for debugging.
-
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-
-#include "dbm/Valuation.h"
 #include "dbm/fed.h"
 #include "dbm/gen.h"
 #include "dbm/print.h"
+#include "dbm/valuation.h"
 #include "debug/utils.h"
 
-#include <ctime>
+#include <random>
+
+#include <doctest/doctest.h>
 
 using namespace std;
 using namespace dbm;
 
 // Range for DBM generation
-#define MAXRANGE 10000
-#define RANGE()  ((rand() % MAXRANGE) + 10)
+constexpr auto MAXRANGE = 10000;
+static auto gen = std::mt19937{};
+static auto dist = std::uniform_int_distribution{10, MAXRANGE + 10};
+static inline auto RANGE() { return dist(gen); }
 
 // Progress
-#define PROGRESS() debug_spin(stderr)
+static inline void PROGRESS() { debug_spin(stderr); }
 
 // DBM generation
-#define GEN(D) dbm_generate(D, dim, RANGE())
+static inline void GEN(dbm::writer dbm) { dbm_generate(dbm, dbm.get_dim(), RANGE()); }
 
 // New DBM
-#define NEW(N) raw_t* N = new raw_t[dim * dim]
+static inline dbm::writer NEW(cindex_t dim) { return {new raw_t[dim * dim], dim}; }
 
 // Delete DBM
-#define FREE(N) delete[] N
+static inline void FREE(const raw_t* ptr) { delete[] ptr; }
 
 // Check pointer
-#define POINTER(D) assert(D.isEmpty() == (D() == NULL))
-
-// Begin test loop
-#define BEGIN for (int kLoop = 0; kLoop < 23; ++kLoop) {
-// End test loop
-#define END }
+static inline void POINTER(dbm_t& dbm) { CHECK(dbm.isEmpty() == (dbm() == nullptr)); }
 
 // Invalidate matrix
-#define INVALIDATE(D) debug_randomize(D, dim* dim)
-
-// Matrix access
-#define DBM(I, J) dbm[(I)*dim + (J)]
+static inline void INVALIDATE(dbm::writer dbm) { debug_randomize(dbm, dbm.get_dim() * dbm.get_dim()); }
 
 // Equality
-#define EQ(A, B)  (A == B && A.relation(B) == base_EQUAL)
-#define EQD(A, B) (A == B && A.relation(B, dim) == base_EQUAL)
+static inline void EQ(const dbm_t& A, const dbm_t& B)
+{
+    CHECK(A == B);
+    CHECK(A.relation(B) == base_EQUAL);
+}
+static inline void EQ(const dbm_t& A, const raw_t* B, cindex_t dim)
+{
+    CHECK(A == B);
+    CHECK(A.relation(B, dim) == base_EQUAL);
+}
 
 // Not equality
-#define NEQ(A, B)  (A != B && A.relation(B) != base_EQUAL)
-#define NEQD(A, B) (A != B && A.relation(B, dim) != base_EQUAL)
-
-static void test(cindex_t dim)
+static inline void NEQ(const dbm_t& A, const dbm_t& B)
 {
-    NEW(dbm);
-    NEW(dbm2);
+    CHECK(A != B);
+    CHECK(A.relation(B) != base_EQUAL);
+}
+static inline void NEQ(const dbm_t& A, const raw_t* B, cindex_t dim)
+{
+    CHECK(A != B);
+    CHECK(A.relation(B, dim) != base_EQUAL);
+}
+
+static void test(const cindex_t dim)
+{
+    auto dbm = NEW(dim);
+    auto dbm2 = NEW(dim);
     auto cnstr = std::vector<constraint_t>(dim * dim);
-    std::vector<int32_t> lower(dim);
-    std::vector<int32_t> upper(dim);
-    IntValuation pt(dim);
+    auto lower = std::vector<int32_t>(dim);
+    auto upper = std::vector<int32_t>(dim);
+    auto pt = valuation_int(dim);
     // coverage
     bool c1 = false, c2 = false, c4 = false;
     bool c5 = false, c6 = false, c7 = false;
-    BEGIN;
-    auto a = dbm_t{};     // default
-    auto b = dbm_t{dim};  // dim
-    auto c = dbm_t{a};    // copy
-    auto d = dbm_t{b};    // copy
-    cindex_t i, j, k;
-    bool ab_equal = false;
-    const raw_t* ptr{nullptr};
-    PROGRESS();
+    for (int kLoop = 0; kLoop < 23; ++kLoop) {
+        auto a = dbm_t{};     // default
+        auto b = dbm_t{dim};  // dim
+        auto c = dbm_t{a};    // copy
+        auto d = dbm_t{b};    // copy
+        cindex_t i, j, k;
+        bool ab_equal = false;
+        const raw_t* ptr{nullptr};
+        PROGRESS();
 
-    // constructor post-conditions
-    assert(a.isEmpty() && a.getDimension() == 1);
-    assert(EQ(a, c) && EQ(b, d));
-    assert(b.getDimension() == dim && d.getDimension() == dim);
-    assert(c.isEmpty() && c.getDimension() == 1);
-    assert(b.isEmpty() && d.isEmpty());
-    POINTER(a);
-    POINTER(b);
-    POINTER(c);
-    POINTER(d);
+        // constructor post-conditions
+        REQUIRE(a.isEmpty());
+        REQUIRE(a.getDimension() == 1);
+        EQ(a, c);
+        EQ(b, d);
+        REQUIRE(b.getDimension() == dim);
+        REQUIRE(d.getDimension() == dim);
+        REQUIRE(c.isEmpty());
+        REQUIRE(c.getDimension() == 1);
+        REQUIRE(b.isEmpty());
+        REQUIRE(d.isEmpty());
+        POINTER(a);
+        POINTER(b);
+        POINTER(c);
+        POINTER(d);
 
-    // check copy
-    GEN(dbm);
-    a = c = dbm;
-    // copy -> only diagonal ok -> mark as non empty
-    assert(!a.isEmpty() && a.getDimension() == 1);
-    assert(!c.isEmpty() && c.getDimension() == 1);
-    c.copyFrom(dbm, dim);  // copy succeeds: change dim
-    a = c;
-    b = dbm;
-    d.copyFrom(dbm, dim);
-#if 0  // checked
-    if (kLoop == 0 && dim < 10)
-    {
-        cout << "a=\n" << a
-             << "b=\n" << b
-             << "c=\n" << c
-             << "d=\n" << d;
-    }
-#endif
-    assert(EQ(a, b) && a() == c() && EQ(a, d) && EQD(a, dbm));
-    assert(EQ(b, c) && EQ(b, d) && EQ(c, d) && EQD(b, dbm));
-    a.nil();
-    assert(a.isEmpty());
-    a.setDimension(dim);
-    a = c;
-    assert(a() == c() && a.getDimension() == c.getDimension() && a.getDimension() == dim);
-    assert(a() && b() && c() && d());
-    POINTER(a);
-    POINTER(b);
-    POINTER(c);
-    POINTER(d);
-    assert(EQD(a, dbm));
-    INVALIDATE(dbm);
-    a.copyTo(dbm, dim);
-    assert(*dbm == dbm_LE_ZERO);  // always
-    assert(EQD(a, dbm));
-    // check copy with constraint access
-    if (!a.isEmpty())  // pre-condition
-        for (i = 0; i < dim; ++i)
-            for (j = 0; j < dim; ++j)
-                assert(a(i, j) == DBM(i, j));
-    // check !=
-    GEN(dbm);
-    if (a == dbm) {
-        // very rare branch, don't check
-        assert(a.relation(dbm, dim) == base_EQUAL);
-        if (dim > 1)
-            assert(dbm_areEqual(dbm, a(), dim));
-        assert(EQD(b, dbm) && EQD(c, dbm) && EQD(d, dbm));
-    } else {
-        c1 = true;
-        assert(a.relation(dbm, dim) != base_EQUAL);
-        assert(dim > 1 && !dbm_areEqual(dbm, a(), dim));
-        assert(NEQD(a, dbm) && NEQD(b, dbm) && NEQD(c, dbm) && NEQD(d, dbm));
-    }
-
-    // check relation
-    a.copyTo(dbm, dim);
-    assert(*dbm == dbm_LE_ZERO);  // always
-    assert(EQD(a, dbm));
-    if (rand() % 10 > 0)
-        dbm_generateSuperset(dbm, dbm, dim);
-    b = dbm;
-    assert(a <= dbm && c <= dbm);
-    assert(a <= b && c <= b);
-    assert(b >= a && b >= c);
-    if (a != b) {
-        ab_equal = false;
-        c2 = true;
-        assert(a < dbm && c < dbm);
-        assert(a < b && c < b);
-        assert(b > a && b > c);
-    }
-
-    // zero
-    dbm_zero(dbm, dim);
-    a.setZero();
-    d = a;
-    a.setZero();
-    assert(a() == d());
-    d.nil();
-    assert(a == dbm && a.isZero());
-
-    // init
-    dbm_init(dbm, dim);
-    a.setInit();
-    assert(a == dbm && a.isInit());
-
-    // convex union, recall: c==d <= b
-    if (kLoop & 1) {
+        // check copy
+        GEN(dbm);
+        a = c = dbm;
+        // copy -> only diagonal ok -> mark as non empty
+        CHECK(!a.isEmpty());
+        CHECK(a.getDimension() == 1);
+        CHECK(!c.isEmpty());
+        CHECK(c.getDimension() == 1);
+        c.copyFrom(dbm, dim);  // copy succeeds: change dim
         a = c;
-        assert(a <= b);
-        a += b;  // a not mutable => get b
-        assert(a == b);
-        d = a;
-        a += b;  // no effect
-        assert(a() == d());
-        d.nil();
-    } else {
-        assert(c <= b);
-        a = c + b;  // c not mutable => +b returns b
-        assert(a == b);
-    }
-    if (ab_equal)
-        assert(a() == b());  // stronger than a == b
-    // else a += b returned &a and not &b
-    c += b;
-    d = c;
-    c += b;  // no effect
-    assert(c() == d());
-    d.nil();
-    assert(dim <= 1 || c() != b());
-    assert(EQ(a, b));
-    assert(EQ(c, b));
-    a.intern();
-    b.intern();
-    c.intern();
-    assert(a() == b() && b() == c());
-    GEN(dbm);
-    b = dbm;
-    // basic inclusion property of convex union
-    c = a + b;
-    assert(a <= c && c >= b);
-    assert(a == c || a < c);
-    assert(b == c || c > b);
-    // duplicate check to test garbage collection
-    assert(a <= a + b && a + b >= b);
-
-    // intersection
-    GEN(dbm);
-    a = dbm;
-    b.copyTo(dbm2, dim);
-    bool i1 = dbm_haveIntersection(dbm2, dbm, dim);
-    bool i2 = dbm_intersection(dbm2, dbm, dim);
-    assert(i1 || !i2);
-    assert(dbm_isEmpty(dbm2, dim) || (dbm_relation(dbm2, dbm, dim) & base_SUBSET));
-    assert((a & b) <= a && (a & b) <= b);  // ok with empty set
-    assert((a & a) == a && (b & b) == b);
-    assert((a & (a + b)) == a && (b & (a + b)) == b);
-    k = rand() % dim;
-    if (k) {
-        c = a(k) + 1;  // clock increment
-        d = c & a;
-        assert(d <= c && d <= a);
-        c4 = c4 || !d.isEmpty();
-    }
-
-    // constrain
-    assert(a == dbm);
-    for (k = 7; k > 0 && !dbm_generatePoint(pt.data(), dbm, dim); --k)
-        ;
-    if (k > 0) {
-        bool stop = rand() & 1;
-        c5 = true;
-        b = a;
-        assert(b.contains(pt.data(), dim));
-        for (i = 0, k = 0; i < dim; ++i) {
-            for (j = 0; j < dim; ++j) {
-                if (i != j) {
-                    cnstr[k] = constraint_t{i, j, dbm_bound2raw(pt[i] - pt[j], dbm_WEAK)};
-                    assert(a && cnstr[k]);  // satisfies
-                    a &= cnstr[k];
-                    c = a;
-                    a &= cnstr[k];
-                    assert(a() == c());
-                    c.nil();
-                    assert(dim <= 1 || !a.isEmpty());
-                    k++;
-                }
-            }
-            if (stop && (rand() & 1))
-                break;
+        b = dbm;
+        d.copyFrom(dbm, dim);
+#if 0  // checked
+        if (kLoop == 0 && dim < 10)
+        {
+            cout << "a=\n" << a
+                 << "b=\n" << b
+                 << "c=\n" << c
+                 << "d=\n" << d;
         }
-        cnstr.resize(k);
-        b &= cnstr;
-        assert(a == b);
-        assert(dbm_constrainN(dbm, dim, cnstr.data(), k));
-        assert(a == dbm);
-        c = b;
-        b &= cnstr;
-        assert(b() == c());
-        c.nil();
-        assert(a.contains(pt.data(), dim));
-        if (!stop && dim > 1 && k > 0) {
-            c6 = true;
-            assert(!a.isUnbounded());
-            i = rand() % (dim - 1) + 1;
-            j = rand() % dim;
-            if (i == j)
-                j = 0;  // i != 0, ok
-            if (rand() & 1) {
-                k = i;
-                i = j;
-                j = k;
-            }
-            // constrain too much now
-            constraint_t cij{i, j, dbm_bound2raw(pt[i] - pt[j], dbm_STRICT)};
-            a &= cij;
-            assert(a.isEmpty() && !(b && cij));
-        }
-    }
-
-    // up & down
-    GEN(dbm);
-    c.setDimension(dim);  // because c.nil() before
-    a = b = c = dbm;
-    b.down();
-    c.up();
-    assert(a <= up(a) && a <= down(a));
-    assert(b == down(a) && c == up(a) && a == dbm);
-    assert(c.isUnbounded());
-    dbm_up(dbm, dim);
-    assert(c == dbm);
-    a.copyTo(dbm, dim);
-    dbm_down(dbm, dim);
-    assert(b == dbm);
-
-    // updates: only for dim > 1
-    if (dim > 1) {
-        GEN(a.getDBM());
+#endif
+        EQ(a, b);
+        CHECK(a() == c());
+        EQ(a, d);
+        EQ(a, dbm, dim);
+        EQ(b, c);
+        EQ(b, d);
+        EQ(c, d);
+        EQ(b, dbm, dim);
+        a.nil();
+        CHECK(a.isEmpty());
+        a.setDimension(dim);
+        a = c;
+        CHECK(a() == c());
+        CHECK(a.getDimension() == c.getDimension());
+        CHECK(a.getDimension() == dim);
+        CHECK(a());
+        CHECK(b());
+        CHECK(c());
+        CHECK(d());
+        POINTER(a);
+        POINTER(b);
+        POINTER(c);
+        POINTER(d);
+        EQ(a, dbm, dim);
+        INVALIDATE(dbm);
         a.copyTo(dbm, dim);
-        assert(dbm_isValid(dbm, dim));
-        i = rand() % (dim - 1) + 1;
-        // updateValue
-        a(i) = 0;
-        b = a;
-        a(i) = 0;
-        assert(a() == b());
-        dbm_updateValue(dbm, dim, i, 0);
-        assert(a == dbm);
-        a(i) = 1;
-        assert(a() != b());  // mutable copy used
-        b = a;
-        a(i) = 1;
-        assert(a() == b());
-        dbm_updateValue(dbm, dim, i, 1);
-        assert(a == dbm);
-        // other updates: need 2 clocks != 0 -> dim >= 3
-        if (dim >= 3) {
-            int32_t inc = rand() % 100;
-            b = a;
-            a(i) = a(i);  // no effect
-            assert(a() == b());
-            do {
-                j = rand() % (dim - 1) + 1;
-            } while (i == j);
-            b.nil();
-            // updateClock
-            ptr = a();
-            a(i) = a(j);
-            assert(ptr == a());
-            dbm_updateClock(dbm, dim, i, j);
-            assert(a == dbm);
-            b = a;
-            a(i) = a(j) + 0;
-            assert(a() == b());
-            // updateIncrement
-            ptr = a();
-            a(i) += 0;
-            assert(a() == ptr && a == b);
-            a(i) += inc;
-            dbm_updateIncrement(dbm, dim, i, inc);
-            assert(a == dbm);
-            // update
-            ptr = a();
-            a(i) = a(i) + 0;
-            assert(a() == ptr);
-            a(i) = a(j) + inc;
-            dbm_update(dbm, dim, i, j, inc);
-            assert(a == dbm);
-        }
-    }
-
-    // freeUp, freeDown, relaxXX
-    GEN(dbm);
-    a = dbm;
-    b = freeAllUp(a);
-    ptr = b();
-    b.freeAllUp();
-    assert(ptr == b());
-    dbm_freeAllUp(dbm, dim);
-    assert(b == dbm);
-    b = freeAllDown(a);
-    ptr = b();
-    b.freeAllDown();
-    assert(ptr == b());
-    a.copyTo(dbm, dim);
-    dbm_freeAllDown(dbm, dim);
-    assert(b == dbm);
-    k = rand() % dim;
-    if (k != 0) {
-        c7 = true;
-        c = freeDown(a, k);
-        ptr = c();
-        c.freeDown(k);
-        assert(ptr == c());
-        a.copyTo(dbm, dim);
-        dbm_freeDown(dbm, dim, k);
-        assert(c == dbm);
-        c = freeUp(a, k);
-        ptr = c();
-        c.freeUp(k);
-        assert(ptr == c());
-        a.copyTo(dbm, dim);
-        dbm_freeUp(dbm, dim, k);
-        assert(c == dbm);
-    }
-    d = relaxUp(a);
-    ptr = d();
-    d.relaxUp();
-    assert(ptr == d());
-    a.copyTo(dbm, dim);
-    dbm_relaxUp(dbm, dim);
-    assert(d == dbm && a <= d);
-    d = relaxDown(a);
-    ptr = d();
-    d.relaxDown();
-    assert(ptr == d());
-    a.copyTo(dbm, dim);
-    dbm_relaxDown(dbm, dim);
-    assert(d == dbm && a <= d);
-    k = rand() % dim;
-    // k == 0 ok
-    d = relaxUpClock(a, k);
-    ptr = d();
-    d.relaxUpClock(k);
-    assert(ptr == d());
-    a.copyTo(dbm, dim);
-    dbm_relaxUpClock(dbm, dim, k);
-    assert(d == dbm && a <= d);
-    d = relaxDownClock(a, k);
-    ptr = d();
-    d.relaxDownClock(k);
-    assert(ptr == d());
-    a.copyTo(dbm, dim);
-    dbm_relaxDownClock(dbm, dim, k);
-    assert(d == dbm && a <= d);
-
-    // extrapolations
-    // bounds 1st
-    lower[0] = upper[0] = 0;
-    for (k = 1; k < dim; ++k) {
-        int32_t low = RANGE() - (MAXRANGE / 2);
-        int32_t up = RANGE() - (MAXRANGE / 2); /* low + RANGE()/2; */
-        if (low < -2000) {
-            lower[k] = upper[k] = -dbm_INFINITY;
+        CHECK(*dbm == dbm_LE_ZERO);  // always
+        EQ(a, dbm, dim);
+        // check copy with constraint access
+        if (!a.isEmpty())  // pre-condition
+            for (i = 0; i < dim; ++i)
+                for (j = 0; j < dim; ++j)
+                    CHECK(a(i, j) == dbm.at(i, j));
+        // check !=
+        GEN(dbm);
+        if (a == dbm) {
+            // very rare branch, don't check
+            CHECK(a.relation(dbm, dim) == base_EQUAL);
+            if (dim > 1)
+                CHECK(dbm_areEqual(dbm, a(), dim));
+            EQ(b, dbm, dim);
+            EQ(c, dbm, dim);
+            EQ(d, dbm, dim);
         } else {
-            lower[k] = low;
-            upper[k] = up;
+            c1 = true;
+            CHECK(a.relation(dbm, dim) != base_EQUAL);
+            CHECK(dim > 1);
+            CHECK(!dbm_areEqual(dbm, a(), dim));
+            NEQ(a, dbm, dim);
+            NEQ(b, dbm, dim);
+            NEQ(c, dbm, dim);
+            NEQ(d, dbm, dim);
         }
-    }
-    for (k = 0; k < 4; ++k) {
-        b = a;
-        a.copyTo(dbm, dim);
-        switch (k) {
-        case 0:
-            b.extrapolateMaxBounds(upper.data());
-            dbm_extrapolateMaxBounds(dbm, dim, upper.data());
-            break;
-        case 1:
-            b.diagonalExtrapolateMaxBounds(upper.data());
-            dbm_diagonalExtrapolateMaxBounds(dbm, dim, upper.data());
-            break;
-        case 2:
-            b.extrapolateLUBounds(lower.data(), upper.data());
-            dbm_extrapolateLUBounds(dbm, dim, lower.data(), upper.data());
-            break;
-        case 3:
-            b.diagonalExtrapolateLUBounds(lower.data(), upper.data());
-            dbm_diagonalExtrapolateLUBounds(dbm, dim, lower.data(), upper.data());
-            break;
-        }
-        assert(b == dbm && a <= b);
-    }
 
-    END;
+        // check relation
+        a.copyTo(dbm, dim);
+        CHECK(*dbm == dbm_LE_ZERO);  // always
+        EQ(a, dbm, dim);
+        if (rand() % 10 > 0)
+            dbm_generateSuperset(dbm, dbm, dim);
+        b = dbm;
+        CHECK(a <= dbm.get());
+        CHECK(c <= dbm.get());
+        CHECK(a <= b);
+        CHECK(c <= b);
+        CHECK(b >= a);
+        CHECK(b >= c);
+        if (a != b) {
+            ab_equal = false;
+            c2 = true;
+            CHECK(a < dbm.get());
+            CHECK(c < dbm.get());
+            CHECK(a < b);
+            CHECK(c < b);
+            CHECK(b > a);
+            CHECK(b > c);
+        }
+
+        // zero
+        dbm_zero(dbm, dim);
+        a.setZero();
+        d = a;
+        a.setZero();
+        CHECK(a() == d());
+        d.nil();
+        CHECK(a == dbm.get());
+        CHECK(a.isZero());
+
+        // init
+        dbm_init(dbm, dim);
+        a.setInit();
+        CHECK(a == dbm.get());
+        CHECK(a.isInit());
+
+        // convex union, recall: c==d <= b
+        if ((kLoop & 1) != 0) {
+            a = c;
+            CHECK(a <= b);
+            a += b;  // a not mutable => get b
+            CHECK(a == b);
+            d = a;
+            a += b;  // no effect
+            CHECK(a() == d());
+            d.nil();
+        } else {
+            CHECK(c <= b);
+            a = c + b;  // c not mutable => +b returns b
+            CHECK(a == b);
+        }
+        if (ab_equal)
+            CHECK(a() == b());  // stronger than a == b
+        // else a += b returned &a and not &b
+        c += b;
+        d = c;
+        c += b;  // no effect
+        CHECK(c() == d());
+        d.nil();
+        if (dim > 1)
+            CHECK(c() != b());
+        EQ(a, b);
+        EQ(c, b);
+        a.intern();
+        b.intern();
+        c.intern();
+        CHECK(a() == b());
+        CHECK(b() == c());
+        GEN(dbm);
+        b = dbm;
+        // basic inclusion property of convex union
+        c = a + b;
+        CHECK(a <= c);
+        CHECK(c >= b);
+        if (a != c)
+            CHECK(a < c);
+        if (b != c)
+            CHECK(c > b);
+        // duplicate check to test garbage collection
+        CHECK(a <= a + b);
+        CHECK(a + b >= b);
+
+        // intersection
+        GEN(dbm);
+        a = dbm;
+        b.copyTo(dbm2, dim);
+        bool i1 = dbm_haveIntersection(dbm2, dbm, dim);
+        bool i2 = dbm_intersection(dbm2, dbm, dim);
+        if (!i1)
+            CHECK(!i2);
+        if (!dbm_isEmpty(dbm2, dim))
+            CHECK((dbm_relation(dbm2, dbm, dim) & base_SUBSET) != 0);
+        CHECK((a & b) <= a);
+        CHECK((a & b) <= b);  // ok with empty set
+        CHECK((a & a) == a);
+        CHECK((b & b) == b);
+        CHECK((a & (a + b)) == a);
+        CHECK((b & (a + b)) == b);
+        k = rand() % dim;
+        if (k != 0) {
+            c = a(k) + 1;  // clock increment
+            d = c & a;
+            CHECK(d <= c);
+            CHECK(d <= a);
+            c4 = c4 || !d.isEmpty();
+        }
+
+        // constrain
+        CHECK(a == dbm.get());
+        for (k = 7; k > 0 && !dbm_generatePoint(pt.get_mutable().data(), dbm, dim); --k)
+            ;
+        if (k > 0) {
+            bool stop = (rand() & 1) != 0;
+            c5 = true;
+            b = a;
+            CHECK(b.contains(pt));
+            cnstr.resize(dim * dim);
+            for (i = 0, k = 0; i < dim; ++i) {
+                for (j = 0; j < dim; ++j) {
+                    if (i != j) {
+                        cnstr[k] = constraint_t{i, j, dbm_bound2raw(pt[i] - pt[j], dbm_WEAK)};
+                        CHECK((a && cnstr[k]) == true);  // satisfies
+                        a &= cnstr[k];
+                        c = a;
+                        a &= cnstr[k];
+                        CHECK(a() == c());
+                        c.nil();
+                        if (dim > 1)
+                            CHECK(!a.isEmpty());
+                        ++k;
+                    }
+                }
+                if (stop && (rand() & 1) != 0)
+                    break;
+            }
+            REQUIRE(k <= cnstr.size());
+            cnstr.resize(k);
+            b &= cnstr;
+            CHECK(a == b);
+            CHECK(dbm_constrainN(dbm, dim, cnstr.data(), k));
+            CHECK(a == dbm.get());
+            c = b;
+            b &= cnstr;
+            CHECK(b() == c());
+            c.nil();
+            CHECK(a.contains(pt));
+            if (!stop && dim > 1 && k > 0) {
+                c6 = true;
+                CHECK(!a.isUnbounded());
+                i = rand() % (dim - 1) + 1;
+                j = rand() % dim;
+                if (i == j)
+                    j = 0;  // i != 0, ok
+                if ((rand() & 1) != 0) {
+                    k = i;
+                    i = j;
+                    j = k;
+                }
+                // constrain too much now
+                constraint_t cij{i, j, dbm_bound2raw(pt[i] - pt[j], dbm_STRICT)};
+                a &= cij;
+                CHECK(a.isEmpty());
+                CHECK(!(b && cij));
+            }
+        }
+
+        // up & down
+        GEN(dbm);
+        c.setDimension(dim);  // because c.nil() before
+        a = b = c = dbm;
+        b.down();
+        c.up();
+        CHECK(a <= up(a));
+        CHECK(a <= down(a));
+        CHECK(b == down(a));
+        CHECK(c == up(a));
+        CHECK(a == dbm.get());
+        CHECK(c.isUnbounded());
+        dbm_up(dbm, dim);
+        CHECK(c == dbm.get());
+        a.copyTo(dbm, dim);
+        dbm_down(dbm, dim);
+        CHECK(b == dbm.get());
+
+        // updates: only for dim > 1
+        if (dim > 1) {
+            GEN(a.getDBM_writer());
+            a.copyTo(dbm, dim);
+            CHECK(dbm_isValid(dbm, dim));
+            i = rand() % (dim - 1) + 1;
+            // updateValue
+            a(i) = 0;
+            b = a;
+            a(i) = 0;
+            CHECK(a() == b());
+            dbm_updateValue(dbm, dim, i, 0);
+            CHECK(a == dbm.get());
+            a(i) = 1;
+            CHECK(a() != b());  // mutable copy used
+            b = a;
+            a(i) = 1;
+            CHECK(a() == b());
+            dbm_updateValue(dbm, dim, i, 1);
+            CHECK(a == dbm.get());
+            // other updates: need 2 clocks != 0 -> dim >= 3
+            if (dim >= 3) {
+                int32_t inc = rand() % 100;
+                b = a;
+                a(i) = a(i);  // no effect
+                CHECK(a() == b());
+                do {
+                    j = rand() % (dim - 1) + 1;
+                } while (i == j);
+                b.nil();
+                // updateClock
+                ptr = a();
+                a(i) = a(j);
+                CHECK(ptr == a());
+                dbm_updateClock(dbm, dim, i, j);
+                CHECK(a == dbm.get());
+                b = a;
+                a(i) = a(j) + 0;
+                CHECK(a() == b());
+                // updateIncrement
+                ptr = a();
+                a(i) += 0;
+                CHECK(a() == ptr);
+                CHECK(a == b);
+                a(i) += inc;
+                dbm_updateIncrement(dbm, dim, i, inc);
+                CHECK(a == dbm.get());
+                // update
+                ptr = a();
+                a(i) = a(i) + 0;
+                CHECK(a() == ptr);
+                a(i) = a(j) + inc;
+                dbm_update(dbm, dim, i, j, inc);
+                CHECK(a == dbm.get());
+            }
+        }
+
+        // freeUp, freeDown, relaxXX
+        GEN(dbm);
+        a = dbm;
+        b = freeAllUp(a);
+        ptr = b();
+        b.freeAllUp();
+        CHECK(ptr == b());
+        dbm_freeAllUp(dbm, dim);
+        CHECK(b == dbm.get());
+        b = freeAllDown(a);
+        ptr = b();
+        b.freeAllDown();
+        CHECK(ptr == b());
+        a.copyTo(dbm, dim);
+        dbm_freeAllDown(dbm, dim);
+        CHECK(b == dbm.get());
+        k = rand() % dim;
+        if (k != 0) {
+            c7 = true;
+            c = freeDown(a, k);
+            ptr = c();
+            c.freeDown(k);
+            CHECK(ptr == c());
+            a.copyTo(dbm, dim);
+            dbm_freeDown(dbm, dim, k);
+            CHECK(c == dbm.get());
+            c = freeUp(a, k);
+            ptr = c();
+            c.freeUp(k);
+            CHECK(ptr == c());
+            a.copyTo(dbm, dim);
+            dbm_freeUp(dbm, dim, k);
+            CHECK(c == dbm.get());
+        }
+        d = relaxUp(a);
+        ptr = d();
+        d.relaxUp();
+        CHECK(ptr == d());
+        a.copyTo(dbm, dim);
+        dbm_relaxUp(dbm, dim);
+        CHECK(d == dbm.get());
+        CHECK(a <= d);
+        d = relaxDown(a);
+        ptr = d();
+        d.relaxDown();
+        CHECK(ptr == d());
+        a.copyTo(dbm, dim);
+        dbm_relaxDown(dbm, dim);
+        CHECK(d == dbm.get());
+        CHECK(a <= d);
+        k = rand() % dim;
+        // k == 0 ok
+        d = relaxUpClock(a, k);
+        ptr = d();
+        d.relaxUpClock(k);
+        CHECK(ptr == d());
+        a.copyTo(dbm, dim);
+        dbm_relaxUpClock(dbm, dim, k);
+        CHECK(d == dbm.get());
+        CHECK(a <= d);
+        d = relaxDownClock(a, k);
+        ptr = d();
+        d.relaxDownClock(k);
+        CHECK(ptr == d());
+        a.copyTo(dbm, dim);
+        dbm_relaxDownClock(dbm, dim, k);
+        CHECK(d == dbm.get());
+        CHECK(a <= d);
+
+        // extrapolations
+        // bounds 1st
+        lower[0] = upper[0] = 0;
+        for (k = 1; k < dim; ++k) {
+            int32_t low = RANGE() - (MAXRANGE / 2);
+            int32_t up = RANGE() - (MAXRANGE / 2); /* low + RANGE()/2; */
+            if (low < -2000) {
+                lower[k] = upper[k] = -dbm_INFINITY;
+            } else {
+                lower[k] = low;
+                upper[k] = up;
+            }
+        }
+        for (k = 0; k < 4; ++k) {
+            b = a;
+            a.copyTo(dbm, dim);
+            switch (k) {
+            case 0:
+                b.extrapolateMaxBounds(upper.data());
+                dbm_extrapolateMaxBounds(dbm, dim, upper.data());
+                break;
+            case 1:
+                b.diagonalExtrapolateMaxBounds(upper.data());
+                dbm_diagonalExtrapolateMaxBounds(dbm, dim, upper.data());
+                break;
+            case 2:
+                b.extrapolateLUBounds(lower.data(), upper.data());
+                dbm_extrapolateLUBounds(dbm, dim, lower.data(), upper.data());
+                break;
+            case 3:
+                b.diagonalExtrapolateLUBounds(lower.data(), upper.data());
+                dbm_diagonalExtrapolateLUBounds(dbm, dim, lower.data(), upper.data());
+                break;
+            }
+            CHECK(b == dbm.get());
+            CHECK(a <= b);
+        }
+    }
     cnstr.clear();
     FREE(dbm2);
     FREE(dbm);
@@ -484,37 +546,22 @@ static void test(cindex_t dim)
     PROGRESS();
 }
 
-int main(int argc, char* argv[])
+TEST_CASE("Test DBM federation")
 {
-    cindex_t start, end;
+    cindex_t start;
+    cindex_t end;
     int seed;
-
-    if (argc < 3) {
-        cerr << "Usage: " << argv[0] << " start end [seed]\n";
-        return 1;
+    SUBCASE("start=1 end=10 random")
+    {
+        start = 1;
+        end = 10;
+        seed = std::random_device{}();
     }
-
-    start = atoi(argv[1]);
-    end = atoi(argv[2]);
-    seed = argc > 3 ? atoi(argv[3]) : time(nullptr);
-    srand(seed);
-    if (start < 1) {
-        cerr << "Minimum dimension=1 taken\n";
-        start = 1;  // min dim == 1
-    }
-
-    /* Print the seed for the random generator
-     * to be able to repeat a failed test.
-     */
-    cout << "Test with seed=" << seed << endl;
-
+    gen.seed(seed);
     for (cindex_t i = start; i <= end; ++i) {
-        (cerr << '.').flush();
+        (cout << '.').flush();
         for (int k = 0; k < 300; ++k) {
             test(i);
         }
     }
-    cerr << endl;
-    cout << "\nPassed\n";
-    return 0;
 }

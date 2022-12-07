@@ -18,21 +18,20 @@
 
 #include "dbm/ClockAccessor.h"
 
-#include <iomanip>
+#include <iosfwd>
 #include <limits>
-#include <sstream>
 #include <vector>
 #include <cassert>
 
 namespace dbm
 {
     /** Valuation: similar to std::valarray, except it treats reference and dynamic values (clocks) specially. */
-    template <class S>
-    class Valuation
+    template <typename S>
+    class valuation_t
     {
     private:
-        size_t staticSize;
-        size_t dynamicSize;
+        size_t static_size;
+        size_t dynamic_size;
         std::vector<S> values;
 
     public:
@@ -40,47 +39,66 @@ namespace dbm
          * @param size: size of the S valuation vector (number of dimensions).
          * @param dyn: number of dynamic values.
          */
-        Valuation(size_t size, size_t dyn = 0): staticSize{size}, dynamicSize{dyn}, values(size + dyn, S{}) {}
+        valuation_t(size_t size, size_t dyn = 0): static_size{size}, dynamic_size{dyn}, values(size + dyn) {}
+        valuation_t(const std::initializer_list<S>& list): static_size{list.size()}, dynamic_size{0}, values{list} {}
+
+        valuation_t(const valuation_t& other): valuation_t(other.static_size, other.dynamic_size) { *this = other; }
+        valuation_t(valuation_t&&) noexcept = default;
+
+        valuation_t& operator=(const valuation_t<S>& src)
+        {
+            assert(src.static_size == static_size);
+            assert(src.dynamic_size <= dynamic_size);
+            std::copy(src.begin(), src.end(), begin_mutable());  // copy the common values
+            std::fill(std::next(begin_mutable(), static_size + src.dynamic_size), end_mutable(),
+                      S{});  // reset remaining
+            return *this;
+        }
 
         /** Add an amount to all the elements of this vector EXCEPT #0 (reference clock).
          * @param value: amount to add.
          */
-        Valuation& operator+=(S value)
+        valuation_t& operator+=(S value)
         {
-            if (value != 0 && !values.empty()) {
-                for (auto i = std::next(this->begin()); i != this->end(); ++i)
+            if (value != 0 && values.size() > 1)
+                for (auto i = std::next(begin_mutable()); i != end_mutable(); ++i)
                     *i += value;
-            }
             return *this;
         }
         /** Subtract an amount from all the elements EXCEPT #0.
          * @param value: amount to subtract.
          */
-        Valuation& operator-=(S value) { return *this += -value; }
+        valuation_t& operator-=(S value) { return *this += -value; }
 
         /** Reset all values (except #0) to specific value */
         void reset(S value = {})
         {
-            if (!values.empty())
-                std::fill(std::next(this->begin()), this->end(), value);
+            if (values.size() > 1)
+                std::fill(std::next(begin_mutable()), end_mutable(), value);
         }
-        const S& last() const
+        const S& back() const
         {
             assert(!values.empty());
             return values.back();
         }
 
-        const S& lastStatic() const
+        S& back()
         {
-            assert(staticSize > 0);
-            return (*this)[staticSize - 1];
+            assert(!values.empty());
+            return values.back();
+        }
+
+        const S& back_static() const
+        {
+            assert(static_size > 0);
+            return (*this)[static_size - 1];
         }
 
         /** @return the delay between this point and the
          * argument point. This has any sense iff
          * argument point = this point + some delay.
          */
-        S getDelayTo(const Valuation<S>& arg) const
+        S get_delay_to(const valuation_t<S>& arg) const
         {
             if (values.size() <= 1)
                 return 0;                   // Only ref clock.
@@ -92,55 +110,30 @@ namespace dbm
             return delay;
         }
 
-        std::ostream& print(std::ostream& os, const ClockAccessor& a) const
-        {
-            os << "[ " << std::setprecision(std::numeric_limits<S>::digits10 + 1);
-            cindex_t id = 0;
-            for (auto& v : *this) {
-                auto name = a.getClockName(id++);
-                if (name[0] != '#')
-                    os << name << "=" << v << " ";
-            }
-            return os << "]";
-        }
+        std::ostream& print(std::ostream& os, const ClockAccessor& a) const;
 
         /** String representation of the valuation in a more
          * user friendly manner than just a vector of numbers.
          */
-        std::string toString(const ClockAccessor& a) const
-        {
-            std::ostringstream os;
-            print(os, a);
-            return os.str();
-        }
-
-        void copyFrom(const Valuation<S>& src)
-        {
-            assert(src.staticSize == staticSize);
-            assert(src.dynamicSize <= dynamicSize);
-            // Copy the dynamic parts in common
-            std::copy(src.begin(), src.end(), this->begin());
-            for (size_t i = src.dynamicSize; i < dynamicSize; ++i) {
-                (*this)[staticSize + i] = S{};
-            }
-        }
+        std::string str(const ClockAccessor& a) const;
 
         /** Extend the number dynamic values by the specified amount. */
         bool extend(size_t n, S value = {})
         {
-            dynamicSize += n;
-            values.resize(staticSize + dynamicSize, value);
+            dynamic_size += n;
+            values.resize(static_size + dynamic_size, value);
             return true;
         }
 
         size_t size() const { return values.size(); }
         auto begin() const { return values.cbegin(); }
         auto end() const { return values.cend(); }
-        auto begin() { return values.begin(); }
-        auto end() { return values.end(); }
+        auto begin_mutable() { return values.begin(); }
+        auto end_mutable() { return values.end(); }
 
-        const S* data() const { return values.data(); }
-        S* data() { return values.data(); }
+        operator const std::vector<S>&() const { return values; }
+        operator const S*() const { return values.data(); }
+        auto& get_mutable() { return values; }
 
         /** wrap and check */
         S& operator[](size_t at)
@@ -158,16 +151,13 @@ namespace dbm
     };
 
     template <typename S>
-    std::ostream& operator<<(std::ostream& os, const Valuation<S>& val)
-    {
-        os << '(' << val.size() << ")[";
-        for (auto& v : val)
-            os << ' ' << v;
-        return os << " ]";
-    }
+    valuation_t(const std::initializer_list<S>&) -> valuation_t<S>;
 
-    using IntValuation = Valuation<int32_t>;
-    using DoubleValuation = Valuation<double>;
+    template <typename S>
+    std::ostream& operator<<(std::ostream& os, const valuation_t<S>& val);
+
+    using valuation_int = valuation_t<int32_t>;
+    using valuation_fp = valuation_t<double>;
 }  // namespace dbm
 
 #endif  // INCLUDE_DBM_VALUATION_H

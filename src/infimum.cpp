@@ -2,21 +2,17 @@
 
 #include "infimum.h"
 
+#include "dbm/dbm_raw.hpp"
 #include "dbm/mingraph.h"
 #include "base/bitstring.h"
 #include "debug/macros.h"
 
+#include <algorithm>
 #include <stdexcept>
 #include <cstdlib>
 
-/*
- * constraintValue(i,j)
- * pre: dbm with dim has to be defined and 0 <= i,j < dim
- *
- * Returns c where x_i - x_j <= c in the dbm;
- */
-#define constraintValue(i, j) (dbm_raw2bound(dbm[(i)*dim + (j)]))
-#define b(i)                  (-rates[i])  // b is the notation for supply/demand in the network flow literature
+/** b is the notation for supply/demand in the network flow literature */
+static inline int32_t b(const int32_t* rates, cindex_t i) { return -rates[i]; }
 
 /**
  * Tree structure:
@@ -70,7 +66,7 @@ static void printSimpleNodeInfo(const Tree& tree, const uint32_t i)
 static void printNodeInfo(const Tree& tree, const int32_t* rates, uint32_t i)
 {
     printSimpleNodeInfo(tree, i);
-    std::cerr << ", s/d: " << b(i) << " ";
+    std::cerr << ", s/d: " << b(rates, i) << " ";
     std::cerr << std::endl;
 }
 
@@ -92,7 +88,7 @@ static void printSimpleAllNodeInfo(const Nodes& tree, const uint32_t dim)
 }
 */
 
-static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, const Tree& tree, const uint32_t dim)
+static bool checkTreeIntegrity(dbm::reader dbm, const int32_t* rates, const Tree& tree, const uint32_t dim)
 {
     bool treeOK = true;
     // Check that all tree get their flow
@@ -101,9 +97,9 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, const Tre
     sum[0] = 0;
 
     for (auto i = 1u; i < dim; i++) {
-        sum[0] -= b(i);
-        total -= b(i);
-        sum[i] = b(i);
+        sum[0] -= b(rates, i);
+        total -= b(rates, i);
+        sum[i] = b(rates, i);
     }
     for (auto i = 1u; i < dim; i++) {
         const auto pred_i = tree.pred_of(i);
@@ -118,8 +114,8 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, const Tre
     for (auto i = 0u; i < dim; i++) {
         if (sum[i] != 0) {
             treeOK = false;
-            std::cerr << "sum[" << i << "] is corrupted: " << sum[i] << ", should be: " << (i == 0 ? total : b(i))
-                      << std::endl;
+            std::cerr << "sum[" << i << "] is corrupted: " << sum[i]
+                      << ", should be: " << (i == 0 ? total : b(rates, i)) << std::endl;
         }
     }
 
@@ -129,9 +125,9 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, const Tre
         const auto pred_i = tree.pred_of(i);
         if (tree[i].potential != dbm_INFINITY || pred_i != 0) {
             if (tree[i].inbound)
-                reduced_cost = constraintValue(pred_i, i) - tree[pred_i].potential + tree[i].potential;
+                reduced_cost = dbm.at(pred_i, i) - tree[pred_i].potential + tree[i].potential;
             else
-                reduced_cost = constraintValue(i, pred_i) + tree[pred_i].potential - tree[i].potential;
+                reduced_cost = dbm.at(i, pred_i) + tree[pred_i].potential - tree[i].potential;
             if (reduced_cost != 0) {
                 treeOK = false;
                 std::cerr << "Reduced cost not zero (" << reduced_cost << ") i (pot): " << i << " ("
@@ -168,9 +164,9 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, const Tre
     // For each node the subtree should match the thread.
     for (auto i = 1u; i < dim; i++) {
         uint32_t size = bits2intsize(dim);
-        std::vector<uint32_t> thread(size, 0);
-        std::vector<uint32_t> subtree(size, 0);
-        j = tree.thread_of(i);
+        auto thread = std::vector<uint32_t>(size, 0);
+        auto subtree = std::vector<uint32_t>(size, 0);
+        auto j = tree.thread_of(i);
         base_setOneBit(thread.data(), i);
         base_setOneBit(subtree.data(), i);
         // Getting the tread
@@ -195,7 +191,7 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, const Tre
             }
         }
         for (auto i = 0u; i < dim; ++i) {
-            if (!base_getOneBit(allVisited.data(), i)) {
+            if (ZERO == base_getOneBit(allVisited.data(), i)) {
                 treeOK = false;
                 std::cerr << "Node " << i << " not reach through thread!!" << std::endl;
             }
@@ -214,12 +210,10 @@ static void printSolution(int32_t* valuation, const int32_t* rates, uint32_t dim
     }
 }
 
-static void printClockLowerBounds(const raw_t* dbm, uint32_t dim)
+static void printClockLowerBounds(dbm::reader dbm, uint32_t dim)
 {
-    for (uint32_t i = 1; i < dim; i++) {
-        std::cerr << "Lower bound " << i << ": " << -constraintValue(0, i) << std::endl;
-        ;
-    }
+    for (uint32_t i = 1; i < dim; i++)
+        std::cerr << "Lower bound " << i << ": " << -dbm.at(0, i) << std::endl;
 }
 /*
 static void printAllConstraints(const raw_t *dbm, uint32_t dim, arc_t *arcs, uint32_t nbConstraints)
@@ -227,7 +221,7 @@ static void printAllConstraints(const raw_t *dbm, uint32_t dim, arc_t *arcs, uin
     for (uint32_t i = 0; i < nbConstraints; i++)
     {
         std::cerr << "Constraint " << i << ": x_" << arcs[i].i << " - x_" << arcs[i].j << " <= " <<
-constraintValue(arcs[i].i, arcs[i].j) << std::endl;
+dbm.at(arcs[i].i, arcs[i].j) << std::endl;
     }
 }
 
@@ -253,8 +247,9 @@ static void printAllRates(const int32_t *rates, uint32_t dim)
  * The initial solution includes computing the initial node potentials.
  *
  */
-static void findInitialSpanningTreeSolution(const raw_t* dbm, const int32_t* rates, Tree& tree)
+static void findInitialSpanningTreeSolution(dbm::reader dbm, const int32_t* rates, Tree& tree)
 {
+    assert(dbm.get_dim() == tree.size());
     uint32_t dim = tree.size();
     Node* last = tree.data() + dim;
     Node* node = &tree[0];
@@ -272,12 +267,12 @@ static void findInitialSpanningTreeSolution(const raw_t* dbm, const int32_t* rat
         node->thread = &tree[(i + 1) % dim];
         node->flow = abs(rates[i]);
 
-        if (b(i) < 0) {  // -rate(i) < 0
+        if (b(rates, i) < 0) {  // -rate(i) < 0
             node->inbound = true;
-            node->potential = -dbm_raw2bound(dbm[i]);
+            node->potential = -dbm.bound(0, i);
         } else {  // -rate(i) >= 0
             node->inbound = false;
-            node->potential = dbm_raw2bound(dbm[i * dim]);
+            node->potential = dbm.bound(i, 0);
         }
     }
     // printAllNodeInfo(tree, rates, dim);
@@ -524,15 +519,14 @@ static void updateSpanningTree(Node* k, Node* l, Node* leave, Node* root, int32_
  * Danzig's entering rule chooses the eligible arc with the
  * lowest cost.
  */
-static auto enteringArcDanzig(const std::vector<arc_t>& arcs, const Tree& tree, const raw_t* dbm)
+static auto enteringArcDanzig(const std::vector<arc_t>& arcs, const Tree& tree, dbm::reader dbm)
 {
-    uint32_t dim = tree.size();
     auto best = arcs.end();
     int32_t lowest_reduced_cost = 0;
     for (auto it = arcs.begin(); it != arcs.end(); ++it) {
         /* Check if reduced cost is negative, i.e.  c_ij - pi(i) +
          * pi(j) < 0 for any arcs in arcs */
-        int32_t reduced_cost = constraintValue(it->i, it->j) - tree[it->i].potential + tree[it->j].potential;
+        int32_t reduced_cost = dbm.at(it->i, it->j) - tree[it->i].potential + tree[it->j].potential;
 
         if (reduced_cost < lowest_reduced_cost) {
             lowest_reduced_cost = reduced_cost;
@@ -553,7 +547,7 @@ static auto enteringArcDanzig(const std::vector<arc_t>& arcs, const Tree& tree, 
 //         /* Check if reduced cost is negative, i.e.  c_ij - pi(i) +
 //          * pi(j) < 0 for any arcs in arcs.
 //          */
-//         int32_t reduced_cost = constraintValue(firstArc->i, firstArc->j)
+//         int32_t reduced_cost = dbm.at(firstArc->i, firstArc->j)
 //             - potential(firstArc->i) + potential(firstArc->j);
 //         if (reduced_cost < 0)
 //         {
@@ -645,7 +639,7 @@ static Node* findLeavingArc(Node* k, Node* l, Node* root)
  * If it is not a transshipment node, we need to follow the
  * thread to update the potentials. We do it by computing
  */
-static void testAndRemoveArtificialArcs(const raw_t* dbm, const int32_t* rates, Tree& tree)
+static void testAndRemoveArtificialArcs(dbm::reader dbm, const int32_t* rates, Tree& tree)
 {
     uint32_t dim = tree.size();
     for (uint32_t i = 1; i < dim; ++i) {
@@ -654,16 +648,16 @@ static void testAndRemoveArtificialArcs(const raw_t* dbm, const int32_t* rates, 
             tree[i].inbound = true;
 
             Node* tmp = tree[i].thread;
-            [[maybe_unused]] int32_t rateSum = b(i);
+            [[maybe_unused]] int32_t rateSum = b(rates, i);
 
-            int32_t minPotential = dbm_INFINITY + constraintValue(0, i);
+            int32_t minPotential = dbm_INFINITY + dbm.at(0, i);
 
             /*
              * Find the highest potential we can decrease i with and
              * maintain positive potentials.
              */
             while (tmp->depth > tree[i].depth) {
-                rateSum += b(tree.index_of(tmp));
+                rateSum += b(rates, tree.index_of(tmp));
                 if (tmp->potential < minPotential)
                     minPotential = tmp->potential;
                 tmp = tmp->thread;
@@ -686,27 +680,14 @@ static void testAndRemoveArtificialArcs(const raw_t* dbm, const int32_t* rates, 
     }
 }
 
-/**
- * Returns true if and only if all elements in [first, last) are
- * non-negative.
- */
-static bool allPositive(const int32_t* first, const int32_t* last)
-{
-    while (first != last) {
-        if (*first < 0) {
-            return false;
-        }
-        first++;
-    }
-    return true;
-}
+static const auto is_non_negative = [](const int32_t& n) { return n >= 0; };
 
 /*
  * Takes a priced zone and computes that infimum value of the dual
  * network flow problem. I.e. the cost of the offset and the costless
  * moves to the offset is not taken into account.
  */
-static void infimumNetSimplex(const raw_t* dbm, const int32_t* rates, Tree& tree)
+static void infimumNetSimplex(dbm::reader dbm, const int32_t* rates, Tree& tree)
 {
     uint32_t dim = tree.size();
     /* Find and store the minimal set of arcs. The netsimplex
@@ -718,7 +699,7 @@ static void infimumNetSimplex(const raw_t* dbm, const int32_t* rates, Tree& tree
     auto arc_it = arcs.begin();
     for (uint32_t i = 0; i < dim; i++) {
         for (uint32_t j = 0; j < dim; j++) {
-            if (base_readOneBit(bitMatrix.data(), i * dim + j)) {
+            if (base_readOneBit(bitMatrix.data(), i * dim + j) != 0) {
                 arc_it->i = i;
                 arc_it->j = j;
                 ++arc_it;
@@ -752,7 +733,7 @@ static void infimumNetSimplex(const raw_t* dbm, const int32_t* rates, Tree& tree
          */
         Node* leave = findLeavingArc(k, l, root);
 
-        updateSpanningTree(k, l, leave, root, constraintValue(arc->i, arc->j));
+        updateSpanningTree(k, l, leave, root, dbm.at(arc->i, arc->j));
 
         ASSERT(checkTreeIntegrity(dbm, rates, tree, dim), printAllNodeInfo(tree, rates));
         // printAllNodeInfo(tree, rates, dim);
@@ -771,9 +752,9 @@ static void infimumNetSimplex(const raw_t* dbm, const int32_t* rates, Tree& tree
  * the infimum-achieving point in the zone.
  *
  */
-int32_t pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const int32_t* rates)
+int32_t pdbm_infimum(dbm::reader dbm, uint32_t dim, uint32_t offsetCost, const int32_t* rates)
 {
-    if (allPositive(rates, rates + dim)) {
+    if (std::all_of(rates, rates + dim, is_non_negative)) {
         return offsetCost;
     }
 
@@ -791,18 +772,18 @@ int32_t pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const 
         if (tree[i].potential == dbm_INFINITY && tree.pred_of(i) == 0 && tree[i].flow > 0) {
             return -dbm_INFINITY;
         }
-        solution += rates[i] * (tree[i].potential + constraintValue(0, i));
+        solution += rates[i] * (tree[i].potential + dbm.at(0, i));
     }
 
     return solution;
 }
 
-void pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const int32_t* rates, int32_t* valuation)
+void pdbm_infimum(dbm::reader dbm, uint32_t dim, uint32_t offsetCost, const int32_t* rates, int32_t* valuation)
 {
-    if (allPositive(rates, rates + dim)) {
+    if (std::all_of(rates, rates + dim, is_non_negative)) {
         valuation[0] = 0;
         for (uint32_t i = 1; i < dim; ++i)
-            valuation[i] = -constraintValue(0, i);
+            valuation[i] = -dbm.at(0, i);
     } else {
         auto tree = Tree(dim);
         infimumNetSimplex(dbm, rates, tree);

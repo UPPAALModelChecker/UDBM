@@ -10,15 +10,8 @@
 #include "dbm/pfed.h"
 
 #include <algorithm>
-#include <functional>  // std::bind
 #include <numeric>
 #include <stdexcept>
-
-using std::bind;
-using std::for_each;
-using std::accumulate;
-using std::find_if;
-using namespace std::placeholders;  // _1, _2, etc for std::bind
 
 namespace dbm
 {
@@ -26,7 +19,7 @@ namespace dbm
 
     void pfed_t::decRef()
     {
-        if (!--(ptr->count)) {
+        if (--(ptr->count) == 0) {
             alloc.destroy(ptr);
             alloc.deallocate(ptr, 1);
         }
@@ -76,10 +69,6 @@ namespace dbm
         return ptr->zones.erase(i);
     }
 
-#define for_each__(Z)     for (iterator Z = beginMutable(), Z_ = endMutable(); Z != Z_; zone++)
-#define for_each_(Z)      for (iterator Z = beginMutable(), Z_ = endMutable(); Z != Z_;)
-#define for_each_const(Z) for (const_iterator Z = begin(), Z_ = end(); Z != Z_; zone++)
-
     bool pfed_t::constrain(cindex_t i, uint32_t value)
     {
         constraint_t c[2] = {constraint_t{i, 0, dbm_bound2raw(value, dbm_WEAK)},
@@ -89,14 +78,15 @@ namespace dbm
 
     bool pfed_t::constrain(cindex_t i, cindex_t j, raw_t constraint)
     {
-        // lambda x . pdbm_constrain1(x, ptr->dim, i, j, constraint)
-        erase_if_not(bind(pdbm_constrain1, _1, ptr->dim, i, j, constraint));
+        erase_if_not(
+            [dim = ptr->dim, i, j, constraint](PDBM& pdbm) { return pdbm_constrain1(pdbm, dim, i, j, constraint); });
         return !isEmpty();
     }
 
     bool pfed_t::constrain(const constraint_t* constraints, size_t n)
     {
-        erase_if_not(bind(pdbm_constrainN, _1, ptr->dim, constraints, n));
+        erase_if_not(
+            [dim = ptr->dim, constraints, n](PDBM& pdbm) { return pdbm_constrainN(pdbm, dim, constraints, n); });
         return !isEmpty();
     }
 
@@ -104,25 +94,23 @@ namespace dbm
 
     int32_t pfed_t::getInfimum() const
     {
-        /* The binary operator used in the following accumulation is
-         * lambda inf zone.min(inf, pdbm_getInfimum(zone, ptr->dim));
-         */
-        return accumulate(begin(), end(), INT_MAX, bind(min, _1, bind(pdbm_getInfimum, _2, ptr->dim)));
+        return std::accumulate(cbegin(), cend(), INT_MAX, [dim = ptr->dim](const int32_t a, const PDBM pdbm) {
+            return min(a, pdbm_getInfimum(pdbm, dim));
+        });
     }
 
-    int32_t pfed_t::getInfimumValuation(IntValuation& valuation, const bool* free) const
+    int32_t pfed_t::getInfimumValuation(valuation_int& valuation, const bool* free) const
     {
         uint32_t dim = ptr->dim;
         int32_t infimum = INT_MAX;
-        std::vector<int32_t> copy(dim);
+        auto copy = std::vector<int32_t>(dim);
 
-        for_each_const(zone)
-        {
-            std::copy(valuation.begin(), valuation.end(), copy.data());
-            int32_t inf = pdbm_getInfimumValuation(*zone, dim, copy.data(), free);
+        for (const auto& zone : *this) {
+            std::copy(valuation.begin(), valuation.end(), copy.begin());
+            int32_t inf = pdbm_getInfimumValuation(zone, dim, copy.data(), free);
             if (inf < infimum) {
                 infimum = inf;
-                std::copy(copy.data(), copy.data() + dim, valuation.begin());
+                std::copy(copy.begin(), copy.end(), valuation.begin_mutable());
             }
         }
         return infimum;
@@ -130,32 +118,43 @@ namespace dbm
 
     bool pfed_t::satisfies(cindex_t i, cindex_t j, raw_t constraint) const
     {
-        return find_if(begin(), end(), bind(pdbm_satisfies, _1, ptr->dim, i, j, constraint)) != end();
+        return std::find_if(begin(), end(), [dim = ptr->dim, i, j, constraint](const pdbm_t& pdbm) {
+                   return pdbm_satisfies(pdbm, dim, i, j, constraint);
+               }) != end();
     }
 
-    bool pfed_t::isUnbounded() const { return find_if(begin(), end(), bind(pdbm_isUnbounded, _1, ptr->dim)) != end(); }
+    bool pfed_t::isUnbounded() const
+    {
+        return std::find_if(begin(), end(),
+                            [dim = ptr->dim](const pdbm_t& pdbm) { return pdbm_isUnbounded(pdbm, dim); }) != end();
+    }
 
     uint32_t pfed_t::hash(uint32_t seed) const
     {
-        /* The binary operator used in the following accumulation is
-         * lambda seed zone . pdbm_hash(zone, ptr->dim, seed)
-         */
-        return accumulate(begin(), end(), seed, bind(pdbm_hash, _2, ptr->dim, _1));
+        return std::accumulate(begin(), end(), seed, [dim = ptr->dim](uint32_t seed, const pdbm_t& pdbm) {
+            return pdbm_hash(pdbm, dim, seed);
+        });
     }
 
-    bool pfed_t::contains(const IntValuation& valuation) const
+    bool pfed_t::contains(const valuation_int& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsInt, _1, ptr->dim, valuation.data())) != end();
+        return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
+                   return pdbm_containsInt(pdbm, dim, valuation);
+               }) != end();
     }
 
-    bool pfed_t::contains(const DoubleValuation& valuation) const
+    bool pfed_t::contains(const valuation_fp& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsDouble, _1, ptr->dim, valuation.data())) != end();
+        return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
+                   return pdbm_containsDouble(pdbm, dim, valuation);
+               }) != end();
     }
 
-    bool pfed_t::containsWeakly(const IntValuation& valuation) const
+    bool pfed_t::containsWeakly(const valuation_int& valuation) const
     {
-        return find_if(begin(), end(), bind(pdbm_containsIntWeakly, _1, ptr->dim, valuation.data())) != end();
+        return std::find_if(begin(), end(), [dim = ptr->dim, &valuation](const pdbm_t& pdbm) {
+                   return pdbm_containsIntWeakly(pdbm, dim, valuation);
+               }) != end();
     }
 
     relation_t pfed_t::relation(const pfed_t& b) const
@@ -222,7 +221,11 @@ namespace dbm
         return relation(b);
     }
 
-    void pfed_t::up() { for_each(beginMutable(), endMutable(), bind(pdbm_up, _1, ptr->dim)); }
+    void pfed_t::up()
+    {
+        for (auto& zone : *this)
+            pdbm_up(zone, ptr->dim);
+    }
 
     void pfed_t::up(int32_t rate)
     {
@@ -232,33 +235,32 @@ namespace dbm
 
         prepare();
 
-        for_each__(zone)
-        {
+        for (auto& zone : *this) {
             cindex_t x;
-            int32_t oldrate = pdbm_getSlopeOfDelayTrajectory(*zone, dim);
+            int32_t oldrate = pdbm_getSlopeOfDelayTrajectory(zone, dim);
 
             if (rate == oldrate) {
                 /* This is a simple case which does not require splits.
                  */
-                pdbm_up(*zone, dim);
-            } else if (pdbm_findZeroCycle(*zone, dim, 0, &x)) {
+                pdbm_up(zone, dim);
+            } else if (pdbm_findZeroCycle(zone, dim, 0, &x)) {
                 /* This is a simple case which does not require splits.
                  */
-                pdbm_upZero(*zone, dim, rate, x);
+                pdbm_upZero(zone, dim, rate, x);
             } else if (rate < oldrate) {
                 /* New rate is smaller than old rate, so we delay from the
                  * lower facets
                  */
                 std::vector<uint32_t> facets(dim);
-                uint32_t count = pdbm_getLowerFacets(*zone, dim, facets.data());
+                uint32_t count = pdbm_getLowerFacets(zone, dim, facets.data());
                 assert(count > 0 && count <= dim);
                 for (uint32_t j = 0; j < count - 1; j++) {
-                    ptr->zones.push_front(*zone);
+                    ptr->zones.push_front(zone);
                     pdbm_constrainToFacet(ptr->zones.front(), dim, 0, facets[j]);
                     pdbm_upZero(ptr->zones.front(), dim, rate, facets[j]);
                 }
-                pdbm_constrainToFacet(*zone, dim, 0, facets[count - 1]);
-                pdbm_upZero(*zone, dim, rate, facets[count - 1]);
+                pdbm_constrainToFacet(zone, dim, 0, facets[count - 1]);
+                pdbm_upZero(zone, dim, rate, facets[count - 1]);
             } else {
                 assert(rate > oldrate);
 
@@ -266,22 +268,23 @@ namespace dbm
                  * upper facets. We also need the original zone.
                  */
                 std::vector<uint32_t> facets(dim);
-                uint32_t count = pdbm_getUpperFacets(*zone, dim, facets.data());
+                uint32_t count = pdbm_getUpperFacets(zone, dim, facets.data());
                 assert(count > 0 && count <= dim);
                 for (uint32_t j = 0; j < count; j++) {
-                    ptr->zones.push_front(*zone);
+                    ptr->zones.push_front(zone);
                     pdbm_constrainToFacet(ptr->zones.front(), dim, facets[j], 0);
                     pdbm_upZero(ptr->zones.front(), dim, rate, facets[j]);
                 }
-                pdbm_constrainToFacet(*zone, dim, facets[count - 1], 0);
-                pdbm_upZero(*zone, dim, rate, facets[count - 1]);
+                pdbm_constrainToFacet(zone, dim, facets[count - 1], 0);
+                pdbm_upZero(zone, dim, rate, facets[count - 1]);
             }
         }
     }
 
     void pfed_t::updateValueZero(cindex_t clock, int32_t value, cindex_t zero)
     {
-        for_each(beginMutable(), endMutable(), bind(pdbm_updateValueZero, _1, ptr->dim, clock, value, zero));
+        for (auto& zone : *this)
+            pdbm_updateValueZero(zone, ptr->dim, clock, value, zero);
     }
 
     void pfed_t::updateValue(cindex_t clock, uint32_t value)
@@ -290,81 +293,88 @@ namespace dbm
 
         prepare();
 
-        for_each__(zone)
-        {
+        for (auto& zone : *this) {
             cindex_t k;
-            int32_t rate = pdbm_getRate(*zone, dim, clock);
+            int32_t rate = pdbm_getRate(zone, dim, clock);
 
             if (rate == 0) {
-                pdbm_updateValue(*zone, dim, clock, value);
-            } else if (pdbm_findZeroCycle(*zone, dim, clock, &k)) {
-                pdbm_updateValueZero(*zone, dim, clock, value, k);
+                pdbm_updateValue(zone, dim, clock, value);
+            } else if (pdbm_findZeroCycle(zone, dim, clock, &k)) {
+                pdbm_updateValueZero(zone, dim, clock, value, k);
             } else if (rate > 0) {
                 /* Find and reset lower facets when rate is positive.
                  */
                 std::vector<uint32_t> facets(dim);
-                int32_t count = pdbm_getLowerRelativeFacets(*zone, dim, clock, facets.data());
+                int32_t count = pdbm_getLowerRelativeFacets(zone, dim, clock, facets.data());
 
                 assert(count >= 1);
                 for (int32_t j = 0; j < count - 1; j++) {
-                    ptr->zones.push_front(*zone);
+                    ptr->zones.push_front(zone);
                     pdbm_constrainToFacet(ptr->zones.front(), dim, facets[j], clock);
                     pdbm_updateValueZero(ptr->zones.front(), dim, clock, value, facets[j]);
                 }
-                pdbm_constrainToFacet(*zone, dim, facets[count - 1], clock);
-                pdbm_updateValueZero(*zone, dim, clock, value, facets[count - 1]);
+                pdbm_constrainToFacet(zone, dim, facets[count - 1], clock);
+                pdbm_updateValueZero(zone, dim, clock, value, facets[count - 1]);
             } else {
                 /* Find and reset upper facets when rate is negative.
                  */
                 std::vector<uint32_t> facets(dim);
-                int32_t count = pdbm_getUpperRelativeFacets(*zone, dim, clock, facets.data());
+                int32_t count = pdbm_getUpperRelativeFacets(zone, dim, clock, facets.data());
 
                 assert(count >= 1);
                 for (int32_t j = 0; j < count - 1; j++) {
-                    ptr->zones.push_front(*zone);
+                    ptr->zones.push_front(zone);
                     pdbm_constrainToFacet(ptr->zones.front(), dim, clock, facets[j]);
                     pdbm_updateValueZero(ptr->zones.front(), dim, clock, value, facets[j]);
                 }
-                pdbm_constrainToFacet(*zone, dim, clock, facets[count - 1]);
-                pdbm_updateValueZero(*zone, dim, clock, value, facets[count - 1]);
+                pdbm_constrainToFacet(zone, dim, clock, facets[count - 1]);
+                pdbm_updateValueZero(zone, dim, clock, value, facets[count - 1]);
             }
         }
     }
 
     void pfed_t::extrapolateMaxBounds(int32_t* max)
     {
-        for_each(beginMutable(), endMutable(), bind(pdbm_extrapolateMaxBounds, _1, ptr->dim, max));
+        for (auto& zone : *this)
+            pdbm_extrapolateMaxBounds(zone, ptr->dim, max);
     }
 
     void pfed_t::diagonalExtrapolateMaxBounds(int32_t* max)
     {
-        for_each(beginMutable(), endMutable(), bind(pdbm_diagonalExtrapolateMaxBounds, _1, ptr->dim, max));
+        for (auto& zone : *this)
+            pdbm_diagonalExtrapolateMaxBounds(zone, ptr->dim, max);
     }
 
     void pfed_t::diagonalExtrapolateLUBounds(int32_t* lower, int32_t* upper)
     {
-        for_each(beginMutable(), endMutable(), bind(pdbm_diagonalExtrapolateLUBounds, _1, ptr->dim, lower, upper));
+        for (auto& zone : *this)
+            pdbm_diagonalExtrapolateLUBounds(zone, ptr->dim, lower, upper);
     }
 
     void pfed_t::incrementCost(int32_t value)
     {
-        for_each(beginMutable(), endMutable(), bind(pdbm_incrementCost, _1, ptr->dim, value));
+        for (auto& zone : *this)
+            pdbm_incrementCost(zone, ptr->dim, value);
     }
 
-    int32_t pfed_t::getCostOfValuation(const IntValuation& valuation) const
+    int32_t pfed_t::getCostOfValuation(const valuation_int& valuation) const
     {
-        /* The binary operator used in the following accumulation is
-         * lambda x y . min(x, pdbm_getCostOfValuation(y, dim, val))
-         */
-        return accumulate(begin(), end(), INT_MAX,
-                          bind(min, _1, bind(pdbm_getCostOfValuation, _2, ptr->dim, valuation.data())));
+        return std::accumulate(cbegin(), cend(), INT_MAX,
+                               [dim = ptr->dim, &valuation](int32_t sum, const pdbm_t& pdbm) {
+                                   return min(sum, pdbm_getCostOfValuation(pdbm, dim, valuation));
+                               });
     }
 
-    void pfed_t::relax() { for_each(beginMutable(), endMutable(), bind(pdbm_relax, _1, ptr->dim)); }
+    void pfed_t::relax()
+    {
+        for (auto& zone : *this)
+            pdbm_relax(zone, ptr->dim);
+    }
 
     void pfed_t::freeClock(cindex_t clock)
     {
-        for_each(beginMutable(), endMutable(), bind(pdbm_freeClock, _1, ptr->dim, clock));
+        for (auto& zone : *this)
+            pdbm_freeClock(zone, ptr->dim, clock);
     }
 
     void pfed_t::add(const PDBM pdbm, cindex_t dim)
@@ -390,9 +400,17 @@ namespace dbm
 
     void pfed_t::setEmpty() { *this = pfed_t(ptr->dim); }
 
-    void pfed_t::freeUp(cindex_t i) { for_each(beginMutable(), endMutable(), bind(pdbm_freeUp, _1, ptr->dim, i)); }
+    void pfed_t::freeUp(cindex_t i)
+    {
+        for (auto& zone : *this)
+            pdbm_freeUp(zone, ptr->dim, i);
+    }
 
-    void pfed_t::freeDown(cindex_t i) { for_each(beginMutable(), endMutable(), bind(pdbm_freeDown, _1, ptr->dim, i)); }
+    void pfed_t::freeDown(cindex_t i)
+    {
+        for (auto& zone : *this)
+            pdbm_freeDown(zone, ptr->dim, i);
+    }
 
     pfed_t& pfed_t::operator=(const pfed_t& fed)
     {
@@ -461,14 +479,10 @@ namespace dbm
 
     pfed_t& pfed_t::convexHull() { throw std::logic_error("pfed_t::convexHull not implemented"); }
 
-    std::ostream& operator<<(std::ostream& o, const pfed_t& f)
+    std::ostream& operator<<(std::ostream& os, const pfed_t& f)
     {
-        pfed_t::const_iterator first = f.begin();
-        pfed_t::const_iterator last = f.end();
-        while (first != last) {
-            pdbm_print(o, *first, f.getDimension());
-            first++;
-        }
-        return o;
+        for (const auto& zone : f)
+            pdbm_print(os, zone, f.getDimension());
+        return os;
     }
 }  // namespace dbm

@@ -750,7 +750,7 @@ void pdbm_print(FILE* f, const PDBM pdbm, cindex_t dim);
  * @param dim  is the dimension of \a pdbm.
  * @see dbm_print
  */
-void pdbm_print(std::ostream& o, const PDBM pdbm, cindex_t dim);
+std::ostream& pdbm_print(std::ostream& os, const PDBM pdbm, cindex_t dim);
 
 /**
  * Implementation of the free up operation for priced DBMs.

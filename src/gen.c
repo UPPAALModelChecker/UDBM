@@ -81,7 +81,7 @@ bool dbm_generate(raw_t* dbm, cindex_t dim, raw_t range)
              * -1: to avoid to tighten too much (fix +1)
              */
             int32_t rangeij = DBM(i, j) + DBM(j, i);
-            int32_t maxTighten = nbTighten > threshold ? 5 * (rangeij - 1) / 12 : 7 * (rangeij - 1) / 12;
+            int32_t maxTighten = nbTighten > threshold ? 5ll * (rangeij - 1) / 12 : 7ll * (rangeij - 1) / 12;
             int32_t dij = rand() % (maxTighten + 1);
             int32_t dji = rand() % (maxTighten + 1);
 

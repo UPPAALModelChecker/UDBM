@@ -18,16 +18,9 @@
 #include "base/bitstring.h"
 #include "base/doubles.h"
 
+#include <sstream>
 #include <vector>
 #include <cmath>
-
-// Macro for access to Constant and Mutable DBMs
-#define DBM_IJ(DBM, I, J) DBM[(I)*dim + (J)]
-#define CDBM(I, J)        DBM_IJ(cdbm, I, J)
-#define MDBM(I, J)        DBM_IJ(mdbm, I, J)
-#define DBM(I, J)         DBM_IJ(dbm, I, J)
-#define SRC(I, J)         DBM_IJ(src, I, J)
-#define DST(I, J)         DBM_IJ(dst, I, J)
 
 namespace dbm
 {
@@ -53,7 +46,7 @@ namespace dbm
         RECORD_NSTAT(MAGENTA(BOLD) "idbm_t::getMinGraph cache", isValid() ? "hit" : "miss");
 
         auto dim = getDimension();
-        uint32_t* ming = (uint32_t*)&matrix[dim * dim];
+        auto* ming = (uint32_t*)&matrix[dim * dim];
         if (!isValid()) {
             minSize = dbm_analyzeForMinDBM(matrix, dim, ming);
         }
@@ -92,36 +85,31 @@ namespace dbm
         return dim * dim - dim;
     }
 
-    std::string dbm_t::toString(const ClockAccessor& access, bool full) const
+    std::ostream& dbm_t::print(std::ostream& os, const ClockAccessor& access, bool full) const
     {
-        if (isEmpty()) {
-            return "false";
-        }
+        if (isEmpty())
+            return os << "false";
 
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         std::vector<uint32_t> mingraph = std::vector<uint32_t>(bits2intsize(dim * dim));
-        const raw_t* dbm = const_dbm();
+        auto dbm = dbm_read();
         size_t n = full
                        ? dbm_fillBitMatrix(dbm, dim, mingraph.data())
                        : dbm_cleanBitMatrix(dbm, dim, mingraph.data(), dbm_analyzeForMinDBM(dbm, dim, mingraph.data()));
-        if (n == 0) {
-            return "true";
-        }
+        if (n == 0)
+            return os << "true";
 
-        char buffer[32];
-        std::string str;
         bool firstConstraint = true;
 
-        str += "(";
+        os << "(";
         for (cindex_t i = 0; i < dim; ++i) {
             for (cindex_t j = 0; j < dim; ++j) {
-                if (base_readOneBit(mingraph.data(), i * dim + j)) {
+                if (base_readOneBit(mingraph.data(), i * dim + j) != 0) {
                     assert(i != j);  // Not part of mingraph.
 
                     // Conjunction of constraints.
-                    if (!firstConstraint) {
-                        str += " && ";
-                    }
+                    if (!firstConstraint)
+                        os << " && ";
                     firstConstraint = false;
 
                     // Write constraints xi-xj <|<= DBM[i,j]
@@ -133,70 +121,61 @@ namespace dbm
                             base_resetOneBit(mingraph.data(), j * dim);
 
                             // xj == b
-                            snprintf(buffer, sizeof(buffer), "==%d", -dbm_raw2bound(dbm[j]));
-                            str += access.getClockName(j);
-                            str += buffer;
-                        } else  // b < xj, b <= xj
-                        {
-                            snprintf(buffer, sizeof(buffer), "%d%s", -dbm_raw2bound(dbm[j]),
-                                     dbm_rawIsStrict(dbm[j]) ? "<" : "<=");
-                            str += buffer;
-                            str += access.getClockName(j);
+                            os << access.getClockName(j) << "==" << -dbm.bound(0, j);
+                        } else {  // b < xj, b <= xj
+                            os << -dbm.bound(0, j) << (dbm.is_strict(0, j) ? "<" : "<=") << access.getClockName(j);
                         }
                     } else {
                         // xi-xj == b ?
-                        if (dbm_addFiniteRaw(dbm[i * dim + j], dbm[j * dim + i]) == dbm_LE_ZERO) {
+                        if (dbm_addFiniteRaw(dbm.at(i, j), dbm.at(j, i)) == dbm_LE_ZERO) {
                             assert(n);
                             n -= base_getOneBit(mingraph.data(), j * dim + i);
                             base_resetOneBit(mingraph.data(), j * dim + i);
 
-                            // xi == xj
-                            if (j > 0 && dbm[i * dim + j] == dbm_LE_ZERO) {
-                                str += access.getClockName(i);
-                                str += "==";
-                                str += access.getClockName(j);
-                                goto consume_n;
+                            if (j > 0 && dbm.at(i, j) == dbm_LE_ZERO) {  // xi == xj
+                                os << access.getClockName(i) << "==" << access.getClockName(j);
+                            } else {
+                                if (j == 0) {        // xi < b, xi <= b
+                                    assert(i != 0);  // 0,0 never part of mingraph
+                                    os << access.getClockName(i);
+                                } else {  // xi-xj < b, xi-xj <= b
+                                    os << access.getClockName(i) << "-" << access.getClockName(j);
+                                }
+                                os << "==" << dbm.bound(i, j);
                             }
-                            // == b
-                            snprintf(buffer, sizeof(buffer), "==%d", dbm_raw2bound(dbm[i * dim + j]));
                         } else {
-                            // xi < xj, xi <= xj
-                            if (j > 0 && dbm_raw2bound(dbm[i * dim + j]) == 0) {
-                                str += access.getClockName(i);
-                                str += dbm_rawIsStrict(dbm[i * dim + j]) ? "<" : "<=";
-                                str += access.getClockName(j);
-                                goto consume_n;
+                            if (j > 0 && dbm.bound(i, j) == 0) {  // xi < xj, xi <= xj
+                                os << access.getClockName(i) << (dbm.is_strict(i, j) ? "<" : "<=")
+                                   << access.getClockName(j);
+                            } else {
+                                if (j == 0) {        // xi < b, xi <= b
+                                    assert(i != 0);  // 0,0 never part of mingraph
+                                    os << access.getClockName(i);
+                                } else {  // xi-xj < b, xi-xj <= b
+                                    os << access.getClockName(i) << "-" << access.getClockName(j);
+                                }
+                                // < b, <= b
+                                os << (dbm.is_strict(i, j) ? "<" : "<=") << dbm.bound(i, j);
                             }
-                            // < b, <= b
-                            snprintf(buffer, sizeof(buffer), "%s%d",
-                                     dbm_rawIsStrict(dbm[i * dim + j]) ? "<" : "<=", dbm_raw2bound(dbm[i * dim + j]));
-                        }
-
-                        if (j == 0)  // xi < b, xi <= b
-                        {
-                            assert(i != 0);  // 0,0 never part of mingraph
-                            str += access.getClockName(i);
-                            str += buffer;
-                        } else  // xi-xj < b, xi-xj <= b
-                        {
-                            str += access.getClockName(i);
-                            str += "-";
-                            str += access.getClockName(j);
-                            str += buffer;
                         }
                     }
-                consume_n:
                     assert(n);
                     --n;  // Consumed one constraint.
-                    if (!n)
+                    if (n == 0)
                         goto stop_loops;
                 }
             }
         }
     stop_loops:
-        str += ")";
+        os << ")";
+        return os;
+    }
 
-        return str;
+    std::string dbm_t::str(const ClockAccessor& access, bool full) const
+    {
+        auto os = std::ostringstream{};
+        print(os, access, full);
+        return os.str();
     }
 
     dbm_t dbm_t::makeUnbounded(const int32_t* low, cindex_t dim)
@@ -220,10 +199,10 @@ namespace dbm
     {
         if (isEmpty())
             return false;
-        const raw_t* dbm = const_dbm();
-        cindex_t dim = pdim();
+        auto dbm = dbm_read();
+        const cindex_t dim = pdim();
         for (cindex_t i = 1; i < dim; ++i) {
-            if (dbm_rawIsWeak(DBM(i, 0)) && dbm_rawIsWeak(DBM(0, i)) && DBM(i, 0) == dbm_weakNegRaw(DBM(0, i))) {
+            if (dbm.is_weak(i, 0) && dbm.is_weak(0, i) && dbm.at(i, 0) == dbm_weakNegRaw(dbm.at(0, i))) {
                 return false;
             }
         }
@@ -297,7 +276,7 @@ namespace dbm
             return true;
         }
         // if one is empty or different dimensions
-        else if (((uval() | arg.uval()) & 1) || pdim() != arg.pdim()) {
+        else if (((uval() | arg.uval()) & 1) != 0 || pdim() != arg.pdim()) {
             return false;
         } else {
             return dbm_areEqual(const_dbm(), arg.const_dbm(), pdim());
@@ -316,7 +295,7 @@ namespace dbm
             return true;
         }
 
-        cindex_t dim = getDimension();
+        const cindex_t dim = getDimension();
         return (dim == arg.getDimension()) &&
                (isEmpty() || (!arg.isEmpty() && dbm_isSubsetEq(const_dbm(), arg.const_dbm(), pdim())));
     }
@@ -339,7 +318,7 @@ namespace dbm
             return base_EQUAL;
         }
 
-        cindex_t dim = getDimension();
+        const cindex_t dim = getDimension();
         if (dim != arg.getDimension()) {
             return base_DIFFERENT;
         } else if (isEmpty()) {
@@ -431,14 +410,14 @@ namespace dbm
         }
 
         int32_t bound = -dbm_INFINITY;
-        const raw_t* dbm = const_dbm();
-        cindex_t dim = pdim();
+        auto dbm = dbm_read();
+        const cindex_t dim = pdim();
 
         for (cindex_t i = 1; i < dim; ++i) {
-            if (DBM(i, 0) < dbm_LS_INFINITY) {
-                // DBM(i,cost) <= DBM(i,0) + DBM(0,cost) with DBM(0,cost) <= 0
-                assert(DBM(i, cost) < dbm_LS_INFINITY);
-                bound = std::max(bound, dbm_raw2bound(DBM(i, 0)) - dbm_raw2bound(DBM(i, cost)));
+            if (dbm.at(i, 0) < dbm_LS_INFINITY) {
+                // dbm.at(i,cost) <= dbm.at(i,0) + dbm.at(0,cost) with dbm.at(0,cost) <= 0
+                assert(dbm.at(i, cost) < dbm_LS_INFINITY);
+                bound = std::max(bound, dbm.bound(i, 0) - dbm.bound(i, cost));
             }
         }
 
@@ -473,13 +452,13 @@ namespace dbm
     {
         assert(getDimension() == fed.getDimension());
 
-        cindex_t dim = getDimension();
-        for (fed_t::const_iterator iter = fed.begin(); !iter.null(); ++iter) {
-            assert(!iter->isEmpty());
+        const cindex_t dim = getDimension();
+        for (const auto& iter : fed) {
+            assert(!iter.isEmpty());
             if (isEmpty()) {
-                newCopy(*iter);
+                newCopy(iter);
             } else {
-                ptr_convexUnion(iter->const_dbm(), dim);
+                ptr_convexUnion(iter.const_dbm(), dim);
             }
         }
         return *this;
@@ -506,18 +485,18 @@ namespace dbm
         assert(!isEmpty() && isUnbounded());
 
         size_t dim = pdim();
-        raw_t* mdbm = getCopy();
+        auto mdbm = getCopy_write();
 
         /* Open lower bounds. */
         for (size_t i = 1; i < dim; ++i) {
-            MDBM(0, i) = dbm_strictRaw(MDBM(0, i));
+            mdbm.at(0, i) = dbm_strictRaw(mdbm.at(0, i));
         }
 
         /* Widen closed diagonals. */
         for (size_t i = 0; i < dim; ++i) {
             for (size_t j = 0; j < dim; ++j) {
-                if (i != j && dbm_rawIsWeak(MDBM(i, j))) {
-                    MDBM(i, j)++;
+                if (i != j && dbm_rawIsWeak(mdbm.at(i, j))) {
+                    mdbm.at(i, j)++;
                 }
             }
         }
@@ -535,20 +514,18 @@ namespace dbm
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_convexUnion(dbm(), arg, dim);
-        } else if (dim > 1)  // if something to do
-        {
+        } else if (dim > 1) {  // if something to do
             const raw_t* cdbm = const_dbm();
             size_t n = dim * dim - 2;  // skip 1st & last <=0 of diagonal
-            while (*++cdbm >= *++arg && --n)
-                ;   // check superset
-            if (n)  // this is not a superset
-            {
+            while (*++cdbm >= *++arg && --n != 0)
+                ;          // check superset
+            if (n != 0) {  // this is not a superset
                 RECORD_SUBSTAT("copy");
                 size_t past = cdbm - const_dbm();  // before calling icopy!
                 raw_t* mdbm = icopy(dim) + past;
                 assert(*mdbm < *arg);
                 *mdbm = *arg;  // continue convex union
-                while (--n) {
+                while (--n != 0) {
                     if (*++mdbm < *++arg)
                         *mdbm = *arg;
                 }
@@ -561,7 +538,7 @@ namespace dbm
     {
         RECORD_STAT();
         if (!isEmpty()) {
-            cindex_t dim = pdim();
+            const cindex_t dim = pdim();
             if (arg.isEmpty()) {
                 RECORD_SUBSTAT("empty arg");
                 empty(dim);
@@ -577,7 +554,7 @@ namespace dbm
     {
         RECORD_STAT();
         if (!isEmpty()) {
-            cindex_t dim = pdim();
+            const cindex_t dim = pdim();
             if (ptr_intersectionIsArg(arg, dim)) {
                 RECORD_SUBSTAT("self == arg");
                 updateCopy(arg, dim);
@@ -595,8 +572,8 @@ namespace dbm
             return false;
         }
 
-        cindex_t dim = pdim();
-        raw_t* mdbm = getCopy();
+        const cindex_t dim = pdim();
+        auto mdbm = getCopy_write();
         std::vector<uint32_t> touched = std::vector<uint32_t>(bits2intsize(dim));
         uint32_t count = 0;
         cindex_t ci = 0, cj = 0;
@@ -605,10 +582,10 @@ namespace dbm
             if (i != x) {
                 for (cindex_t j = 0; j < dim; ++j)
                     if (j != x && i != j) {
-                        if (MDBM(i, j) > dbm_LE_ZERO) {
-                            MDBM(i, j) = dbm_LE_ZERO;
-                            if (dbm_negRaw(dbm_LE_ZERO) >= MDBM(j, i)) {
-                                MDBM(0, 0) = -1;
+                        if (mdbm.at(i, j) > dbm_LE_ZERO) {
+                            mdbm.at(i, j) = dbm_LE_ZERO;
+                            if (dbm_negRaw(dbm_LE_ZERO) >= mdbm.at(j, i)) {
+                                mdbm.at(0, 0) = -1;
                                 return false;
                             }
                             count++;
@@ -664,15 +641,15 @@ namespace dbm
 
     bool dbm_t::ptr_constrain(cindex_t i, cindex_t j, raw_t c)
     {
-        cindex_t dim = pdim();
-        const raw_t* cdbm = const_dbm();
+        const cindex_t dim = pdim();
+        auto cdbm = dbm_read();
         assert(i < dim && j < dim);
         RECORD_STAT();
 
-        if (CDBM(i, j) > c)  // if it is a tightening
+        if (cdbm.at(i, j) > c)  // if it is a tightening
         {
             RECORD_SUBSTAT("tighten");
-            if (dbm_negRaw(c) >= CDBM(j, i))  // too tight!
+            if (dbm_negRaw(c) >= cdbm.at(j, i))  // too tight!
             {
                 RECORD_SUBSTAT("result empty");
                 empty(dim);
@@ -680,8 +657,8 @@ namespace dbm
             } else  // not too tight then do it!
             {
                 RECORD_SUBSTAT(isMutable() ? "mutable" : "copy");
-                raw_t* mdbm = getCopy();  // mutable
-                MDBM(i, j) = c;
+                auto mdbm = getCopy_write();  // mutable
+                mdbm.at(i, j) = c;
                 dbm_closeij(mdbm, dim, i, j);
             }
         }
@@ -694,7 +671,7 @@ namespace dbm
         assert(getDimension() > k && k > 0 && value != dbm_INFINITY);
         RECORD_STAT();
 
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         const raw_t* cdbm = const_dbm();
         raw_t upper = dbm_bound2raw(value, dbm_WEAK);
         raw_t lower = dbm_bound2raw(-value, dbm_WEAK);
@@ -736,7 +713,7 @@ namespace dbm
     // then tighten all constraints and closex
     bool dbm_t::ptr_constrain(const constraint_t* cnstr, size_t n)
     {
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         RECORD_STAT();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
@@ -746,8 +723,8 @@ namespace dbm
                 return false;
             }
         } else {
-            std::vector<cindex_t> ck(n);      // to remember "good" constraints
-            const raw_t* cdbm = const_dbm();  // const dbm
+            std::vector<cindex_t> ck(n);  // to remember "good" constraints
+            auto cdbm = dbm_read();       // const dbm
             cindex_t i, j, k, nk;
             raw_t c;
 
@@ -761,9 +738,9 @@ namespace dbm
                 assert(i < dim && j < dim && i != j);
 
                 // if it is a tightening
-                if (CDBM(i, j) > c) {
+                if (cdbm.at(i, j) > c) {
                     // but too tight
-                    if (dbm_negRaw(c) >= CDBM(j, i)) {
+                    if (dbm_negRaw(c) >= cdbm.at(j, i)) {
                         RECORD_SUBSTAT("immutable empty");
                         emptyImmutable(dim);
                         return false;
@@ -776,13 +753,13 @@ namespace dbm
 
             if (nk != 0)  // something to do?
             {
-                raw_t* mdbm = icopy(dim);  // get mutable
+                auto mdbm = icopy_write(dim);  // get mutable
 
                 if (nk == 1)  // easy with closeij: safe constraint, checked
                 {
                     i = cnstr[ck[0]].i;
                     j = cnstr[ck[0]].j;
-                    MDBM(i, j) = cnstr[ck[0]].value;
+                    mdbm.at(i, j) = cnstr[ck[0]].value;
                     dbm_closeij(mdbm, dim, i, j);
                 } else  // constrain them all!
                 {
@@ -792,8 +769,8 @@ namespace dbm
                         i = cnstr[ck[k]].i;
                         j = cnstr[ck[k]].j;
                         // test in case of multiple constraints on the same i,j!
-                        if (MDBM(i, j) > cnstr[ck[k]].value) {
-                            MDBM(i, j) = cnstr[ck[k]].value;
+                        if (mdbm.at(i, j) > cnstr[ck[k]].value) {
+                            mdbm.at(i, j) = cnstr[ck[k]].value;
                         }
                         base_setOneBit(touched.data(), i);
                         base_setOneBit(touched.data(), j);
@@ -815,7 +792,7 @@ namespace dbm
     {
         assert(table);
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             if (!dbm_constrainIndexedN(dbm(), dim, table, cnstr, n)) {
@@ -824,8 +801,8 @@ namespace dbm
                 return false;
             }
         } else {
-            std::vector<cindex_t> ck(n);      // to remember "good" constraints
-            const raw_t* cdbm = const_dbm();  // const dbm
+            std::vector<cindex_t> ck(n);  // to remember "good" constraints
+            auto cdbm = dbm_read();       // const dbm
             cindex_t i, j, k, nk;
             raw_t c;
 
@@ -839,9 +816,9 @@ namespace dbm
                 assert(i < dim && j < dim && i != j);
 
                 // if it is a tightening
-                if (CDBM(i, j) > c) {
+                if (cdbm.at(i, j) > c) {
                     // but too tight
-                    if (dbm_negRaw(c) >= CDBM(j, i)) {
+                    if (dbm_negRaw(c) >= cdbm.at(j, i)) {
                         RECORD_SUBSTAT("immutable empty");
                         emptyImmutable(dim);
                         return false;
@@ -854,13 +831,13 @@ namespace dbm
 
             if (nk != 0)  // something to do?
             {
-                raw_t* mdbm = icopy(dim);  // get mutable
+                auto mdbm = icopy_write(dim);  // get mutable
 
                 if (nk == 1)  // easy with closeij
                 {
                     i = table[cnstr[ck[0]].i];
                     j = table[cnstr[ck[0]].j];
-                    MDBM(i, j) = cnstr[ck[0]].value;
+                    mdbm.at(i, j) = cnstr[ck[0]].value;
                     dbm_closeij(mdbm, dim, i, j);
                     assert(!dbm_isEmpty(mdbm, dim));
                 } else  // constrain them all!
@@ -871,8 +848,8 @@ namespace dbm
                         i = table[cnstr[ck[k]].i];
                         j = table[cnstr[ck[k]].j];
                         // test in case of multiple constraints on the same i,j!
-                        if (MDBM(i, j) > cnstr[ck[k]].value) {
-                            MDBM(i, j) = cnstr[ck[k]].value;
+                        if (mdbm.at(i, j) > cnstr[ck[k]].value) {
+                            mdbm.at(i, j) = cnstr[ck[k]].value;
                         }
                         base_setOneBit(touched.data(), i);
                         base_setOneBit(touched.data(), j);
@@ -903,15 +880,15 @@ namespace dbm
             RECORD_SUBSTAT("trivial empty");
             return false;
         } else {
-            fed_t::const_iterator iter = fed.begin();
-            cindex_t dim = pdim();
+            fed_t::const_iterator iter = fed.begin(), e = fed.end();
+            const cindex_t dim = pdim();
             assert(iter != fed.end());
             do {
                 if (dbm_haveIntersection(const_dbm(), iter->const_dbm(), dim)) {
                     RECORD_SUBSTAT("maybe yes");
                     return true;
                 }
-            } while (!(++iter).null());
+            } while (++iter != e);
             RECORD_SUBSTAT("no");
             return false;
         }
@@ -926,22 +903,22 @@ namespace dbm
 
     void dbm_t::ptr_up()
     {
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         RECORD_STAT();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_up(dbm(), dim);  // mutable => write directly
         } else {
             cindex_t i;
-            const raw_t* cdbm = const_dbm();
+            auto cdbm = dbm_read();
             for (i = 1; i < dim; ++i) {
                 // if update is necessary
-                if (CDBM(i, 0) != dbm_LS_INFINITY) {
+                if (cdbm.at(i, 0) != dbm_LS_INFINITY) {
                     RECORD_SUBSTAT("copy");
                     // then update from where we are
-                    raw_t* mdbm = icopy(dim);
+                    auto mdbm = icopy_write(dim);
                     do {
-                        MDBM(i, 0) = dbm_LS_INFINITY;
+                        mdbm.at(i, 0) = dbm_LS_INFINITY;
                     } while (++i < dim);
                     break;
                 }
@@ -965,29 +942,29 @@ namespace dbm
 
     void dbm_t::ptr_down()
     {
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         RECORD_STAT();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_down(dbm(), dim);  // mutable => write directly
         } else {
             cindex_t i, j;
-            const raw_t* cdbm = const_dbm();
+            auto cdbm = dbm_read();
             raw_t min;
             for (j = 1; j < dim; ++j) {
-                if (CDBM(0, j) < dbm_LE_ZERO) {
+                if (cdbm.at(0, j) < dbm_LE_ZERO) {
                     min = dbm_LE_ZERO;
                     for (i = 1; i < dim; ++i) {
-                        if (min > CDBM(i, j)) {
-                            min = CDBM(i, j);
+                        if (min > cdbm.at(i, j)) {
+                            min = cdbm.at(i, j);
                         }
                     }
                     // if update necessary
-                    if (min != CDBM(0, j)) {
+                    if (min != cdbm.at(0, j)) {
                         RECORD_SUBSTAT("copy");
                         // then update from where we are!
-                        raw_t* mdbm = icopy(dim);  // mutable
-                        MDBM(0, j) = min;
+                        auto mdbm = icopy_write(dim);  // mutable
+                        mdbm.at(0, j) = min;
                         dbm_downFrom(mdbm, dim, ++j);
                         break;
                     }
@@ -1000,23 +977,23 @@ namespace dbm
     {
         assert(k > 0 && k < getDimension());
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_freeClock(dbm(), dim, k);  // mutable => write directly
         } else {
             cindex_t i;
-            const raw_t* cdbm = const_dbm();
+            auto cdbm = dbm_read();
             for (i = 0; i < dim; ++i) {
                 // if update necessary
-                if (i != k && (CDBM(k, i) != dbm_LS_INFINITY || CDBM(i, k) != CDBM(i, 0))) {
+                if (i != k && (cdbm.at(k, i) != dbm_LS_INFINITY || cdbm.at(i, k) != cdbm.at(i, 0))) {
                     RECORD_SUBSTAT("copy");
                     // then update with a mutable copy
-                    raw_t* mdbm = icopy(dim);
+                    auto mdbm = icopy_write(dim);
                     do {
                         if (i != k) {
-                            MDBM(k, i) = dbm_LS_INFINITY;
-                            MDBM(i, k) = MDBM(i, 0);
+                            mdbm.at(k, i) = dbm_LS_INFINITY;
+                            mdbm.at(i, k) = mdbm.at(i, 0);
                         }
                     } while (++i < dim);
                     assertx(dbm_isValid(mdbm, dim));
@@ -1029,24 +1006,24 @@ namespace dbm
     void dbm_t::ptr_freeDown(cindex_t k)
     {
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         assert(k > 0 && k < dim);
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_freeDown(dbm(), dim, k);
         } else {
             cindex_t i;
-            const raw_t* cdbm = const_dbm();
+            auto cdbm = dbm_read();
             for (i = 0; i < dim; ++i)
                 if (i != k) {
                     // if update necessary
-                    if (CDBM(i, k) != CDBM(i, 0)) {
+                    if (cdbm.at(i, k) != cdbm.at(i, 0)) {
                         RECORD_SUBSTAT("copy");
                         // then update with mutable copy
-                        raw_t* mdbm = icopy(dim);
+                        auto mdbm = icopy_write(dim);
                         do {
                             if (i != k) {
-                                MDBM(i, k) = MDBM(i, 0);
+                                mdbm.at(i, k) = mdbm.at(i, 0);
                             }
                         } while (++i < dim);
                         assertx(dbm_isValid(mdbm, dim));
@@ -1059,24 +1036,24 @@ namespace dbm
     void dbm_t::ptr_freeUp(cindex_t k)
     {
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         assert(k > 0 && k < dim);
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_freeUp(dbm(), dim, k);
         } else {
             cindex_t j;
-            const raw_t* cdbm = const_dbm();
+            auto cdbm = dbm_read();
             for (j = 0; j < dim; ++j)
                 if (j != k) {
                     // if update necessary
-                    if (CDBM(k, j) != dbm_LS_INFINITY) {
+                    if (cdbm.at(k, j) != dbm_LS_INFINITY) {
                         RECORD_SUBSTAT("copy");
                         // then update with mutable copy
-                        raw_t* mdbm = icopy(dim);
+                        auto mdbm = icopy_write(dim);
                         do {
                             if (j != k) {
-                                MDBM(k, j) = dbm_LS_INFINITY;
+                                mdbm.at(k, j) = dbm_LS_INFINITY;
                             }
                         } while (++j < dim);
                         assertx(dbm_isValid(mdbm, dim));
@@ -1089,7 +1066,7 @@ namespace dbm
     void dbm_t::ptr_freeAllUp()
     {
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_freeAllUp(dbm(), dim);
@@ -1102,14 +1079,14 @@ namespace dbm
     void dbm_t::ptr_freeAllDown()
     {
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         uint32_t ij;
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_freeAllDown(dbm(), dim);
         } else if ((ij = dbm_testFreeAllDown(const_dbm(), dim)) != 0) {
             RECORD_SUBSTAT("copy");
-            raw_t* mdbm = icopy(dim);
+            auto mdbm = icopy_write(dim);
             cindex_t i = ij & 0xffff;
             cindex_t j = ij >> 16;
             assert(i < dim && j < dim);
@@ -1119,7 +1096,7 @@ namespace dbm
             cont_j:
                 do {
                     if (i != j) {
-                        MDBM(i, j) = MDBM(i, 0);
+                        mdbm.at(i, j) = mdbm.at(i, 0);
                     }
                 } while (++j < dim);
             } while (++i < dim);
@@ -1145,32 +1122,32 @@ namespace dbm
     {
         assert(k > 0 && k < getDimension() && v >= 0 && v < dbm_INFINITY);
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_updateValue(dbm(), dim, k, v);
         } else {
             cindex_t i = 0;
-            const raw_t* cdbm = const_dbm();
+            auto cdbm = dbm_read();
             raw_t dk0 = dbm_bound2raw(v, dbm_WEAK);
             raw_t d0k = dbm_bound2raw(-v, dbm_WEAK);
             do {
                 // Updates for dbm[k,i] and dbm[i,k]
-                raw_t dki = dbm_addFiniteRaw(dk0, CDBM(0, i));
-                raw_t dik = dbm_addRawFinite(CDBM(i, 0), d0k);
+                raw_t dki = dbm_addFiniteRaw(dk0, cdbm.at(0, i));
+                raw_t dik = dbm_addRawFinite(cdbm.at(i, 0), d0k);
 
                 // If updates are necessary
-                if (CDBM(k, i) != dki || CDBM(i, k) != dik) {
+                if (cdbm.at(k, i) != dki || cdbm.at(i, k) != dik) {
                     RECORD_SUBSTAT("copy");
                     // then update with a mutable copy
-                    raw_t* mdbm = icopy(dim);
-                    MDBM(k, i) = dki;
-                    MDBM(i, k) = dik;
+                    auto mdbm = icopy_write(dim);
+                    mdbm.at(k, i) = dki;
+                    mdbm.at(i, k) = dik;
                     while (++i < dim) {
-                        MDBM(k, i) = dbm_addFiniteRaw(dk0, MDBM(0, i));
-                        MDBM(i, k) = dbm_addRawFinite(MDBM(i, 0), d0k);
+                        mdbm.at(k, i) = dbm_addFiniteRaw(dk0, mdbm.at(0, i));
+                        mdbm.at(i, k) = dbm_addRawFinite(mdbm.at(i, 0), d0k);
                     }
-                    assert(MDBM(k, k) == dbm_LE_ZERO);
+                    assert(mdbm.at(k, k) == dbm_LE_ZERO);
                     assertx(dbm_isValid(mdbm, dim));
                     break;
                 }
@@ -1182,23 +1159,23 @@ namespace dbm
     {
         assert(i != j && i > 0 && j > 0 && i < getDimension() && j < getDimension());
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_updateClock(dbm(), dim, i, j);
         } else {
             cindex_t k;
-            const raw_t* cdbm = const_dbm();
+            auto cdbm = dbm_read();
             for (k = 0; k < dim; ++k) {
                 // if update necessary
-                if (i != k && (CDBM(i, k) != CDBM(j, k) || CDBM(k, i) != CDBM(k, j))) {
+                if (i != k && (cdbm.at(i, k) != cdbm.at(j, k) || cdbm.at(k, i) != cdbm.at(k, j))) {
                     RECORD_SUBSTAT("copy");
                     // then update with mutable copy
-                    raw_t* mdbm = icopy(dim);
+                    auto mdbm = icopy_write(dim);
                     do {
                         if (i != k) {
-                            MDBM(i, k) = MDBM(j, k);
-                            MDBM(k, i) = MDBM(k, j);
+                            mdbm.at(i, k) = mdbm.at(j, k);
+                            mdbm.at(k, i) = mdbm.at(k, j);
                         }
                     } while (++k < dim);
                     assertx(dbm_isValid(mdbm, dim));
@@ -1212,30 +1189,30 @@ namespace dbm
     {
         assert(i != j && v != 0 && i > 0 && i < getDimension() && j > 0 && j < getDimension());
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_update(dbm(), dim, i, j, v);
         } else {
             cindex_t k;
-            const raw_t* cdbm = const_dbm();
+            auto cdbm = dbm_read();
             for (v <<= 1, k = 0; k < dim; ++k)
                 if (i != k) {
                     // updates for dbm[k,i] and dbm[i,k]
-                    raw_t dik = dbm_rawInc(CDBM(j, k), v);
-                    raw_t dki = dbm_rawDec(CDBM(k, j), v);
+                    raw_t dik = dbm_rawInc(cdbm.at(j, k), v);
+                    raw_t dki = dbm_rawDec(cdbm.at(k, j), v);
 
                     // if updates are necessary
-                    if (CDBM(i, k) != dik || CDBM(k, i) != dki) {
+                    if (cdbm.at(i, k) != dik || cdbm.at(k, i) != dki) {
                         RECORD_SUBSTAT("copy");
                         // then update with mutable copy
-                        raw_t* mdbm = icopy(dim);
-                        MDBM(i, k) = dik;
-                        MDBM(k, i) = dki;
+                        auto mdbm = icopy_write(dim);
+                        mdbm.at(i, k) = dik;
+                        mdbm.at(k, i) = dki;
                         while (++k < dim)
                             if (i != k) {
-                                MDBM(i, k) = dbm_rawInc(MDBM(j, k), v);
-                                MDBM(k, i) = dbm_rawDec(MDBM(k, j), v);
+                                mdbm.at(i, k) = dbm_rawInc(mdbm.at(j, k), v);
+                                mdbm.at(k, i) = dbm_rawDec(mdbm.at(k, j), v);
                             }
                         assertx(dbm_isValid(mdbm, dim));
                         break;
@@ -1248,7 +1225,7 @@ namespace dbm
     {
         assert(!isEmpty());
 
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         raw_t* dbm = getCopy();
 
         if (!dbm_tightenDown(dbm, dim)) {
@@ -1260,7 +1237,7 @@ namespace dbm
     {
         assert(!isEmpty());
 
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         raw_t* dbm = getCopy();
 
         if (!dbm_tightenUp(dbm, dim)) {
@@ -1271,25 +1248,25 @@ namespace dbm
     void dbm_t::ptr_relaxDownClock(cindex_t clock)
     {
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_relaxDownClock(dbm(), dim, clock);
         } else {
             cindex_t i, j;
-            raw_t* dbm = idbmt()->getMatrix();
+            auto dbm = writer{idbmt()->getMatrix(), dim};
             bool isMutable = false;
             // see dbm.c
             for (i = 0; i < dim; ++i) {
-                if (DBM(i, clock) < dbm_LS_INFINITY && dbm_rawIsStrict(DBM(i, clock))) {
-                    raw_t wik = dbm_weakRaw(DBM(i, clock));
+                if (dbm.at(i, clock) < dbm_LS_INFINITY && dbm.is_strict(i, clock)) {
+                    raw_t wik = dbm_weakRaw(dbm.at(i, clock));
                     for (j = 0; j < dim; ++j)
                         if (j != clock)  // dbm[i,clock] not weakened!
                         {
                             raw_t cik;
-                            if (DBM(i, j) < dbm_LS_INFINITY && DBM(j, clock) < dbm_LS_INFINITY &&
-                                (cik = dbm_addFiniteWeak(DBM(i, j), dbm_weakRaw(DBM(j, clock)))) < wik) {
-                                assert(cik == DBM(i, clock));  // closed
+                            if (dbm.at(i, j) < dbm_LS_INFINITY && dbm.at(j, clock) < dbm_LS_INFINITY &&
+                                (cik = dbm_addFiniteWeak(dbm.at(i, j), dbm_weakRaw(dbm.at(j, clock)))) < wik) {
+                                assert(cik == dbm.at(i, clock));  // closed
                                 // cannot weaken this constraint because it is tightened by a
                                 // diagonal
                                 break;
@@ -1300,10 +1277,10 @@ namespace dbm
                         // we need to write!
                         if (!isMutable) {
                             RECORD_SUBSTAT("copy");
-                            dbm = icopy(dim);
+                            dbm = icopy_write(dim);
                             isMutable = true;
                         }
-                        DBM(i, clock) = wik;
+                        dbm.at(i, clock) = wik;
                     }
                 }
             }
@@ -1314,25 +1291,25 @@ namespace dbm
     void dbm_t::ptr_relaxUpClock(cindex_t clock)
     {
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_relaxUpClock(dbm(), dim, clock);
         } else {
             cindex_t i, j;
-            raw_t* dbm = idbmt()->getMatrix();  // bypass assertions because it's not mutable yet
+            auto dbm = writer{idbmt()->getMatrix(), dim};  // bypass assertions because it's not mutable yet
             bool isMutable = false;
             // see dbm.c
             for (i = 0; i < dim; ++i) {
-                if (DBM(clock, i) < dbm_LS_INFINITY && dbm_rawIsStrict(DBM(clock, i))) {
-                    raw_t wki = dbm_weakRaw(DBM(clock, i));
+                if (dbm.at(clock, i) < dbm_LS_INFINITY && dbm.is_strict(clock, i)) {
+                    raw_t wki = dbm_weakRaw(dbm.at(clock, i));
                     for (j = 0; j < dim; ++j)
                         if (j != clock)  // dbm[i,clock] not weakened!
                         {
                             raw_t cki;
-                            if (DBM(j, i) < dbm_LS_INFINITY && DBM(clock, j) < dbm_LS_INFINITY &&
-                                (cki = dbm_addFiniteWeak(DBM(j, i), dbm_weakRaw(DBM(clock, j)))) < wki) {
-                                assert(cki == DBM(clock, i));  // closed
+                            if (dbm.at(j, i) < dbm_LS_INFINITY && dbm.at(clock, j) < dbm_LS_INFINITY &&
+                                (cki = dbm_addFiniteWeak(dbm.at(j, i), dbm_weakRaw(dbm.at(clock, j)))) < wki) {
+                                assert(cki == dbm.at(clock, i));  // closed
                                 // cannot weaken this constraint because it is tightened by a
                                 // diagonal
                                 break;
@@ -1343,10 +1320,10 @@ namespace dbm
                         // need to write!
                         if (!isMutable) {
                             RECORD_SUBSTAT("copy");
-                            dbm = icopy(dim);
+                            dbm = icopy_write(dim);
                             isMutable = true;
                         }
-                        DBM(clock, i) = wki;
+                        dbm.at(clock, i) = wki;
                     }
                 }
             }
@@ -1357,7 +1334,7 @@ namespace dbm
     void dbm_t::ptr_relaxAll()
     {
         RECORD_STAT();
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         if (tryMutable()) {
             RECORD_SUBSTAT("mutable");
             dbm_relaxAll(dbm(), dim);
@@ -1368,9 +1345,9 @@ namespace dbm
                 if (dbm_rawIsStrict(*cdbm) && *cdbm != dbm_LS_INFINITY) {
                     RECORD_SUBSTAT("copy");
                     // need mutable!
-                    raw_t* mdbm = icopy(dim);
+                    auto mdbm = icopy_write(dim);
                     end = mdbm + (end - start);
-                    mdbm = mdbm + (cdbm - start);
+                    mdbm += (cdbm - start);
                     *mdbm = dbm_weakRaw(*mdbm);
                     while (++mdbm < end) {
                         if (*mdbm != dbm_LS_INFINITY) {
@@ -1383,16 +1360,16 @@ namespace dbm
         }
     }
 
-    bool dbm_t::contains(const int32_t* point, cindex_t dim) const
+    bool dbm_t::contains(const std::vector<int32_t>& point) const
     {
-        assert(point && getDimension() == dim);
-        return !isEmpty() && dbm_isPointIncluded(point, const_dbm(), dim);
+        assert(getDimension() == point.size());
+        return !isEmpty() && dbm_isPointIncluded(point.data(), const_dbm(), getDimension());
     }
 
-    bool dbm_t::contains(const double* point, cindex_t dim) const
+    bool dbm_t::contains(const std::vector<double>& point) const
     {
-        assert(point && dim == getDimension());
-        return !isEmpty() && dbm_isRealPointIncluded(point, const_dbm(), dim);
+        assert(point.size() == getDimension());
+        return !isEmpty() && dbm_isRealPointIncluded(point.data(), const_dbm(), getDimension());
     }
 
     bool dbm_t::getMinDelay(const double* point, cindex_t dim, double* t, double* minVal, bool* minStrict,
@@ -1402,18 +1379,18 @@ namespace dbm
 
         if (isEmpty()) {
             *t = HUGE_VAL;
-            if (minVal && minStrict) {
+            if (minVal != nullptr && minStrict != nullptr) {
                 *minVal = HUGE_VAL;
                 *minStrict = true;
             }
             return false;
         }
-        const raw_t* dbm = const_dbm();
+        auto dbm = dbm_read();
 
         // Special case, covers dim == 1.
         if (dbm_isRealPointIncluded(point, dbm, dim)) {
             *t = 0.0;
-            if (minVal && minStrict) {
+            if (minVal != nullptr && minStrict != nullptr) {
                 *minVal = 0.0;
                 *minStrict = false;
             }
@@ -1424,12 +1401,12 @@ namespace dbm
 
         for (cindex_t k = 1; k < dim; ++k) {
             // Try to reach up to this lower bound.
-            double di = (point[0] - point[k]) - (double)dbm_raw2bound(dbm[k]);
+            double di = (point[0] - point[k]) - (double)dbm.bound(0, k);
 
             if (di >= 0.0)  // Consider only future.
             {
                 double value = di;
-                bool isStrict = dbm_rawIsStrict(dbm[k]);
+                bool isStrict = dbm.is_strict(0, k);
 
                 // Need to get into the DBM if the bound is strict.
                 if (isStrict) {
@@ -1443,7 +1420,7 @@ namespace dbm
                     double dt = isStrict ? base_addEpsilon(value, 1e-6 * base_EPSILON) : value;
                     pt[0] = point[0];
                     for (cindex_t i = 1; i < dim; ++i) {
-                        pt[i] = stopped && base_readOneBit(stopped, i) ? point[i] : point[i] + dt;
+                        pt[i] = stopped != nullptr && base_readOneBit(stopped, i) != 0 ? point[i] : point[i] + dt;
                     }
 
                     // Check if point + di would be inside.
@@ -1459,11 +1436,12 @@ namespace dbm
                         do {
                             // And validate di.
                             for (cindex_t i = 1; i < dim; ++i) {
-                                pt[i] = stopped && base_readOneBit(stopped, i) ? point[i] : point[i] + di;
+                                pt[i] =
+                                    stopped != nullptr && base_readOneBit(stopped, i) != 0 ? point[i] : point[i] + di;
                             }
                             if (dbm_isRealPointIncluded(pt.data(), dbm, dim)) {
                                 *t = di;
-                                if (minVal && minStrict) {
+                                if (minVal != nullptr && minStrict != nullptr) {
                                     *minVal = value;
                                     *minStrict = isStrict;
                                 }
@@ -1487,7 +1465,7 @@ namespace dbm
         assert(dim == getDimension() && point && t);
 
         *t = HUGE_VAL;
-        if (minVal && minStrict) {
+        if (minVal != nullptr && minStrict != nullptr) {
             *minVal = HUGE_VAL;
             *minStrict = true;
         }
@@ -1495,11 +1473,11 @@ namespace dbm
         if (isEmpty()) {
             return false;
         }
-        const raw_t* dbm = const_dbm();
+        auto dbm = dbm_read();
         for (cindex_t k = 1; k < dim; ++k) {
-            if (dbm[k * dim] != dbm_LS_INFINITY && !(stopped && base_readOneBit(stopped, k))) {
-                bool isStrict = dbm_rawIsStrict(dbm[k * dim]);
-                double bound = (double)dbm_raw2bound(dbm[k * dim]);
+            if (dbm.at(k, 0) != dbm_LS_INFINITY && !(stopped != nullptr && base_readOneBit(stopped, k) != 0)) {
+                bool isStrict = dbm.is_strict(k, 0);
+                auto bound = (double)dbm.bound(k, 0);
                 double d = bound - (point[k] - point[0]);
                 if (d < 0.0) {
                     return false;
@@ -1510,7 +1488,7 @@ namespace dbm
                 }
                 if (d < *t) {
                     *t = d;
-                    if (minVal && minStrict) {
+                    if (minVal != nullptr && minStrict != nullptr) {
                         *minVal = val;
                         *minStrict = isStrict;
                     }
@@ -1533,20 +1511,19 @@ namespace dbm
             *t = max;
             return true;
         }
-        const raw_t* dbm = const_dbm();
+        auto dbm = dbm_read();
 
         *t = 0.0;
-        double* pt = (double*)point;  // Cheat.
-        double pt0 = point[0];        // Save; Should be 0.0.
+        auto* pt = (double*)point;  // Cheat.
+        double pt0 = point[0];      // Save; Should be 0.0.
 
         for (cindex_t k = 1; k < dim; ++k) {
             // Try to reach down to this lower bound.
-            double di = (double)dbm_raw2bound(dbm[k]) - point[0] + point[k];
+            double di = (double)dbm.bound(0, k) - point[0] + point[k];
 
-            if (di >= 0.0)  // Consider only past.
-            {
+            if (di >= 0.0) {  // Consider only past.
                 // Need to stay inside the DBM if the bound is strict.
-                if (dbm_rawIsStrict(dbm[k])) {
+                if (dbm.is_strict(0, k)) {
                     di = base_subtractEpsilon(di, base_EPSILON);
                 }
 
@@ -1583,8 +1560,7 @@ namespace dbm
         assert(idbmPtr != nullptr && bitSrc && bitDst && table);
         assert(*bitSrc & *bitDst & 1);  // ref clock in both
 
-        if (!base_areBitsEqual(bitSrc, bitDst, bitSize))  // pre-condition
-        {
+        if (!base_areBitsEqual(bitSrc, bitDst, bitSize)) {  // pre-condition
             cindex_t newDim = base_countBitsN(bitDst, bitSize);
             assert(newDim);
             if (isEmpty()) {
@@ -1626,41 +1602,41 @@ namespace dbm
     // We can check easily if x == y to skip the swap.
     void dbm_t::ptr_swapClocks(cindex_t x, cindex_t y)
     {
-        cindex_t dim = pdim();
-        raw_t* dbm = idbmt()->getMatrix();
-        if (DBM(x, y) != dbm_LE_ZERO || DBM(y, x) != dbm_LE_ZERO) {
+        const cindex_t dim = pdim();
+        auto dbm = writer{idbmt()->getMatrix(), dim};
+        if (dbm.at(x, y) != dbm_LE_ZERO || dbm.at(y, x) != dbm_LE_ZERO) {
             dbm_swapClocks(tryMutable() ? dbm : icopy(dim), dim, x, y);
         }
     }
 
-    void dbm_t::getValuation(double* cval, cindex_t dimen, bool* freeC) const
+    void dbm_t::getValuation(std::vector<double>& cval, bool* freeC) const
     {
-        assert(dimen == getDimension());
+        assert(cval.size() == getDimension());
 
         if (isEmpty()) {
             throw std::out_of_range("No clock valuation for empty DBMs");
         }
 
-        cindex_t dim = pdim();
+        const cindex_t dim = pdim();
         bool* freeClocks = (bool*)calloc(dim, sizeof(bool));
 
-        if (!freeC) {
+        if (freeC != nullptr) {
             std::fill(freeClocks, freeClocks + dim, 1);
             freeC = freeClocks;
         }
-        if (!ptr_getValuation(cval, dimen, freeC)) {
+        if (!ptr_getValuation(cval, freeC)) {
             throw std::out_of_range("Clock valuation");
         }
     }
 
     // private: implementation of getValuation
-    bool dbm_t::ptr_getValuation(double* cval, cindex_t dimen, bool* freeC) const
+    bool dbm_t::ptr_getValuation(std::vector<double>& cval, bool* freeC) const
     {
         assert(freeC);
 
         // We iteratively compute the value of each free clock.
-        cindex_t dim = pdim();
-        const raw_t* cdbm = const_dbm();
+        const cindex_t dim = pdim();
+        auto cdbm = dbm_read();
 
         cval[0] = 0.0;
         for (cindex_t i = 1; i < dim; ++i) {
@@ -1672,10 +1648,10 @@ namespace dbm
         for (cindex_t i = 1; i < dim; ++i) {
             if (freeC[i]) {
                 // Derive lower and upper bounds for this clock.
-                bool lStrict = dbm_rawIsStrict(CDBM(0, i));
-                double lower = -dbm_raw2bound(CDBM(0, i));
-                bool uStrict = dbm_rawIsStrict(CDBM(i, 0));
-                double upper = dbm_raw2bound(CDBM(i, 0));
+                bool lStrict = cdbm.is_strict(0, i);
+                double lower = -cdbm.bound(0, i);
+                bool uStrict = cdbm.is_strict(i, 0);
+                double upper = cdbm.bound(i, 0);
                 double bound;
 
                 for (cindex_t j = 1; j < dim; j++) {
@@ -1683,16 +1659,16 @@ namespace dbm
                         continue;
                     }
 
-                    bound = dbm_raw2bound(CDBM(i, j)) + cval[j];
+                    bound = cdbm.bound(i, j) + cval[j];
                     if (bound < upper || (bound <= upper && !uStrict)) {
                         upper = bound;
-                        uStrict = dbm_rawIsStrict(CDBM(i, j));
+                        uStrict = cdbm.is_strict(i, j);
                     }
 
-                    bound = cval[j] - dbm_raw2bound(CDBM(j, i));
+                    bound = cval[j] - cdbm.bound(j, i);
                     if (bound > lower || (bound >= lower && !lStrict)) {
                         lower = bound;
-                        lStrict = dbm_rawIsStrict(CDBM(j, i));
+                        lStrict = cdbm.is_strict(j, i);
                     }
                 }
 
@@ -1711,7 +1687,7 @@ namespace dbm
         }
 
         // check the generated point
-        return contains(cval, dimen);
+        return contains(cval);
     }
 
     // this dbm - fed

@@ -19,9 +19,9 @@ fi
 
 # doctest for unit testing
 cd "$SOURCES"
-curl -L https://github.com/doctest/doctest/archive/refs/tags/v2.4.9.tar.gz -o doctest-2.4.9.tar.gz
-tar -xf doctest-2.4.9.tar.gz
-SOURCE_DIR="$SOURCES/doctest-2.4.9"
+curl -L https://github.com/doctest/doctest/archive/refs/tags/v2.4.8.tar.gz -o doctest-2.4.8.tar.gz
+tar -xf doctest-2.4.8.tar.gz
+SOURCE_DIR="$SOURCES/doctest-2.4.8"
 BUILD_DIR="$SOURCE_DIR/build"
 mkdir -p "$BUILD_DIR"
 cmake $CMAKE_ARGS -DDOCTEST_WITH_TESTS=OFF -B "$BUILD_DIR" "$SOURCE_DIR"

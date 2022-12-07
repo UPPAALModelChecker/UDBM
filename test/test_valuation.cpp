@@ -10,9 +10,8 @@
 //
 ///////////////////////////////////////////////////////////////////
 
-#include "dbm/Valuation.h"
+#include "dbm/valuation.h"
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <iostream>
 
 #include <doctest/doctest.h>
@@ -20,12 +19,12 @@
 using namespace std;
 using namespace dbm;
 
-static void test(int size)
+static void test(size_t size)
 {
-    IntValuation iv(size);
-    DoubleValuation dv(size);
+    auto iv = valuation_int(size);
+    auto dv = valuation_fp(size);
 
-    for (int i = 0; i < size; ++i) {
+    for (size_t i = 0; i < size; ++i) {
         CHECK(iv[i] == 0);
         CHECK(dv[i] == 0.0);
     }
@@ -38,7 +37,7 @@ static void test(int size)
         CHECK(dv[0] == 0.0);
     }
 
-    for (int i = 1; i < size; ++i) {
+    for (size_t i = 1; i < size; ++i) {
         CHECK(iv[i] == 1);
         CHECK(dv[i] == 1.1);
     }
@@ -46,8 +45,34 @@ static void test(int size)
     cout << iv << endl << dv << endl;
 }
 
-TEST_CASE("Valuation")
+TEST_CASE("Valuation operations")
 {
-    for (int i = 0; i <= 20; ++i)
+    for (size_t i = 0; i <= 5; ++i)
         test(i);
+}
+
+TEST_CASE("Valuation assignment")
+{
+    auto v1 = dbm::valuation_int(3, 2);
+    v1 += 1;
+    REQUIRE(v1.size() == 5);
+    CHECK(v1[0] == 0);
+    CHECK(v1[1] == 1);
+    CHECK(v1[2] == 1);
+    CHECK(v1[3] == 1);
+    CHECK(v1[4] == 1);
+    auto v2 = dbm::valuation_int(3, 1);
+    v2 += 2;
+    REQUIRE(v2.size() == 4);
+    CHECK(v2[0] == 0);
+    CHECK(v2[1] == 2);
+    CHECK(v2[2] == 2);
+    CHECK(v2[3] == 2);
+    v1 = v2;
+    REQUIRE(v1.size() == 5);
+    CHECK(v1[0] == 0);
+    CHECK(v1[1] == 2);
+    CHECK(v1[2] == 2);
+    CHECK(v1[3] == 2);
+    CHECK(v1[4] == 0);
 }

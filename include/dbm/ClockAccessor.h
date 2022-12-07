@@ -18,12 +18,12 @@
 namespace dbm
 {
     class ClockAccessor;
-    typedef std::unique_ptr<ClockAccessor> ClockAccessor_uptr;
-    // Class to access clock names in an abstract way.
+    using ClockAccessor_uptr = std::unique_ptr<ClockAccessor>;
+    /** Class to access clock names in an abstract way. */
     class ClockAccessor
     {
     public:
-        virtual ~ClockAccessor() = default;
+        virtual ~ClockAccessor() noexcept = default;
 
         /// @return the name of a given clock (index).
         /// The reference clock corresponds to index 0.

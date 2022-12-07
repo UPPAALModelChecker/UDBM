@@ -14,6 +14,8 @@
 #ifndef INCLUDE_DBM_FED_H
 #define INCLUDE_DBM_FED_H
 
+#include "dbm_raw.hpp"
+
 #include "dbm/ClockAccessor.h"
 #include "dbm/config.h"
 #include "dbm/dbm.h"
@@ -188,11 +190,11 @@ namespace dbm
         /// @return the dimension of this DBM.
         cindex_t getDimension() const;
 
-        /// @return string representation of the
-        /// constraints of this DBM. A clock
-        /// is always positive, so "true" simply means
-        /// all clocks positive.
-        std::string toString(const ClockAccessor&, bool full = false) const;
+        /// Prints a textual representation of the DBM constraints.
+        /// A Clock is always positive, so "true" simply means alll clocks positive.
+        std::ostream& print(std::ostream&, const ClockAccessor&, bool full = false) const;
+        /// @return string representation of the constraints of this DBM. See #print(std::ostream&,...)
+        std::string str(const ClockAccessor&, bool full = false) const;
 
         /** Make an unbounded DBM with the lower bounds set to low
          * (strict constraints).
@@ -255,9 +257,13 @@ namespace dbm
         /// @post non null pointer iff !isEmpty()
         const raw_t* operator()() const;
 
-        /// @return DBM[i,j]
+        /// @return raw entry in DBM[i,j]
         /// @pre !isEmpty() && i < getDimension() && j < getDimension() otherwise segfault.
         raw_t operator()(cindex_t i, cindex_t j) const;
+        /// @return the bound at [i,j]
+        int32_t bound(cindex_t i, cindex_t j) const;
+        /// @return true if the bound at [i,j] is strict
+        bool is_strict(cindex_t i, cindex_t j) const;
 
         /// @return row DBM[i]
         /// @pre !isEmpty() && i < getDimension()
@@ -266,6 +272,7 @@ namespace dbm
         /// @return a read-write access pointer to the internal DBM.
         /// @post return non null pointer iff getDimension() > 0
         raw_t* getDBM();
+        writer getDBM_writer() { return {getDBM(), pdim()}; }
 
         /** Compute the minimal set of constraints to represent
          * this DBM.
@@ -351,6 +358,7 @@ namespace dbm
         relation_t relation(const dbm_t& arg) const;
         relation_t relation(const fed_t& arg) const;
         relation_t relation(const raw_t* arg, cindex_t dim) const;
+        relation_t relation(reader arg) const { return relation(arg, arg.get_dim()); }
 
         /// Exact (expensive) relations (for fed_t only).
 
@@ -422,6 +430,7 @@ namespace dbm
         bool constrain(cindex_t i, cindex_t j, int32_t b, bool isStrict);
         bool constrain(const constraint_t& c);
         bool constrain(const constraint_t* c, size_t n);
+        bool constrain(const std::vector<constraint_t>& c) { return constrain(c.data(), c.size()); }
         bool constrain(const cindex_t* table, const constraint_t* c, size_t n);
         bool constrain(const cindex_t* table, const std::vector<constraint_t>&);
 
@@ -512,8 +521,8 @@ namespace dbm
         /// Test point inclusion.
         /// @pre same dimension.
 
-        bool contains(const int32_t* point, cindex_t dim) const;
-        bool contains(const double* point, cindex_t dim) const;
+        bool contains(const std::vector<int32_t>& point) const;
+        bool contains(const std::vector<double>& point) const;
 
         /** Compute the 'almost min' necessary delay from
          * a point to enter this federation. If this point
@@ -533,16 +542,16 @@ namespace dbm
          * wait >= 2.1 or wait > 2.1.
          * @pre minVal and minStrict are both NULL or non NULL.
          */
-        bool getMinDelay(const double* point, cindex_t dim, double* t, double* minVal = NULL, bool* minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
+        bool getMinDelay(const double* point, cindex_t dim, double* t, double* minVal = nullptr,
+                         bool* minStrict = nullptr, const uint32_t* stopped = nullptr) const;
 
         /**
          * Compute the max delay from a point such that it respects the
          * upper bound constraints of the DBM.
          * @return true if the delay is possible, false otherwise.
          */
-        bool getMaxDelay(const double* point, cindex_t dim, double* t, double* minVal = NULL, bool* minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
+        bool getMaxDelay(const double* point, cindex_t dim, double* t, double* minVal = nullptr,
+                         bool* minStrict = nullptr, const uint32_t* stopped = nullptr) const;
 
         /** Similarly for the past.
          *  The returned value (in t) is <= max.
@@ -600,7 +609,7 @@ namespace dbm
          * if isEmpty() or cval too constrained.
          * @post if freeC != NULL, forall i < dim: freeC[i] = false
          */
-        void getValuation(double* cval, cindex_t dimen, bool* freeC = NULL) const;
+        void getValuation(std::vector<double>& cval, bool* freeC = nullptr) const;
 
         /// Special constructor to copy the result of a pending operation.
         /// @param op: clock operation.
@@ -646,10 +655,12 @@ namespace dbm
         /// Note: const_dbm() and dbm() have different assertions.
         /// @pre !isEmpty()
         const raw_t* const_dbm() const;
+        reader dbm_read() const { return {const_dbm(), pdim()}; }
 
         /// Mutable access to the DBM matrix.
         /// @pre isMutable()
         raw_t* dbm();
+        writer dbm_write() { return {dbm(), pdim()}; }
 
         /// @return dimension with @pre isEmpty()
         cindex_t edim() const;
@@ -662,9 +673,11 @@ namespace dbm
 
         /// Set and return a new writable DBM, @pre !isEmpty()
         raw_t* getNew();
+        writer getNew_write() { return {getNew(), pdim()}; }
 
         /// Set and return a writable copy of this DBM, @pre !isEmpty()
         raw_t* getCopy();
+        writer getCopy_write() { return {getCopy(), pdim()}; }
 
     private:
         /// @return idbmPtr as an int.
@@ -703,6 +716,7 @@ namespace dbm
         /// Copy its DBM and return the matrix.
         /// @pre !isEmpty() && !tryMutable()
         raw_t* icopy(cindex_t dim);
+        writer icopy_write(cindex_t dim) { return {icopy(dim), dim}; }
 
         /// Widen a DBM w.r.t. drift, see fed_t.
         dbm_t& driftWiden();
@@ -735,7 +749,7 @@ namespace dbm
         void ptr_relaxAll();
         void ptr_tightenDown();
         void ptr_tightenUp();
-        bool ptr_getValuation(double* cval, cindex_t dimen, bool* freeC) const;
+        bool ptr_getValuation(std::vector<double>& cval, bool* freeC) const;
         void ptr_swapClocks(cindex_t x, cindex_t y);
 
         // Coding of dimPtr:
@@ -816,11 +830,11 @@ namespace dbm
         /// @return true if a point in the federation can delay.
         bool canDelay() const;
 
-        /// @return string representation of the
-        /// constraints of this federation. A clock
-        /// is always positive, so "true" simply means
-        /// all clocks positive.
-        std::string toString(const ClockAccessor&, bool full = false) const;
+        /// Prints a textual representation of the constraints of this federation.
+        /// A clock is always positive, so "true" simply means all clocks positive.
+        std::ostream& print(std::ostream& os, const ClockAccessor&, bool full = false) const;
+        /// @return a string representation, see print(std::ostream&,...)
+        std::string str(const ClockAccessor&, bool full = false) const;
 
         /** Computes the biggest lower cost in the zone.
          *  This corresponds to the value
@@ -1021,6 +1035,7 @@ namespace dbm
         bool constrain(cindex_t i, cindex_t j, int32_t b, bool isStrict);
         bool constrain(const constraint_t& c);
         bool constrain(const constraint_t* c, size_t n);
+        bool constrain(const std::vector<constraint_t>& c) { return constrain(c.data(), c.size()); }
         bool constrain(const cindex_t* table, const constraint_t* c, size_t n);
         bool constrain(const cindex_t* table, const std::vector<constraint_t>&);
 
@@ -1160,8 +1175,8 @@ namespace dbm
         /// in this federation (ie in one of its DBMs).
         /// @pre same dimension.
 
-        bool contains(const int32_t* point, cindex_t dim) const;
-        bool contains(const double* point, cindex_t dim) const;
+        bool contains(const std::vector<int32_t>& point) const;
+        bool contains(const std::vector<double>& point) const;
 
         /** @return the 'almost max' possible delay backward from
          * a point while still staying inside the federation. It
@@ -1172,7 +1187,7 @@ namespace dbm
          * @param point: the point to go backward from.
          * @pre dim = getDimension() && contains(point)
          */
-        double possibleBackDelay(const double* point, cindex_t dim) const;
+        double possibleBackDelay(const std::vector<double>& point) const;
 
         /** Compute the 'almost min' necessary delay from
          * a point to enter this federation. If this point
@@ -1192,8 +1207,13 @@ namespace dbm
          * wait >= 2.1 or wait > 2.1.
          * @pre minVal and minStrict are both NULL or non NULL.
          */
-        bool getMinDelay(const double* point, cindex_t dim, double* t, double* minVal = NULL, bool* minStrict = NULL,
-                         const uint32_t* stopped = NULL) const;
+        bool getMinDelay(const double* point, cindex_t dim, double* t, double* minVal = nullptr,
+                         bool* minStrict = nullptr, const uint32_t* stopped = nullptr) const;
+        bool getMinDelay(const std::vector<double>& point, double& t, double* minVal = nullptr,
+                         bool* minStrict = nullptr, const uint32_t* stopped = nullptr) const
+        {
+            return getMinDelay(point.data(), point.size(), &t, minVal, minStrict, stopped);
+        }
 
         /** Similarly for the past.
          *  The returned value (in t) is <= max, where max.
@@ -1209,9 +1229,15 @@ namespace dbm
          * @param min and max give the interval, max can be
          * HUGE_VAL to mean infinity.
          */
-        bool getDelay(const double* point, cindex_t dim, double* min, double* max, double* minVal = NULL,
-                      bool* minStrict = NULL, double* maxVal = NULL, bool* maxStrict = NULL,
-                      const uint32_t* stopped = NULL) const;
+        bool getDelay(const double* point, cindex_t dim, double* min, double* max, double* minVal = nullptr,
+                      bool* minStrict = nullptr, double* maxVal = nullptr, bool* maxStrict = nullptr,
+                      const uint32_t* stopped = nullptr) const;
+        bool getDelay(const std::vector<double>& point, double& min, double& max, double* minVal = nullptr,
+                      bool* minStrict = nullptr, double* maxVal = nullptr, bool* maxStrict = nullptr,
+                      const uint32_t* stopped = nullptr) const
+        {
+            return getDelay(point.data(), point.size(), &min, &max, minVal, minStrict, maxVal, maxStrict, stopped);
+        }
 
         bool isConstrainedBy(cindex_t, cindex_t, raw_t) const;
 
@@ -1262,15 +1288,14 @@ namespace dbm
          * that are marked free. The point will belong to one
          * DBM of this federation, it is unspecified which one.
          * @param cval: clock valuation to write.
-         * @param freeC: free clocks to write, if freeC == NULL, then
-         * all clocks are considered free.
+         * @param freeC: free clocks to write, if freeC == NULL, then all clocks are considered free.
          * @return cval
          * @throw std::out_of_range if the generation fails
          * if isEmpty() or cval too constrained.
          * @post if freeC != NULL, forall i < dim: freeC[i] = false
          * @pre same dimension.
          */
-        void getValuation(double* cval, cindex_t dimen, bool* freeC = NULL) const;
+        void getValuation(std::vector<double>& cval, bool* freeC = nullptr) const;
 
         /** predt operation: temporal predecessor of this federation
          * avoiding 'bad'. The extra argument 'restrict' is to apply
@@ -1282,9 +1307,9 @@ namespace dbm
          * without entering bad.
          * @pre same dimension.
          */
-        fed_t& predt(const fed_t& bad, const raw_t* restrict = NULL);
-        fed_t& predt(const dbm_t& bad, const raw_t* restrict = NULL);
-        fed_t& predt(const raw_t* bad, cindex_t dim, const raw_t* restrict = NULL);
+        fed_t& predt(const fed_t& bad, const raw_t* restrict = nullptr);
+        fed_t& predt(const dbm_t& bad, const raw_t* restrict = nullptr);
+        fed_t& predt(const raw_t* bad, cindex_t dim, const raw_t* restrict = nullptr);
 
         /** succt operation: symmetric to predt except that lower2upper(bad) is
          * added to the result (this is used for urgent action in strategies).
@@ -1386,6 +1411,12 @@ namespace dbm
         class iterator
         {
         public:
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = dbm_t;
+            using difference_type = std::ptrdiff_t;
+            using pointer = value_type*;
+            using reference = value_type&;
+
             /// End of list.
             static const fdbm_t* ENDF;
 
@@ -1397,10 +1428,10 @@ namespace dbm
             iterator(ifed_t* fed);
 
             /// Dereference to dbm_t, @pre !null()
-            dbm_t& operator*() const;
+            reference operator*() const;
 
             /// Dereference to dbm_t*, @pre !null()
-            dbm_t* operator->() const;
+            pointer operator->() const;
 
             /// Mutable access to the matrix as for fed_t, @pre !null()
             raw_t* operator()() const;
@@ -1408,9 +1439,6 @@ namespace dbm
 
             /// Increment iterator, @pre !null()
             iterator& operator++();
-
-            /// Test if there are DBMs left on the list.
-            bool null() const;
 
             /// @return true if there is another DBM after, @pre !null()
             bool hasNext() const;
@@ -1441,6 +1469,12 @@ namespace dbm
         class const_iterator
         {
         public:
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = const dbm_t;
+            using difference_type = std::ptrdiff_t;
+            using pointer = value_type*;
+            using reference = value_type&;
+
             /// Const iterator for end of list.
             static const const_iterator ENDI;
 
@@ -1450,20 +1484,18 @@ namespace dbm
             const_iterator();
 
             /// Dereference to dbm_t
-            const dbm_t& operator*() const;
+            reference operator*() const;
 
             /// Dereference to dbm_t*, @pre !null()
-            const dbm_t* operator->() const;
+            pointer operator->() const;
 
             /// Access to the matrix as for fed_t
             const raw_t* operator()() const;
+            operator dbm::reader() const;
             raw_t operator()(cindex_t i, cindex_t j) const;
 
             /// Increment iterator, @pre !null()
             const_iterator& operator++();
-
-            /// Test if there are DBMs left on the list.
-            bool null() const;
 
             /// @return true if there is another DBM after, @pre !null()
             bool hasNext() const;
@@ -1473,18 +1505,27 @@ namespace dbm
             bool operator!=(const const_iterator& arg) const;
 
         private:
-            const fdbm_t* fdbm;  /// list of DBMs
+            const fdbm_t* fdbm{nullptr};  /// list of DBMs
         };
 
         /// Access to iterators. Limitation: you cannot modify the original
         /// fed_t object otherwise the iterator will be invalidated. In
         /// addition, you cannot copy the original either if the non const
         /// iterator is used.
-
         const_iterator begin() const;
-        const const_iterator end() const;
-        iterator beginMutable();
-        const iterator endMutable() const;
+        const_iterator end() const;
+        /** @return DBM iterator with mutable access, see also as_mutable for ranged-based loop. */
+        iterator begin_mutable();
+        iterator end_mutable();
+        /** Helper struct used in range-base loop with mutable access. */
+        struct mutable_range
+        {
+            iterator b, e;
+            iterator begin() { return b; }
+            iterator end() { return e; }
+        };
+        /** @return the original range of DBMs with mutable access for range-based loop. */
+        mutable_range as_mutable() { return {begin_mutable(), end_mutable()}; }
 
         // Standard erase method for the iterator.
         iterator erase(iterator& iter);

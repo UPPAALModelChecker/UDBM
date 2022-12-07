@@ -69,7 +69,7 @@ namespace dbm
 
     /** Deallocate memory as allocated by dbm_new.
      * @param dbm: idbm_t to deallocate.
-     * @pre dbm != NULL
+     * @pre dbm != nullptr
      */
     static inline void dbm_delete(idbm_t* dbm)
     {
@@ -90,7 +90,7 @@ namespace dbm
 
     /** Deallocate memory as allocated by dbm_new.
      * @param dbm: idbm_t to deallocate.
-     * @pre dbm != NULL
+     * @pre dbm != nullptr
      * DON'T INLINE because array_t will expand
      * every call too badly.
      */
@@ -285,8 +285,7 @@ namespace dbm
         }
 
     private:
-        /// Must never be called
-        ~idbm_t() = delete;
+        ~idbm_t() = delete;  ///< Must never be called
 
         /* Inherited variables from parent class:
          * idbm_t **previous, *next: for collision list of
@@ -353,13 +352,13 @@ namespace dbm
         /// Copy a DBM into a newly created fdbm_t.
         /// @param adbm: the DBM to copy.
         /// @param nxt: list of DBMs to append.
-        static fdbm_t* create(const raw_t* adbm, cindex_t dim, fdbm_t* nxt = NULL)
+        static fdbm_t* create(const raw_t* adbm, cindex_t dim, fdbm_t* nxt = nullptr)
         {
             fdbm_t* fdbm = create(nxt);
             fdbm->idbm.newCopy(adbm, dim);
             return fdbm;
         }
-        static fdbm_t* create(const dbm_t& adbm, fdbm_t* nxt = NULL)
+        static fdbm_t* create(const dbm_t& adbm, fdbm_t* nxt = nullptr)
         {
             fdbm_t* fdbm = create(nxt);
             fdbm->idbm.newCopy(adbm);
@@ -367,7 +366,7 @@ namespace dbm
         }
 
         /// Copy start and append end to the copy.
-        static fdbm_t* copy(const fdbm_t* start, fdbm_t* end = NULL);
+        static fdbm_t* copy(const fdbm_t* start, fdbm_t* end = nullptr);
 
         /// Wrapper methods.
         fdbm_t* copy() const { return copy(this); }
@@ -445,7 +444,7 @@ namespace dbm
 
     private:
         /// Creation of fdbm_t using an allocator.
-        static fdbm_t* create(fdbm_t* nxt = NULL);
+        static fdbm_t* create(fdbm_t* nxt = nullptr);
 
         /// Must never be called
         ~fdbm_t() = delete;
@@ -462,10 +461,10 @@ namespace dbm
     class dbmlist_t
     {
     public:
-        dbmlist_t(): fedSize(0), fhead(NULL) {}
-        dbmlist_t(size_t size, fdbm_t* flist): fedSize(size), fhead(flist) {}
-        dbmlist_t(const raw_t* arg, cindex_t dim): fedSize(1), fhead(fdbm_t::create(arg, dim)) {}
-        dbmlist_t(const dbm_t& arg): fedSize(1), fhead(fdbm_t::create(arg)) {}
+        dbmlist_t() = default;
+        dbmlist_t(size_t size, fdbm_t* flist): fedSize{size}, fhead{flist} {}
+        dbmlist_t(const raw_t* arg, cindex_t dim): fedSize{1}, fhead{fdbm_t::create(arg, dim)} {}
+        dbmlist_t(const dbm_t& arg): fedSize{1}, fhead{fdbm_t::create(arg)} {}
 
         /// Append a list of fdbm_t.
         dbmlist_t& append(dbmlist_t& arg)
@@ -525,8 +524,8 @@ namespace dbm
         /// @return the federation size.
         size_t size() const
         {
-            assert((fedSize == 0) == (fhead == NULL));
-            assert(fhead == NULL || fedSize == fhead->size());
+            assert((fedSize == 0) == (fhead == nullptr));
+            assert(fhead == nullptr || fedSize == fhead->size());
             return fedSize;
         }
 
@@ -544,7 +543,7 @@ namespace dbm
         }
 
         /// Brutal re-set of the list.
-        void reset(fdbm_t* dbms = NULL, size_t size = 0)
+        void reset(fdbm_t* dbms = nullptr, size_t size = 0)
         {
             fedSize = size;
             fhead = dbms;
@@ -618,25 +617,25 @@ namespace dbm
 #endif
 
     protected:
-        size_t fedSize;  //< size of the federation
-        fdbm_t* fhead;   //< federation head of the list (1st DBM)
+        size_t fedSize{0};       //< size of the federation
+        fdbm_t* fhead{nullptr};  //< federation head of the list (1st DBM)
     };
 
     class ifed_t : public dbmlist_t
     {
     public:
         /// Creation and initialization of ifed_t. @pre the dbm is not empty.
-        static ifed_t* create(const raw_t* adbm, cindex_t dim, size_t nxtSize = 0, fdbm_t* nxt = NULL)
+        static ifed_t* create(const raw_t* adbm, cindex_t dim, size_t nxtSize = 0, fdbm_t* nxt = nullptr)
         {
             return create(dim, 1 + nxtSize, fdbm_t::create(adbm, dim, nxt));
         }
-        static ifed_t* create(const dbm_t& adbm, size_t nxtSize = 0, fdbm_t* nxt = NULL)
+        static ifed_t* create(const dbm_t& adbm, size_t nxtSize = 0, fdbm_t* nxt = nullptr)
         {
             return create(adbm.const_idbmt()->getDimension(), 1 + nxtSize, fdbm_t::create(adbm, nxt));
         }
         static ifed_t* create(cindex_t dim)
         {  // initial empty
-            return create(dim, 0, NULL);
+            return create(dim, 0, nullptr);
         }
         static ifed_t* create(cindex_t dim, dbmlist_t dbmlist) { return create(dim, dbmlist.size(), dbmlist.head()); }
 
@@ -656,7 +655,7 @@ namespace dbm
         bool isOK() const
         {
             size_t n = 0;
-            for (const fdbm_t* f = fhead; f != NULL; f = f->getNext(), n++) {
+            for (const fdbm_t* f = fhead; f != nullptr; f = f->getNext(), n++) {
                 if (f->isEmpty() || f->getDimension() != dim) {
                     return false;
                 }
@@ -683,15 +682,15 @@ namespace dbm
             insert(arg);
             // Now fix the rest of the list.
             fdbm_t::removeAll(fhead->getNext());
-            fhead->setNext(NULL);
+            fhead->setNext(nullptr);
             fedSize = 1;
         }
 
         /// @return true if this federation is empty.
         bool isEmpty() const
         {
-            assert((size() == 0) == (fhead == NULL));
-            return fhead == NULL;
+            assert((size() == 0) == (fhead == nullptr));
+            return fhead == nullptr;
         }
 
         /// Compute a hash value that does not depend on the order of the DBMs.
@@ -738,7 +737,7 @@ namespace dbm
             other->fedSize += fedSize;
             return other;
         }
-        ifed_t* copy(fdbm_t* end = NULL, size_t endSize = 0) const
+        ifed_t* copy(fdbm_t* end = nullptr, size_t endSize = 0) const
         {
             assert(endSize == (end ? end->size() : 0));
             return create(getDimension(), size() + endSize, fdbm_t::copy(fhead, end));
@@ -747,7 +746,8 @@ namespace dbm
         /// Insert a dbm, @pre same dimension & not empty.
         void insert(const dbm_t& adbm)
         {
-            assert(adbm.getDimension() == getDimension() && !adbm.isEmpty());
+            assert(!adbm.isEmpty());
+            assert(adbm.getDimension() == getDimension());
             fhead = fdbm_t::create(adbm, fhead);
             incSize();
         }
@@ -772,7 +772,7 @@ namespace dbm
             fdbm_t::removeAll(fhead);
             fhead = fdbm;
             fedSize = 1;
-            fdbm->setNext(NULL);
+            fdbm->setNext(nullptr);
         }
         // Similar but for a ready list.
         void setFed(fdbm_t* fdbm, size_t nb)
@@ -948,13 +948,15 @@ namespace dbm
             ptr_intern();
     }
 
-    inline const raw_t* dbm_t::operator()() const { return isEmpty() ? NULL : const_dbm(); }
+    inline const raw_t* dbm_t::operator()() const { return isEmpty() ? nullptr : const_dbm(); }
 
     inline raw_t dbm_t::operator()(cindex_t i, cindex_t j) const
     {
         assert(i < getDimension() && j < getDimension() && !isEmpty());
         return const_dbm()[i * pdim() + j];
     }
+    inline int32_t dbm_t::bound(cindex_t i, cindex_t j) const { return dbm_raw2bound(this->operator()(i, j)); }
+    inline bool dbm_t::is_strict(cindex_t i, cindex_t j) const { return dbm_rawIsStrict(this->operator()(i, j)); }
 
     inline const raw_t* dbm_t::operator[](cindex_t i) const
     {
@@ -1130,7 +1132,7 @@ namespace dbm
 
     inline dbm_t& dbm_t::operator&=(const std::vector<constraint_t>& vec)
     {
-        constrain(&vec[0], vec.size());
+        constrain(vec);
         return *this;
     }
 
@@ -1524,7 +1526,7 @@ namespace dbm
      *  Inlined implementations of fed_t::iterator *
      ***********************************************/
 
-    inline fed_t::iterator::iterator(): fdbm(const_cast<fdbm_t**>(&ENDF)), ifed(NULL) {}
+    inline fed_t::iterator::iterator(): fdbm(const_cast<fdbm_t**>(&ENDF)), ifed(nullptr) {}
 
     inline fed_t::iterator::iterator(ifed_t* ifd): fdbm(ifd->atHead()), ifed(ifd) {}
 
@@ -1559,16 +1561,10 @@ namespace dbm
         return *this;
     }
 
-    inline bool fed_t::iterator::null() const
-    {
-        assert(fdbm);
-        return *fdbm == NULL;
-    }
-
     inline bool fed_t::iterator::hasNext() const
     {
         assert(fdbm);
-        return (*fdbm)->getNext() != NULL;
+        return (*fdbm)->getNext() != nullptr;
     }
 
     inline bool fed_t::iterator::operator==(const iterator& arg) const
@@ -1610,13 +1606,13 @@ namespace dbm
         ifed->incSize();
     }
 
-    inline fed_t::iterator fed_t::beginMutable()
+    inline fed_t::iterator fed_t::begin_mutable()
     {
         setMutable();
         return fed_t::iterator(ifed());
     }
 
-    inline const fed_t::iterator fed_t::endMutable() const { return fed_t::iterator(); }
+    inline fed_t::iterator fed_t::end_mutable() { return fed_t::iterator(); }
 
     inline fed_t::iterator fed_t::erase(iterator& iter)
     {
@@ -1631,7 +1627,7 @@ namespace dbm
 
     inline fed_t::const_iterator::const_iterator(const fdbm_t* fed): fdbm(fed) {}
     inline fed_t::const_iterator::const_iterator(const fed_t& fed): fdbm(fed.ifed()->const_head()) {}
-    inline fed_t::const_iterator::const_iterator(): fdbm(NULL) {}
+    inline fed_t::const_iterator::const_iterator(): fdbm{nullptr} {}
 
     inline const dbm_t& fed_t::const_iterator::operator*() const
     {
@@ -1650,6 +1646,7 @@ namespace dbm
         assert(fdbm);
         return fdbm->const_dbmt()();
     }
+    inline fed_t::const_iterator::operator dbm::reader() const { return fdbm->const_dbmt().dbm_read(); }
 
     inline raw_t fed_t::const_iterator::operator()(cindex_t i, cindex_t j) const
     {
@@ -1664,12 +1661,10 @@ namespace dbm
         return *this;
     }
 
-    inline bool fed_t::const_iterator::null() const { return fdbm == NULL; }
-
     inline bool fed_t::const_iterator::hasNext() const
     {
         assert(fdbm);
-        return fdbm->getNext() != NULL;
+        return fdbm->getNext() != nullptr;
     }
 
     inline bool fed_t::const_iterator::operator==(const const_iterator& arg) const { return fdbm == arg.fdbm; }
@@ -1678,7 +1673,7 @@ namespace dbm
 
     inline fed_t::const_iterator fed_t::begin() const { return fed_t::const_iterator(ifed()->const_head()); }
 
-    inline const fed_t::const_iterator fed_t::end() const { return fed_t::const_iterator::ENDI; }
+    inline fed_t::const_iterator fed_t::end() const { return fed_t::const_iterator::ENDI; }
 
     /***********************************
      * Inlined implementation of fed_t *
