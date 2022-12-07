@@ -49,8 +49,9 @@ namespace dbm
         {
             assert(src.static_size == static_size);
             assert(src.dynamic_size <= dynamic_size);
-            std::copy(src.begin(), src.end(), begin_mutable());                           // copy the common values
-            std::fill(std::next(begin_mutable(), src.dynamic_size), end_mutable(), S{});  // reset remaining
+            std::copy(src.begin(), src.end(), begin_mutable());  // copy the common values
+            std::fill(std::next(begin_mutable(), static_size + src.dynamic_size), end_mutable(),
+                      S{});  // reset remaining
             return *this;
         }
 
