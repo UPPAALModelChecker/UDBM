@@ -81,7 +81,7 @@ static void test(const cindex_t dim)
     auto cnstr = std::vector<constraint_t>(dim * dim);
     auto lower = std::vector<int32_t>(dim);
     auto upper = std::vector<int32_t>(dim);
-    auto pt = valuation_int{dim};
+    auto pt = valuation_int(dim);
     // coverage
     bool c1 = false, c2 = false, c4 = false;
     bool c5 = false, c6 = false, c7 = false;

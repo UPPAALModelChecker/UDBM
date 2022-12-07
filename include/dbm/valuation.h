@@ -42,7 +42,7 @@ namespace dbm
         valuation_t(size_t size, size_t dyn = 0): static_size{size}, dynamic_size{dyn}, values(size + dyn) {}
         valuation_t(const std::initializer_list<S>& list): static_size{list.size()}, dynamic_size{0}, values{list} {}
 
-        valuation_t(const valuation_t& other) { *this = other; }
+        valuation_t(const valuation_t& other): valuation_t(other.static_size, other.dynamic_size) { *this = other; }
         valuation_t(valuation_t&&) noexcept = default;
 
         valuation_t& operator=(const valuation_t<S>& src)

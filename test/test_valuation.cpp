@@ -21,8 +21,8 @@ using namespace dbm;
 
 static void test(size_t size)
 {
-    auto iv = valuation_int{size};
-    auto dv = valuation_fp{size};
+    auto iv = valuation_int(size);
+    auto dv = valuation_fp(size);
 
     for (size_t i = 0; i < size; ++i) {
         CHECK(iv[i] == 0);
