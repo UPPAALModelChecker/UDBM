@@ -40,6 +40,7 @@ namespace dbm
          * @param dyn: number of dynamic values.
          */
         valuation_t(size_t size, size_t dyn = 0): static_size{size}, dynamic_size{dyn}, values(size + dyn) {}
+        valuation_t(const std::initializer_list<S>& list): static_size{list.size()}, dynamic_size{0}, values{list} {}
 
         valuation_t(const valuation_t& other) { *this = other; }
         valuation_t(valuation_t&&) noexcept = default;
@@ -147,6 +148,9 @@ namespace dbm
             return values[at];
         }
     };
+
+    template <typename S>
+    valuation_t(const std::initializer_list<S>&) -> valuation_t<S>;
 
     template <typename S>
     std::ostream& operator<<(std::ostream& os, const valuation_t<S>& val);
