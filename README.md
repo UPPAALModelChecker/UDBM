@@ -1,5 +1,5 @@
 # UPPAAL DBM Library
-<acronym title="Difference Bound Matrix">DBM</acronym>s [[dill89, rokicki93, lpw:fct95, bengtsson02]](#-References) are efficient data structures to represent clock constraints in timed automata [[ad90]](#-References).
+<acronym title="Difference Bound Matrix">DBM</acronym>s [[dill89, rokicki93, lpw:fct95, bengtsson02]](#user-content-references) are efficient data structures to represent clock constraints in timed automata [[ad90]](#-References).
 They are used in UPPAAL [[lpy97, by04, bdl04]](#-References) as the core data structure to represent time.
 The library features all the common operations such as up (delay, or future), down (past), general updates, different extrapolation functions, etc. on DBMs and federations.
 The library also supports subtractions.
@@ -38,16 +38,16 @@ cmake --build build-release
 
 Compile source with **release** optimizations and **unit tests**:
 ```shell
-cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PWD/local -DTESTING=ON
+cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PWD/local -DUDBM_WITH_TESTS=ON
 cmake --build build-release
-(cd build-release/test ; ctest)
+(cd build-release ; ctest)
 ```
 
 Compile source with **debug**, **sanitizers** and **unit tests**:
 ```shell
-cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$PWD/local -DTESTING=ON -DSSP=ON -DUBSAN=ON -DASAN=ON
+cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$PWD/local -DUDBM_WITH_TESTS=ON -DSSP=ON -DUBSAN=ON -DASAN=ON
 cmake --build build-debug
-(cd build-debug/test ; ctest)
+(cd build-debug ; ctest)
 ```
 
 ## References
