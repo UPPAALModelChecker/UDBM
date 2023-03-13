@@ -584,6 +584,9 @@ namespace dbm
         /** Not implemented. */
         bool intersects(const pfed_t&) const;
 
+        /** Equals Operator */
+        bool operator==(const pfed_t&) const;
+
         /** Not implemented. */
         pfed_t operator&(const pfed_t& b) const;
 
@@ -592,6 +595,17 @@ namespace dbm
 
         /** Not implemented. */
         pfed_t& down();
+
+        /** Resize all the DBMs of this federation, @see dbm_t.
+         * @see dbm_shrinkExpand in dbm.h.
+         * @param bitSrc,bitDst,bitSize: bit strings of (int) size bitSize
+         * that mark the source and destination active clocks.
+         * @param table: redirection table to write.
+         * @pre bitSrc & bitDst are uint32_t[bitSize] and
+         * table is a uint32_t[32*bitSize]
+         * @post the indirection table is written.
+         */
+        void resize(const uint32_t* bitSrc, const uint32_t* bitDst, size_t bitSize, cindex_t* table);
 
         /** Not implemented. */
         int32_t getUpperMinimumCost(cindex_t) const;

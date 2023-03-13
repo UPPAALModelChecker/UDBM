@@ -438,6 +438,10 @@ namespace dbm
 
     pfed_t&  pfed_t::down() { throw std::logic_error("pfed_t::down not implemented"); }
 
+    void pfed_t::resize(const uint32_t* bitSrc, const uint32_t* bitDst, size_t bitSize, cindex_t* table) { throw std::logic_error("pfed_t::resize not implemented"); }
+
+    bool pfed_t::operator==(const pfed_t& arg) const { return relation(arg) == base_EQUAL; }
+
     int32_t pfed_t::getUpperMinimumCost(cindex_t) const
     {
         throw std::logic_error("pfed_t::getUpperMinimumCost not implemented");
