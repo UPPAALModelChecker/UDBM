@@ -970,7 +970,7 @@ int32_t pdbm_getRate(const PDBM pdbm, cindex_t dim, cindex_t clock)
     return pdbm_rates(pdbm)[clock];
 }
 
-uint32_t pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim)
+int32_t pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim)
 {
     assert(pdbm && dim);
 

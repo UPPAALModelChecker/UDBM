@@ -591,7 +591,7 @@ const int32_t* pdbm_getRates(const PDBM pdbm, cindex_t dim);
  * @param pdbm  is a closed priced DBM of dimension \a dim.
  * @param dim   is the dimension of \a pdbm.
  */
-uint32_t pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim);
+int32_t pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim);
 
 /**
  * Sets the cost at the offset point.
