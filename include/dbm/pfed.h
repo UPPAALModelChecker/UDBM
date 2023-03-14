@@ -442,7 +442,7 @@ namespace dbm
         bool constrain(const constraint_t& c);
 
         /** Returns the infimum of the federation. */
-        int32_t getInfimum() const;
+        double getInfimum() const;
 
         /**
          * Check if the federation satisfies a given constraint.
@@ -489,7 +489,7 @@ namespace dbm
         pfed_t& up();
 
         /** Delay with rate \a rate. */
-        pfed_t& up(int32_t rate);
+        pfed_t& up(double rate);
 
         /** Set x(clock) to \a value. */
         pfed_t& updateValue(cindex_t clock, uint32_t value);
@@ -504,9 +504,9 @@ namespace dbm
         void diagonalExtrapolateMaxBounds(int32_t* max);
         void diagonalExtrapolateLUBounds(int32_t* lower, int32_t* upper);
 
-        void incrementCost(int32_t value);
+        void incrementCost(double value);
 
-        int32_t getCostOfValuation(const IntValuation& valuation) const;
+        double getCostOfValuation(const IntValuation& valuation) const;
 
 
         void relax();
@@ -740,7 +740,7 @@ namespace dbm
          * Returns the infimum of the federation given a partial
          * valuation.
          */
-        int32_t getInfimumValuation(IntValuation& valuation, const bool* free = nullptr) const;
+        double getInfimumValuation(IntValuation& valuation, const bool* free = nullptr) const;
 
         /** Returns the number of zones in the federation. */
         size_t size() const;

@@ -40,8 +40,8 @@ struct Node
     uint32_t depth;    /**< Depth from root (Always node0). */
     Node* thread;      /**< Next according to the preorder. */
     bool inbound;      /**< Is the arc pointing to me or away. */
-    int32_t flow;      /**< Flow for the current solution. */
-    int32_t potential; /**< Node potential for spanning tree solution. */
+    double flow;      /**< Flow for the current solution. */
+    double potential; /**< Node potential for spanning tree solution. */
 };
 
 /*
@@ -61,14 +61,14 @@ static void printSimpleNodeInfo(Node* nodes, uint32_t i)
               << ",  inbound: " << inbound(i) << ", flow: " << flow(i) << ", potential: " << potential(i);
 }
 
-static void printNodeInfo(Node* nodes, const int32_t* rates, uint32_t i)
+static void printNodeInfo(Node* nodes, const double* rates, uint32_t i)
 {
     printSimpleNodeInfo(nodes, i);
     std::cerr << ", s/d: " << b(i) << " ";
     std::cerr << std::endl;
 }
 
-static void printAllNodeInfo(Node* nodes, const int32_t* rates, uint32_t dim)
+static void printAllNodeInfo(Node* nodes, const double* rates, uint32_t dim)
 {
     std::cerr << "Nodes:" << std::endl;
     for (uint32_t i = 0; i < dim; i++) {
@@ -87,11 +87,11 @@ static void printSimpleAllNodeInfo(Node *nodes, uint32_t dim)
 }
 */
 
-static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, Node* nodes, uint32_t dim)
+static bool checkTreeIntegrity(const raw_t* dbm, const double* rates, Node* nodes, uint32_t dim)
 {
     bool treeOK = true;
     // Check that all nodes get their flow
-    int32_t sum[dim], total = 0;
+    double sum[dim], total = 0;
     uint32_t i;
     sum[0] = 0;
 
@@ -203,7 +203,7 @@ static bool checkTreeIntegrity(const raw_t* dbm, const int32_t* rates, Node* nod
 
 static inline bool nodeHasNoChildren(Node* node) { return (node->thread->depth > node->depth); }
 
-static void printSolution(int32_t* valuation, const int32_t* rates, uint32_t dim)
+static void printSolution(int32_t* valuation, const double* rates, uint32_t dim)
 {
     for (uint32_t i = 0; i < dim; i++) {
         std::cerr << "Val " << i << ": " << valuation[i] << " (rate: " << rates[i] << ")" << std::endl;
@@ -249,7 +249,7 @@ static void printAllRates(const int32_t *rates, uint32_t dim)
  * The initial solution includes computing the intial node potentials.
  *
  */
-static void findInitialSpanningTreeSolution(const raw_t* dbm, uint32_t dim, const int32_t* rates, Node* nodes)
+static void findInitialSpanningTreeSolution(const raw_t* dbm, uint32_t dim, const double* rates, Node* nodes)
 {
     Node* last = nodes + dim;
     Node* node = nodes;
@@ -288,7 +288,7 @@ static void findInitialSpanningTreeSolution(const raw_t* dbm, uint32_t dim, cons
  * Pre: leave should be on the path from arcs[enter].{i,j} to the root.
  */
 
-static void updatePotentials(Node* leave, int32_t change)
+static void updatePotentials(Node* leave, double change)
 {
     /* Update the entire subtree rooted at leave with a change
      * corresponding the reduced cost of the entering arc.  This is
@@ -362,8 +362,7 @@ static inline bool isPredecessorOf(Node* n, Node* m) { return n == findNthPredec
  * I.e., pred, depth, and thread.
  *
  */
-static void updateNonRootSubtree(Node* rootNode, Node* nonRootNode, Node* leave, bool sourceInRootSubtree,
-                                 uint32_t flow)
+static void updateNonRootSubtree(Node* rootNode, Node* nonRootNode, Node* leave, bool sourceInRootSubtree, double flow)
 {
     /*
      * Update thread information NOT COMPLETELY SURE ABOUT CORRECTNESS
@@ -427,7 +426,7 @@ static void updateNonRootSubtree(Node* rootNode, Node* nonRootNode, Node* leave,
      */
 
     Node *tmppred1, *tmppred2, *newi;
-    int32_t tmpflow1, tmpflow2;
+    double tmpflow1, tmpflow2;
     bool tmpinbound1, tmpinbound2;
     tmppred1 = rootNode;
     tmpflow1 = flow;
@@ -475,7 +474,7 @@ static void updateNonRootSubtree(Node* rootNode, Node* nonRootNode, Node* leave,
  * and subtract flow from arcs in the opposite direction
  * of (k,l).
  */
-static void updateFlowInCycle(Node* k, Node* l, Node* root, int32_t flowToAugment)
+static void updateFlowInCycle(Node* k, Node* l, Node* root, double flowToAugment)
 {
     if (flowToAugment > 0) {
         while (k != root) {
@@ -495,10 +494,10 @@ static void updateFlowInCycle(Node* k, Node* l, Node* root, int32_t flowToAugmen
  * Update the spanning tree so the node information is updated
  * including flow and node potentials.
  */
-static void updateSpanningTree(Node* k, Node* l, Node* leave, Node* root, int32_t costEnter)
+static void updateSpanningTree(Node* k, Node* l, Node* leave, Node* root, double costEnter)
 {
-    int32_t reducedCostEnter = costEnter - k->potential + l->potential;
-    int32_t flowToAugment = leave->flow;
+    double reducedCostEnter = costEnter - k->potential + l->potential;
+    double flowToAugment = leave->flow;
     updateFlowInCycle(k, l, root, flowToAugment);
     if (!isPredecessorOf(leave, k)) {
         updatePotentials(leave, -reducedCostEnter);
@@ -598,7 +597,7 @@ static Node* discoverCycleRoot(Node* k, Node* l)
  */
 static Node* findLeavingArc(Node* k, Node* l, Node* root)
 {
-    int32_t smallestFlow = INT_MAX;
+    double smallestFlow = INT_MAX;
     /*
      * Node with the lowest depth of the leaving arc.
      */
@@ -645,16 +644,16 @@ static Node* findLeavingArc(Node* k, Node* l, Node* root)
  * If it is not a transshipment node, we need to follow the
  * thread to update the potentials. We do it by computing
  */
-static void testAndRemoveArtificialArcs(const raw_t* dbm, const int32_t* rates, Node* nodes, uint32_t dim)
+static void testAndRemoveArtificialArcs(const raw_t* dbm, const double* rates, Node* nodes, uint32_t dim)
 {
     for (uint32_t i = 1; i < dim; i++) {
         if (potential(i) == dbm_INFINITY && pred(i) == 0 && flow(i) == 0) {
             inbound(i) = true;
 
             Node* tmp = nodes[i].thread;
-            int32_t rateSum = b(i);
+            double rateSum = b(i);
 
-            int32_t minPotential = dbm_INFINITY + constraintValue(0, i);
+            double minPotential = dbm_INFINITY + constraintValue(0, i);
 
             /*
              * Find the highest potential we can decrease i with and
@@ -688,7 +687,7 @@ static void testAndRemoveArtificialArcs(const raw_t* dbm, const int32_t* rates, 
  * Returns true if and only if all elements in [first, last) are
  * non-negative.
  */
-static bool allPositive(const int32_t* first, const int32_t* last)
+static bool allPositive(const double* first, const double* last)
 {
     while (first != last) {
         if (*first < 0) {
@@ -704,7 +703,7 @@ static bool allPositive(const int32_t* first, const int32_t* last)
  * network flow problem. I.e. the cost of the offset and the costless
  * moves to the offset is not taken into account.
  */
-static void infimumNetSimplex(const raw_t* dbm, uint32_t dim, const int32_t* rates, Node* nodes)
+static void infimumNetSimplex(const raw_t* dbm, uint32_t dim, const double* rates, Node* nodes)
 {
     /* Find and store the minimal set of arcs. The netsimplex
      * algorithm is polynomial in the number of arcs.
@@ -766,7 +765,7 @@ static void infimumNetSimplex(const raw_t* dbm, uint32_t dim, const int32_t* rat
  * the infimum-achieving point in the zone.
  *
  */
-int32_t pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const int32_t* rates)
+double pdbm_infimum(const raw_t* dbm, uint32_t dim, double offsetCost, const double* rates)
 {
     if (allPositive(rates, rates + dim)) {
         return offsetCost;
@@ -775,7 +774,7 @@ int32_t pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const 
     Node nodes[dim];
     infimumNetSimplex(dbm, dim, rates, nodes);
 
-    int32_t solution = offsetCost;
+    double solution = offsetCost;
     for (uint32_t i = 0; i < dim; i++) {
         ASSERT(potential(i) >= 0, std::cerr << "Node: " << i << std::endl; printAllNodeInfo(nodes, rates, dim);
                printClockLowerBounds(dbm, dim));
@@ -792,7 +791,7 @@ int32_t pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const 
     return solution;
 }
 
-void pdbm_infimum(const raw_t* dbm, uint32_t dim, uint32_t offsetCost, const int32_t* rates, int32_t* valuation)
+void pdbm_infimum(const raw_t* dbm, uint32_t dim, double offsetCost, const double* rates, int32_t* valuation)
 {
     if (allPositive(rates, rates + dim)) {
         valuation[0] = 0;

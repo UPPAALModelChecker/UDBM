@@ -21,14 +21,23 @@
 #include <stdexcept>
 #include <cassert>
 #include <cstdlib>
+#include <float.h>
 
 struct PDBM_s
 {
     uint32_t count;
-    uint32_t cost;
-    uint32_t infimum;
+    double cost;
+    double infimum;
+    std::vector<double> rates;
     int32_t data[];
 };
+
+double epsilon = DBL_EPSILON;//TODO: Change epsilon
+
+bool are_same(double a, double b)
+{
+    return std::abs(a - b) < epsilon;
+}
 
 /** Convenient macro for accessing DBM entries. */
 #define DBM(I, J) dbm[(I)*dim + (J)]
@@ -37,10 +46,10 @@ struct PDBM_s
 #define pdbm_cost(pdbm) ((pdbm)->cost)
 
 /** Returns the vectors of coefficients. */
-#define pdbm_rates(pdbm) ((pdbm)->data)
+#define pdbm_rates(pdbm) ((pdbm)->rates.data())
 
 /** Returns the matrix. */
-#define pdbm_matrix(pdbm) ((pdbm)->data + dim)
+#define pdbm_matrix(pdbm) ((pdbm)->data)
 
 /** Returns the cache infimum. */
 #define pdbm_cache(pdbm) ((pdbm)->infimum)
@@ -132,7 +141,7 @@ static void pdbm_blank(PDBM& pdbm, cindex_t dim)
 size_t pdbm_size(cindex_t dim)
 {
     assert(dim);
-    return sizeof(struct PDBM_s) + (dim * dim + dim) * sizeof(int32_t);
+    return sizeof(struct PDBM_s) + (dim * dim) * sizeof(int32_t) + dim * sizeof(double);
 }
 
 PDBM pdbm_reserve(cindex_t dim, void* p)
@@ -238,8 +247,8 @@ bool pdbm_constrain1(PDBM& pdbm, cindex_t dim, cindex_t i, cindex_t j, raw_t con
 
     /* Compute the cost at the origin.
      */
-    uint32_t cost = pdbm_cost(pdbm);
-    int32_t* rates = pdbm_rates(pdbm);
+    double cost = pdbm_cost(pdbm);
+    double* rates = pdbm_rates(pdbm);
     for (uint32_t k = 1; k < dim; k++) {
         cost += rates[k] * dbm_raw2bound(DBM(0, k));
     }
@@ -273,8 +282,8 @@ bool pdbm_constrainN(PDBM& pdbm, cindex_t dim, const constraint_t* constraints, 
             pdbm_prepare(pdbm, dim);
 
             dbm = pdbm_matrix(pdbm);
-            uint32_t cost = pdbm_cost(pdbm);
-            int32_t* rates = pdbm_rates(pdbm);
+            double cost = pdbm_cost(pdbm);
+            double* rates = pdbm_rates(pdbm);
 
             for (uint32_t k = 1; k < dim; k++) {
                 cost += rates[k] * dbm_raw2bound(DBM(0, k));
@@ -306,7 +315,7 @@ bool pdbm_constrainN(PDBM& pdbm, cindex_t dim, const constraint_t* constraints, 
  *               we want to find the cost.
  * @param dim    is the dimension of \a dbm1 and \a dbm2.
  */
-static int32_t costAtOtherOffset(const raw_t* dbm1, const int32_t* rates1, uint32_t cost1, const raw_t* dbm2,
+static double costAtOtherOffset(const raw_t* dbm1, const double* rates1, double cost1, const raw_t* dbm2,
                                  cindex_t dim)
 {
     assert(dbm1 && dbm2 && rates1 && dim);
@@ -328,11 +337,11 @@ static int32_t costAtOtherOffset(const raw_t* dbm1, const int32_t* rates1, uint3
  * @param last  is a pointer to the last coefficient of the first plane.
  * @param rate  is a pointer to the first coefficient of the second plane.
  */
-inline static bool leq(const int32_t* first, const int32_t* last, const int32_t* rate)
+inline static bool leq(const double* first, const double* last, const double* rate)
 {
     assert(first && last && rate);
 
-    return std::equal(first, last, rate, std::less_equal<int32_t>());
+    return std::equal(first, last, rate, std::less_equal<>());
 }
 
 /**
@@ -343,11 +352,11 @@ inline static bool leq(const int32_t* first, const int32_t* last, const int32_t*
  * @param last  is a pointer to the last coefficient of the first plane.
  * @param rate  is a pointer to the first coefficient of the second plane.
  */
-inline static bool less(const int32_t* first, const int32_t* last, const int32_t* rate)
+inline static bool less(const double* first, const double* last, const double* rate)
 {
     assert(first && last && rate);
 
-    return std::equal(first, last, rate, std::less<int32_t>());
+    return std::equal(first, last, rate, std::less<>());
 }
 
 /**
@@ -361,14 +370,14 @@ inline static bool less(const int32_t* first, const int32_t* last, const int32_t
  * @param cost2 The cost at the offset for the second plane.
  * @param rate2 The rates of the second plane.
  */
-static int32_t infOfDiff(const raw_t* dbm, uint32_t dim, int32_t cost1, const int32_t* rate1, int32_t cost2,
-                         const int32_t* rate2)
+static double infOfDiff(const raw_t* dbm, uint32_t dim, double cost1, const double* rate1, double cost2,
+                        const double* rate2)
 {
     assert(dbm && dim && rate1 && rate2);
 
-    int32_t cost = cost1 - cost2;
-    int32_t rates[dim];
-    std::transform(rate1, rate1 + dim, rate2, rates, std::minus<int32_t>());
+    double cost = cost1 - cost2;
+    double rates[dim];
+    std::transform(rate1, rate1 + dim, rate2, rates, std::minus<>());
 
     return pdbm_infimum(dbm, dim, cost, rates);
 }
@@ -379,10 +388,10 @@ std::pair<relation_t, bool> pdbm_compare_cost_identical_pdbms(const PDBM pdbm1, 
 
     raw_t* dbm1 = pdbm_matrix(pdbm1);
     raw_t* dbm2 = pdbm_matrix(pdbm2);
-    int32_t* rates1 = pdbm_rates(pdbm1);
-    int32_t* rates2 = pdbm_rates(pdbm2);
-    uint32_t cost1 = pdbm_cost(pdbm1);
-    uint32_t cost2 = pdbm_cost(pdbm2);
+    double* rates1 = pdbm_rates(pdbm1);
+    double* rates2 = pdbm_rates(pdbm2);
+    double cost1 = pdbm_cost(pdbm1);
+    double cost2 = pdbm_cost(pdbm2);
 
     /* Function should only be called for identical dbms.
      * In case they are not, return costs are different. */
@@ -393,20 +402,17 @@ std::pair<relation_t, bool> pdbm_compare_cost_identical_pdbms(const PDBM pdbm1, 
     /* Both have the same size. We need to compare the planes to
          * see which one is cheaper.
      */
-    int32_t c = infOfDiff(dbm1, dim, cost2, rates2, cost1, rates1);
+    double c = infOfDiff(dbm1, dim, cost2, rates2, cost1, rates1);
     if (c > 0) {
-        /* Early return to avoid unnecessary computation of the
-             * second subtraction.
-         */
         return {base_SUPERSET, true};
     }
 
-    int32_t d = infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2);
-    if (d > 0) {
-        return {base_SUBSET, true};
-    }
+    double d = infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2);
     if (c == 0 && d == 0) {
         return {base_EQUAL, false};
+    }
+    if (d > 0) {
+        return {base_SUBSET, true};
     }
     if (c >= 0) {
         return {base_SUPERSET, false};
@@ -423,12 +429,13 @@ relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)
 
     raw_t* dbm1 = pdbm_matrix(pdbm1);
     raw_t* dbm2 = pdbm_matrix(pdbm2);
-    int32_t* rates1 = pdbm_rates(pdbm1);
-    int32_t* rates2 = pdbm_rates(pdbm2);
-    uint32_t cost1 = pdbm_cost(pdbm1);
-    uint32_t cost2 = pdbm_cost(pdbm2);
+    double* rates1 = pdbm_rates(pdbm1);
+    double* rates2 = pdbm_rates(pdbm2);
+    double cost1 = pdbm_cost(pdbm1);
+    double cost2 = pdbm_cost(pdbm2);
 
-    int32_t c, d;
+    bool a, b;
+    double c, d;
 
     switch (dbm_relation(dbm1, dbm2, dim)) {
     case base_SUPERSET:
@@ -466,14 +473,14 @@ relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)
 
         /* Do sound and cheap comparison first.
          */
-        c = cost1 <= cost2 && leq(rates1, rates1 + dim, rates2);
-        d = cost2 <= cost1 && leq(rates2, rates2 + dim, rates1);
+        a = cost1 <= cost2 && leq(rates1, rates1 + dim, rates2);
+        b = cost2 <= cost1 && leq(rates2, rates2 + dim, rates1);
 
-        if (c & d) {
+        if (a && b) {
             return base_EQUAL;
-        } else if (c) {
+        } else if (a) {
             return base_SUPERSET;
-        } else if (d) {
+        } else if (b) {
             return base_SUBSET;
         }
 
@@ -512,137 +519,139 @@ relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)
 
 relation_t pdbm_relationWithMinDBM(const PDBM pdbm1, cindex_t dim, const mingraph_t pdbm2, raw_t* dbm2)
 {
-    assert(pdbm1 && pdbm2 && dim && dbm2);
+    throw std::logic_error("pdbm_relationWithMinDBM not implemented!");
 
-    raw_t* dbm1 = pdbm_matrix(pdbm1);
-    uint32_t cost1 = pdbm_cost(pdbm1);
-    int32_t* rates1 = pdbm_rates(pdbm1);
-
-    int32_t c, d;
-
-    /* We know how the cost and the rates are encoded in a mingraph:
-     * see writeToMinDBMWithOffset and readFromMinDBM.
-     */
-    uint32_t cost2 = pdbm2[0];
-    const int32_t* rates2 = pdbm2 + 2;
-
-    /* dbm_relationWithMinDBM will in some cases unpack pdbm2 into
-     * dbm2. In order to detect whether this has happened, we set the
-     * first entry of dbm2 to -1. If dbm_relationWithMinDBM did indeed
-     * unpack pdbm2, this entry will have a different value
-     * afterwards.
-     */
-    dbm2[0] = -1;
-
-    switch (dbm_relationWithMinDBM(dbm1, dim, pdbm2 + dim + 2, dbm2)) {
-    case base_SUPERSET:
-        /* pdbm2 is smaller. Check whether it is also the most
-         * expensive: This is the case when the difference between
-         * pdbm2 and pdbm1 is always non-negative (the infimum is not
-         * smaller than 0).
-         */
-        if (dbm2[0] == -1) {
-            dbm_readFromMinDBM(dbm2, pdbm2 + dim + 2);
-        }
-        cost1 = costAtOtherOffset(dbm1, rates1, cost1, dbm2, dim);
-        if (cost1 <= cost2 &&
-            (leq(rates1, rates1 + dim, rates2) || infOfDiff(dbm2, dim, cost2, rates2, cost1, rates1) >= 0)) {
-            return base_SUPERSET;
-        } else {
-            return base_DIFFERENT;
-        }
-
-    case base_SUBSET:
-        /* pdbm2 is bigger. Check whether it is also the cheapest:
-         * This is the case when the difference between pdbm1 and
-         * pdbm2 is always non-negative (the infimum is not smaller
-         * than 0).
-         */
-        if (dbm2[0] == -1) {
-            dbm_readFromMinDBM(dbm2, pdbm2 + dim + 2);
-        }
-        cost2 = costAtOtherOffset(dbm2, rates2, cost2, dbm1, dim);
-        if (cost2 <= cost1 &&
-            (leq(rates2, rates2 + dim, rates1) || infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2) >= 0)) {
-            return base_SUBSET;
-        } else {
-            return base_DIFFERENT;
-        }
-
-    case base_EQUAL:
-        /* Both have the same size. We need to compare the planes to
-         * see which one is cheaper.
-         */
-
-        /* Do sound and cheap comparison first.
-         */
-        c = cost1 <= cost2 && leq(rates1, rates1 + dim, rates2);
-        d = cost2 <= cost1 && leq(rates2, rates2 + dim, rates1);
-
-        if (c & d) {
-            return base_EQUAL;
-        } else if (c) {
-            return base_SUPERSET;
-        } else if (d) {
-            return base_SUBSET;
-        }
-
-        /* The planes are incomparable, so we need to do the
-         * subtraction. Notice that priced zones are not canonical,
-         * so the two zones can in fact be equal even though the rates
-         * are different.  Therefore we must also check for the
-         * situation where both infima are zero.
-         *
-         * Notice that dbm1 equals dbm2, hence we do not need to
-         * unpacked dbm2.
-         */
-        c = infOfDiff(dbm1, dim, cost2, rates2, cost1, rates1);
-        if (c > 0) {
-            /* Early return to avoid unnecessary computation of the
-             * second subtraction.
-             */
-            return base_SUPERSET;
-        }
-
-        d = infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2);
-        if (c == 0 && d == 0) {
-            return base_EQUAL;
-        }
-        if (c >= 0) {
-            return base_SUPERSET;
-        }
-        if (d >= 0) {
-            return base_SUBSET;
-        }
-        return base_DIFFERENT;
-
-    default: return base_DIFFERENT;
-    }
+//    assert(pdbm1 && pdbm2 && dim && dbm2);
+//
+//    raw_t* dbm1 = pdbm_matrix(pdbm1);
+//    double cost1 = pdbm_cost(pdbm1);
+//    double* rates1 = pdbm_rates(pdbm1);
+//
+//    double c, d;
+//
+//    /* We know how the cost and the rates are encoded in a mingraph:
+//     * see writeToMinDBMWithOffset and readFromMinDBM.
+//     */
+//    double cost2 = pdbm2[0];
+//    const double* rates2 = pdbm2 + 2;
+//
+//    /* dbm_relationWithMinDBM will in some cases unpack pdbm2 into
+//     * dbm2. In order to detect whether this has happened, we set the
+//     * first entry of dbm2 to -1. If dbm_relationWithMinDBM did indeed
+//     * unpack pdbm2, this entry will have a different value
+//     * afterwards.
+//     */
+//    dbm2[0] = -1;
+//
+//    switch (dbm_relationWithMinDBM(dbm1, dim, pdbm2 + dim + 2, dbm2)) {
+//    case base_SUPERSET:
+//        /* pdbm2 is smaller. Check whether it is also the most
+//         * expensive: This is the case when the difference between
+//         * pdbm2 and pdbm1 is always non-negative (the infimum is not
+//         * smaller than 0).
+//         */
+//        if (dbm2[0] == -1) {
+//            dbm_readFromMinDBM(dbm2, pdbm2 + dim + 2);
+//        }
+//        cost1 = costAtOtherOffset(dbm1, rates1, cost1, dbm2, dim);
+//        if (cost1 <= cost2 &&
+//            (leq(rates1, rates1 + dim, rates2) || infOfDiff(dbm2, dim, cost2, rates2, cost1, rates1) >= 0)) {
+//            return base_SUPERSET;
+//        } else {
+//            return base_DIFFERENT;
+//        }
+//
+//    case base_SUBSET:
+//        /* pdbm2 is bigger. Check whether it is also the cheapest:
+//         * This is the case when the difference between pdbm1 and
+//         * pdbm2 is always non-negative (the infimum is not smaller
+//         * than 0).
+//         */
+//        if (dbm2[0] == -1) {
+//            dbm_readFromMinDBM(dbm2, pdbm2 + dim + 2);
+//        }
+//        cost2 = costAtOtherOffset(dbm2, rates2, cost2, dbm1, dim);
+//        if (cost2 <= cost1 &&
+//            (leq(rates2, rates2 + dim, rates1) || infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2) >= 0)) {
+//            return base_SUBSET;
+//        } else {
+//            return base_DIFFERENT;
+//        }
+//
+//    case base_EQUAL:
+//        /* Both have the same size. We need to compare the planes to
+//         * see which one is cheaper.
+//         */
+//
+//        /* Do sound and cheap comparison first.
+//         */
+//        c = cost1 <= cost2 && leq(rates1, rates1 + dim, rates2);
+//        d = cost2 <= cost1 && leq(rates2, rates2 + dim, rates1);
+//
+//        if (c & d) {
+//            return base_EQUAL;
+//        } else if (c) {
+//            return base_SUPERSET;
+//        } else if (d) {
+//            return base_SUBSET;
+//        }
+//
+//        /* The planes are incomparable, so we need to do the
+//         * subtraction. Notice that priced zones are not canonical,
+//         * so the two zones can in fact be equal even though the rates
+//         * are different.  Therefore we must also check for the
+//         * situation where both infima are zero.
+//         *
+//         * Notice that dbm1 equals dbm2, hence we do not need to
+//         * unpacked dbm2.
+//         */
+//        c = infOfDiff(dbm1, dim, cost2, rates2, cost1, rates1);
+//        if (c > 0) {
+//            /* Early return to avoid unnecessary computation of the
+//             * second subtraction.
+//             */
+//            return base_SUPERSET;
+//        }
+//
+//        d = infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2);
+//        if (c == 0 && d == 0) {
+//            return base_EQUAL;
+//        }
+//        if (c >= 0) {
+//            return base_SUPERSET;
+//        }
+//        if (d >= 0) {
+//            return base_SUBSET;
+//        }
+//        return base_DIFFERENT;
+//
+//    default: return base_DIFFERENT;
+//    }
 }
 
-int32_t pdbm_getInfimum(const PDBM pdbm, cindex_t dim)
+double pdbm_getInfimum(const PDBM pdbm, cindex_t dim)
 {
     assert(pdbm && dim);
     assert(dbm_isValid(pdbm_matrix(pdbm), dim));
-    uint32_t cache = pdbm_cache(pdbm);
+    double cache = pdbm_cache(pdbm);
     if (cache == INVALID) {
         pdbm_cache((PDBM)pdbm) = cache = pdbm_infimum(pdbm_matrix(pdbm), dim, pdbm_cost(pdbm), pdbm_rates(pdbm));
     }
     return cache;
 }
 
-int32_t pdbm_getInfimumValuation(const PDBM pdbm, cindex_t dim, int32_t* valuation, const bool* free)
+double pdbm_getInfimumValuation(const PDBM pdbm, cindex_t dim, int32_t* valuation, const bool* free)
 {
     assert(pdbm && dim && valuation);
     assert(pdbm_isValid(pdbm, dim));
 
     raw_t copy[dim * dim];
     raw_t* dbm = pdbm_matrix(pdbm);
-    int32_t* rates = pdbm_rates(pdbm);
+    double* rates = pdbm_rates(pdbm);
 
     /* Compute the cost of the origin.
      */
-    int32_t cost = pdbm_cost(pdbm);
+    double cost = pdbm_cost(pdbm);
     for (uint32_t i = 1; i < dim; i++) {
         cost -= rates[i] * -dbm_raw2bound(DBM(0, i));
     }
@@ -745,7 +754,7 @@ void pdbm_up(PDBM& pdbm, cindex_t dim)
     assertx(pdbm_isValid(pdbm, dim));
 }
 
-void pdbm_upZero(PDBM& pdbm, cindex_t dim, int32_t rate, cindex_t zero)
+void pdbm_upZero(PDBM& pdbm, cindex_t dim, double rate, cindex_t zero)
 {
     assert(pdbm && dim && zero > 0 && zero < dim);
     assert(pdbm_areOnZeroCycle(pdbm, dim, 0, zero));
@@ -753,7 +762,7 @@ void pdbm_upZero(PDBM& pdbm, cindex_t dim, int32_t rate, cindex_t zero)
     pdbm_prepare(pdbm, dim);
 
     raw_t* dbm = pdbm_matrix(pdbm);
-    int32_t* rates = pdbm_rates(pdbm);
+    double* rates = pdbm_rates(pdbm);
 
     dbm_up(dbm, dim);
     rates[zero] = 0;
@@ -781,7 +790,7 @@ void pdbm_updateValueZero(PDBM& pdbm, cindex_t dim, cindex_t clock, uint32_t val
 
     pdbm_prepare(pdbm, dim);
 
-    int32_t* rates = pdbm_rates(pdbm);
+    double* rates = pdbm_rates(pdbm);
 
     if (zero) {
         rates[zero] += rates[clock];
@@ -840,7 +849,7 @@ void pdbm_extrapolateMaxBounds(PDBM& pdbm, cindex_t dim, int32_t* max)
 {
     assert(pdbm && dim);
 
-    int32_t* rates = pdbm_rates(pdbm);
+    double* rates = pdbm_rates(pdbm);
 
     for (uint32_t i = 1; i < dim; i++) {
         if (rates[i] != 0) {
@@ -863,7 +872,7 @@ void pdbm_diagonalExtrapolateMaxBounds(PDBM& pdbm, cindex_t dim, int32_t* max)
 {
     assert(pdbm && dim);
 
-    int32_t* rates = pdbm_rates(pdbm);
+    double* rates = pdbm_rates(pdbm);
 
     /* If possible, transfer the cost rate of inactive clocks to other
      * clocks (clocks which are on a zero cycle with the inactive
@@ -907,7 +916,7 @@ void pdbm_diagonalExtrapolateLUBounds(PDBM& pdbm, cindex_t dim, int32_t* lower, 
 {
     assert(pdbm && dim);
 
-    int32_t* rates = pdbm_rates(pdbm);
+    double* rates = pdbm_rates(pdbm);
 
     for (uint32_t i = 1; i < dim; i++) {
         //          if (rates[i] < 0)
@@ -928,7 +937,7 @@ void pdbm_diagonalExtrapolateLUBounds(PDBM& pdbm, cindex_t dim, int32_t* lower, 
     dbm_diagonalExtrapolateLUBounds(pdbm_matrix(pdbm), dim, lower, upper);
 }
 
-void pdbm_incrementCost(PDBM& pdbm, cindex_t dim, int32_t value)
+void pdbm_incrementCost(PDBM& pdbm, cindex_t dim, double value)
 {
     assert(pdbm && dim && value >= 0);
 
@@ -961,15 +970,16 @@ size_t pdbm_analyzeForMinDBM(const PDBM pdbm, cindex_t dim, uint32_t* bitMatrix)
 int32_t* pdbm_writeToMinDBMWithOffset(const PDBM pdbm, cindex_t dim, bool minimizeGraph, bool tryConstraints16,
                                       allocator_t allocator, uint32_t offset)
 {
-    assert(pdbm && dim);
-
-    int32_t* graph = dbm_writeToMinDBMWithOffset(pdbm_matrix(pdbm), dim, minimizeGraph, tryConstraints16, allocator,
-                                                 offset + dim + 2);
-    graph[offset] = pdbm_cost(pdbm);
-    graph[offset + 1] = pdbm_cache(pdbm);
-    auto* r = pdbm_rates(pdbm);
-    std::copy(r, r + dim, graph + offset + 2);
-    return graph;
+    throw std::logic_error("pdbm_writeToMinDBMWithOffset not implemented");
+//    assert(pdbm && dim);
+//
+//    int32_t* graph = dbm_writeToMinDBMWithOffset(pdbm_matrix(pdbm), dim, minimizeGraph, tryConstraints16, allocator,
+//                                                 offset + dim + 2);
+//    graph[offset] = pdbm_cost(pdbm);
+//    graph[offset + 1] = pdbm_cache(pdbm);
+//    auto* r = pdbm_rates(pdbm);
+//    std::copy(r, r + dim, graph + offset + 2);
+//    return graph;
 }
 
 void pdbm_readFromMinDBM(PDBM& dst, cindex_t dim, mingraph_t src)
@@ -1010,33 +1020,33 @@ bool pdbm_findZeroCycle(const PDBM pdbm, cindex_t dim, cindex_t x, cindex_t* out
     return pdbm_findNextZeroCycle(pdbm, dim, x, out);
 }
 
-int32_t pdbm_getSlopeOfDelayTrajectory(const PDBM pdbm, cindex_t dim)
+double pdbm_getSlopeOfDelayTrajectory(const PDBM pdbm, cindex_t dim)
 {
     assert(pdbm && dim);
 
-    int32_t* rates = pdbm_rates(pdbm);
-    int32_t sum = 0;
+    double* rates = pdbm_rates(pdbm);
+    double sum = 0;
     for (uint32_t i = 1; i < dim; i++) {
         sum += rates[i];
     }
     return sum;
 }
 
-int32_t pdbm_getRate(const PDBM pdbm, cindex_t dim, cindex_t clock)
+double pdbm_getRate(const PDBM pdbm, cindex_t dim, cindex_t clock)
 {
     assert(pdbm && dim && clock > 0 && clock < dim);
 
     return pdbm_rates(pdbm)[clock];
 }
 
-int32_t pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim)
+double pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim)
 {
     assert(pdbm && dim);
 
     return pdbm_cost(pdbm);
 }
 
-void pdbm_setCostAtOffset(PDBM& pdbm, cindex_t dim, uint32_t value)
+void pdbm_setCostAtOffset(PDBM& pdbm, cindex_t dim, double value)
 {
     assert(pdbm && dim);
 
@@ -1199,13 +1209,13 @@ uint32_t pdbm_getUpperFacets(PDBM& pdbm, cindex_t dim, cindex_t* facets)
     return cnt;
 }
 
-int32_t pdbm_getCostOfValuation(const PDBM pdbm, cindex_t dim, const int32_t* valuation)
+double pdbm_getCostOfValuation(const PDBM pdbm, cindex_t dim, const int32_t* valuation)
 {
     assert(pdbm && dim && valuation);
     assert(pdbm_containsInt(pdbm, dim, valuation));
 
     raw_t* dbm = pdbm_matrix(pdbm);
-    int32_t cost = pdbm_cost(pdbm);
+    double cost = pdbm_cost(pdbm);
     for (uint32_t i = 1; i < dim; i++) {
         cost += (valuation[i] - -dbm_raw2bound(DBM(0, i))) * pdbm_rates(pdbm)[i];
     }
@@ -1238,10 +1248,10 @@ bool pdbm_isValid(const PDBM pdbm, cindex_t dim)
     }
 
     raw_t* dbm = pdbm_matrix(pdbm);
-    int32_t* rates = pdbm_rates(pdbm);
-    uint32_t cost = pdbm_cost(pdbm);
-    int32_t cache = pdbm_cache(pdbm);
-    int32_t inf = pdbm_infimum(dbm, dim, cost, rates);
+    double* rates = pdbm_rates(pdbm);
+    double cost = pdbm_cost(pdbm);
+    double cache = pdbm_cache(pdbm);
+    double inf = pdbm_infimum(dbm, dim, cost, rates);
 
     return (cache == INVALID || cache == inf) && dbm_isValid(dbm, dim) && rates[0] == 0 &&
            (!pdbm_isUnbounded(pdbm, dim) || pdbm_getSlopeOfDelayTrajectory(pdbm, dim) >= 0);
@@ -1268,7 +1278,7 @@ void pdbm_getOffset(const PDBM pdbm, cindex_t dim, int32_t* valuation)
     }
 }
 
-void pdbm_setRate(PDBM& pdbm, cindex_t dim, cindex_t clock, int32_t rate)
+void pdbm_setRate(PDBM& pdbm, cindex_t dim, cindex_t clock, double rate)
 {
     assert(pdbm && dim && clock > 0 && clock < dim);
 
@@ -1298,7 +1308,7 @@ const raw_t* pdbm_getMatrix(const PDBM pdbm, cindex_t dim)
     return pdbm_matrix(pdbm);
 }
 
-const int32_t* pdbm_getRates(const PDBM pdbm, cindex_t dim)
+const double* pdbm_getRates(const PDBM pdbm, cindex_t dim)
 {
     assert(pdbm && dim);
     return pdbm_rates(pdbm);
@@ -1313,19 +1323,19 @@ bool pdbm_constrainToFacet(PDBM& pdbm, cindex_t dim, cindex_t i, cindex_t j)
 
 void pdbm_print(FILE* f, const PDBM pdbm, cindex_t dim)
 {
-    int32_t infimum = pdbm_getInfimum(pdbm, dim);
+    double infimum = pdbm_getInfimum(pdbm, dim);
     dbm_print(f, pdbm_matrix(pdbm), dim);
     fprintf(f, "Rates:");
     for (cindex_t i = 1; i < dim; i++) {
-        fprintf(f, " %d", pdbm_getRate(pdbm, dim, i));
+        fprintf(f, " %f", pdbm_getRate(pdbm, dim, i));
     }
     fprintf(f, "\n");
-    fprintf(f, "Offset: %d Infimum: %d\n", pdbm_cost(pdbm), infimum);
+    fprintf(f, "Offset: %f Infimum: %f\n", pdbm_cost(pdbm), infimum);
 }
 
 void pdbm_print(std::ostream& o, const PDBM pdbm, cindex_t dim)
 {
-    int32_t infimum = pdbm_getInfimum(pdbm, dim);
+    double infimum = pdbm_getInfimum(pdbm, dim);
     dbm_cppPrint(o, pdbm_matrix(pdbm), dim);
     o << "Rates:";
     for (cindex_t i = 1; i < dim; i++) {
@@ -1352,7 +1362,7 @@ void pdbm_freeDown(PDBM& pdbm, cindex_t dim, cindex_t index)
 
     /* Move offset point.
      */
-    int32_t rate = pdbm_rates(pdbm)[index];
+    double rate = pdbm_rates(pdbm)[index];
     int32_t bound = -dbm_raw2bound(DBM(0, index));
     pdbm_cost(pdbm) -= bound * rate;
 
@@ -1363,7 +1373,7 @@ void pdbm_freeDown(PDBM& pdbm, cindex_t dim, cindex_t index)
 
 void pdbm_normalise(PDBM pdbm, cindex_t dim)
 {
-    int32_t* rates = pdbm_rates(pdbm);
+    double* rates = pdbm_rates(pdbm);
     cindex_t next[dim];
     cindex_t i;
 
@@ -1389,7 +1399,7 @@ void pdbm_normalise(PDBM pdbm, cindex_t dim)
 
 bool pdbm_hasNormalForm(PDBM pdbm, cindex_t dim)
 {
-    int32_t* rates = pdbm_rates(pdbm);
+    double* rates = pdbm_rates(pdbm);
     cindex_t next[dim];
     cindex_t i;
 

@@ -279,7 +279,7 @@ relation_t pdbm_relationWithMinDBM(const PDBM pdbm, cindex_t dim, const mingraph
  * @param  dim  is the dimension of \a pdbm.
  * @return The infimum cost of \a pdbm.
  */
-int32_t pdbm_getInfimum(const PDBM pdbm, cindex_t dim);
+double pdbm_getInfimum(const PDBM pdbm, cindex_t dim);
 
 /**
  * Generates a valuation which has the infimum cost of the priced DBM.
@@ -303,7 +303,7 @@ int32_t pdbm_getInfimum(const PDBM pdbm, cindex_t dim);
  * @throw out_of_range if no valuation with the given constraints can
  * be found.
  */
-int32_t pdbm_getInfimumValuation(const PDBM pdbm, cindex_t dim, int32_t* valuation, const bool* free);
+double pdbm_getInfimumValuation(const PDBM pdbm, cindex_t dim, int32_t* valuation, const bool* free);
 
 /**
  * Check if a priced DBM satisfies a given constraint.
@@ -399,7 +399,7 @@ void pdbm_up(PDBM& pdbm, cindex_t dim);
  *              reference clock.
  * @post  The priced DBM is closed.
  */
-void pdbm_upZero(PDBM& pdbm, cindex_t dim, int32_t rate, cindex_t zero);
+void pdbm_upZero(PDBM& pdbm, cindex_t dim, double rate, cindex_t zero);
 
 /**
  * Updates \a clock to \a value. This is only legitimate if the
@@ -470,7 +470,7 @@ void pdbm_diagonalExtrapolateLUBounds(PDBM& pdbm, cindex_t dim, int32_t* lower, 
  * @post  The priced DBM is closed.
  * @pre   value >= 0
  */
-void pdbm_incrementCost(PDBM& pdbm, cindex_t dim, int32_t value);
+void pdbm_incrementCost(PDBM& pdbm, cindex_t dim, double value);
 
 /**
  * Compute the closure of a priced DBM. This function is only relevant
@@ -583,7 +583,7 @@ bool pdbm_findNextZeroCycle(const PDBM pdbm, cindex_t dim, cindex_t x, cindex_t*
  * @param pdbm  is a closed priced DBM of dimension \a dim.
  * @param dim   is the dimension of \a pdbm.
  */
-int32_t pdbm_getSlopeOfDelayTrajectory(const PDBM pdbm, cindex_t dim);
+double pdbm_getSlopeOfDelayTrajectory(const PDBM pdbm, cindex_t dim);
 
 /**
  * Returns the rate (coefficient of the hyperplane) of \a clock.
@@ -593,9 +593,9 @@ int32_t pdbm_getSlopeOfDelayTrajectory(const PDBM pdbm, cindex_t dim);
  * @param  clock is the clock for which to return the coefficient.
  * @return the rate of \a clock.
  */
-int32_t pdbm_getRate(const PDBM pdbm, cindex_t dim, cindex_t clock);
+double pdbm_getRate(const PDBM pdbm, cindex_t dim, cindex_t clock);
 
-const int32_t* pdbm_getRates(const PDBM pdbm, cindex_t dim);
+const double* pdbm_getRates(const PDBM pdbm, cindex_t dim);
 
 /**
  * Returns the cost of the offset point.
@@ -603,7 +603,7 @@ const int32_t* pdbm_getRates(const PDBM pdbm, cindex_t dim);
  * @param pdbm  is a closed priced DBM of dimension \a dim.
  * @param dim   is the dimension of \a pdbm.
  */
-int32_t pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim);
+double pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim);
 
 /**
  * Sets the cost at the offset point.
@@ -617,7 +617,7 @@ int32_t pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim);
  * @param dim   is the dimension of \a pdbm.
  * @param value is the new cost of the offset point.
  */
-void pdbm_setCostAtOffset(PDBM& pdbm, cindex_t dim, uint32_t value);
+void pdbm_setCostAtOffset(PDBM& pdbm, cindex_t dim, double value);
 
 /**
  * Returns true if the DBM is valid. Useful for debugging.
@@ -686,7 +686,7 @@ uint32_t pdbm_getUpperFacets(PDBM& pdbm, cindex_t dim, cindex_t* facets);
  * @pre    pdbm_containsInt(pdbm, dim, valuation)
  * @return The cost of \a valuation in \a pdbm.
  */
-int32_t pdbm_getCostOfValuation(const PDBM pdbm, cindex_t dim, const int32_t* valuation);
+double pdbm_getCostOfValuation(const PDBM pdbm, cindex_t dim, const int32_t* valuation);
 
 /**
  * Makes all strong constraints of a priced DBM weak.
@@ -715,7 +715,7 @@ void pdbm_getOffset(const PDBM pdbm, cindex_t dim, int32_t* valuation);
  * @param clock is the index of a clock for which to set the coefficient.
  * @param rate  is the coefficient.
  */
-void pdbm_setRate(PDBM& pdbm, cindex_t dim, cindex_t clock, int32_t rate);
+void pdbm_setRate(PDBM& pdbm, cindex_t dim, cindex_t clock, double rate);
 
 /**
  * Returns the inner matrix of a priced DBM. The matrix can be

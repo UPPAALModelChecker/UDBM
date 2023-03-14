@@ -13,6 +13,7 @@
 #include <functional>  // std::bind
 #include <numeric>
 #include <stdexcept>
+#include <float.h>
 
 using std::bind;
 using std::for_each;
@@ -86,26 +87,26 @@ namespace dbm
         return !isEmpty();
     }
 
-    static int32_t min(int32_t a, int32_t b) { return a < b ? a : b; }
+    static double min(double a, double b) { return a < b ? a : b; }
 
-    int32_t pfed_t::getInfimum() const
+    double pfed_t::getInfimum() const
     {
         /* The binary operator used in the following accumulation is
          * lambda inf zone.min(inf, pdbm_getInfimum(zone, ptr->dim));
          */
-        return accumulate(begin(), end(), INT_MAX, bind(min, _1, bind(pdbm_getInfimum, _2, ptr->dim)));
+        return accumulate(begin(), end(), DBL_MAX, bind(min, _1, bind(pdbm_getInfimum, _2, ptr->dim)));
     }
 
-    int32_t pfed_t::getInfimumValuation(IntValuation& valuation, const bool* free) const
+    double pfed_t::getInfimumValuation(IntValuation& valuation, const bool* free) const
     {
         uint32_t dim = ptr->dim;
-        int32_t infimum = INT_MAX;
+        double infimum = INT_MAX;
         int32_t copy[dim];
 
         for_each_const(zone)
         {
             std::copy(valuation.begin(), valuation.end(), copy);
-            int32_t inf = pdbm_getInfimumValuation(*zone, dim, copy, free);
+            double inf = pdbm_getInfimumValuation(*zone, dim, copy, free);
             if (inf < infimum) {
                 infimum = inf;
                 std::copy(copy, copy + dim, valuation.begin());
@@ -210,7 +211,7 @@ namespace dbm
         return *this;
     }
 
-    pfed_t& pfed_t::up(int32_t rate)
+    pfed_t& pfed_t::up(double rate)
     {
         assert(rate >= 0);
 
@@ -221,7 +222,7 @@ namespace dbm
         for_each__(zone)
         {
             cindex_t x;
-            int32_t oldrate = pdbm_getSlopeOfDelayTrajectory(*zone, dim);
+            double oldrate = pdbm_getSlopeOfDelayTrajectory(*zone, dim);
 
 //            pdbm_print(std::cout, zone->operator PDBM(), dim);
 
@@ -283,7 +284,7 @@ namespace dbm
         for_each__(zone)
         {
             cindex_t k;
-            int32_t rate = pdbm_getRate(*zone, dim, clock);
+            double rate = pdbm_getRate(*zone, dim, clock);
 
             if (rate == 0) {
                 pdbm_updateValue(*zone, dim, clock, value);
@@ -337,17 +338,17 @@ namespace dbm
         for_each(beginMutable(), endMutable(), bind(pdbm_diagonalExtrapolateLUBounds, _1, ptr->dim, lower, upper));
     }
 
-    void pfed_t::incrementCost(int32_t value)
+    void pfed_t::incrementCost(double value)
     {
         for_each(beginMutable(), endMutable(), bind(pdbm_incrementCost, _1, ptr->dim, value));
     }
 
-    int32_t pfed_t::getCostOfValuation(const IntValuation& valuation) const
+    double pfed_t::getCostOfValuation(const IntValuation& valuation) const
     {
         /* The binary operator used in the following accumulation is
          * lambda x y . min(x, pdbm_getCostOfValuation(y, dim, val))
          */
-        return accumulate(begin(), end(), INT_MAX,
+        return accumulate(begin(), end(), DBL_MAX,
                           bind(min, _1, bind(pdbm_getCostOfValuation, _2, ptr->dim, valuation())));
     }
 
