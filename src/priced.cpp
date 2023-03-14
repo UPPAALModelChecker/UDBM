@@ -336,6 +336,21 @@ inline static bool leq(const int32_t* first, const int32_t* last, const int32_t*
 }
 
 /**
+ * Given two planes, returns true if the slope of the first is less
+ * than to the slope of the other.
+ *
+ * @param first is a pointer to the first coefficient of the first plane.
+ * @param last  is a pointer to the last coefficient of the first plane.
+ * @param rate  is a pointer to the first coefficient of the second plane.
+ */
+inline static bool less(const int32_t* first, const int32_t* last, const int32_t* rate)
+{
+    assert(first && last && rate);
+
+    return std::equal(first, last, rate, std::less<int32_t>());
+}
+
+/**
  * Given a zone and two hyperplanes over that zone, returns the
  * infimum of the difference of the two planes.
  *
@@ -356,6 +371,50 @@ static int32_t infOfDiff(const raw_t* dbm, uint32_t dim, int32_t cost1, const in
     std::transform(rate1, rate1 + dim, rate2, rates, std::minus<int32_t>());
 
     return pdbm_infimum(dbm, dim, cost, rates);
+}
+
+std::pair<relation_t, bool> pdbm_compare_cost_identical_pdbms(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)
+{
+    assert(pdbm1 && pdbm2 && dim);
+
+    raw_t* dbm1 = pdbm_matrix(pdbm1);
+    raw_t* dbm2 = pdbm_matrix(pdbm2);
+    int32_t* rates1 = pdbm_rates(pdbm1);
+    int32_t* rates2 = pdbm_rates(pdbm2);
+    uint32_t cost1 = pdbm_cost(pdbm1);
+    uint32_t cost2 = pdbm_cost(pdbm2);
+
+    /* Function should only be called for identical dbms.
+     * In case they are not, return costs are different. */
+    if (dbm_relation(dbm1, dbm2, dim) != base_EQUAL) {
+        return {base_DIFFERENT, false};
+    }
+
+    /* Both have the same size. We need to compare the planes to
+         * see which one is cheaper.
+     */
+    int32_t c = infOfDiff(dbm1, dim, cost2, rates2, cost1, rates1);
+    if (c > 0) {
+        /* Early return to avoid unnecessary computation of the
+             * second subtraction.
+         */
+        return {base_SUPERSET, true};
+    }
+
+    int32_t d = infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2);
+    if (d > 0) {
+        return {base_SUBSET, true};
+    }
+    if (c == 0 && d == 0) {
+        return {base_EQUAL, false};
+    }
+    if (c >= 0) {
+        return {base_SUPERSET, false};
+    }
+    if (d >= 0) {
+        return {base_SUBSET, false};
+    }
+    return {base_DIFFERENT, false};
 }
 
 relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)

@@ -245,6 +245,18 @@ bool pdbm_constrainToFacet(PDBM& pdbm, cindex_t dim, cindex_t i, cindex_t j);
  */
 relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim);
 
+/*
+ * Compares the costs of two identical DBMs.
+ * If the zones are not identical, it returns {base_DIFFERENT, false}
+ *
+ * @see    relation_t
+ * @param  pdbm1       is a closed priced DBM of dimension \a dim.
+ * @param  pdbm2       is a closed priced DBM of dimension \a dim.
+ * @param  dim         is the dimension of \a pdbm1 and \a pdbm2.
+ * @return The cost relation between pdbm1 and pdbm2 and if the relation is strict.
+ */
+std::pair<relation_t, bool> pdbm_compare_cost_identical_pdbms(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim);
+
 /**
  * Relation between 2 priced dbms where one is in compressed. Notice
  * that in constract to dbm_relationWithMinDBM, \a buffer may not be
