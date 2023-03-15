@@ -945,11 +945,13 @@ void pdbm_diagonalExtrapolateLUBounds(PDBM& pdbm, cindex_t dim, int32_t* lower, 
 
 void pdbm_incrementCost(PDBM& pdbm, cindex_t dim, double value)
 {
-    assert(pdbm && dim && value >= 0);
+    assert(pdbm && dim);
 
     pdbm_prepare(pdbm, dim);
     pdbm_cost(pdbm) += value;
-    pdbm_cache(pdbm) += value;
+    if (pdbm_cache(pdbm) != INVALID && pdbm_cache(pdbm) != -dbm_INFINITY) {
+        pdbm_cache(pdbm) += value;
+    }
 
     assertx(pdbm_isValid(pdbm, dim));
 }
@@ -1261,7 +1263,7 @@ bool pdbm_isValid(const PDBM pdbm, cindex_t dim)
     double inf = pdbm_infimum(dbm, dim, cost, rates);
 
     return (cache == INVALID || cache == inf) && dbm_isValid(dbm, dim) && rates[0] == 0 &&
-           (!pdbm_isUnbounded(pdbm, dim) || pdbm_getSlopeOfDelayTrajectory(pdbm, dim) >= 0);
+           (!(pdbm_isUnbounded(pdbm, dim) && pdbm_getSlopeOfDelayTrajectory(pdbm, dim) < 0) || inf == -dbm_INFINITY);
 }
 
 void pdbm_freeClock(PDBM& pdbm, cindex_t dim, cindex_t clock)
