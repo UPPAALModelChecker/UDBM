@@ -8,6 +8,7 @@
 
 #include <stdexcept>
 #include <cstdlib>
+#include <limits>
 
 /*
  * constraintValue(i,j)
@@ -597,7 +598,7 @@ static Node* discoverCycleRoot(Node* k, Node* l)
  */
 static Node* findLeavingArc(Node* k, Node* l, Node* root)
 {
-    double smallestFlow = INT_MAX;
+    double smallestFlow = std::numeric_limits<double>::infinity();
     /*
      * Node with the lowest depth of the leaving arc.
      */
@@ -630,7 +631,7 @@ static Node* findLeavingArc(Node* k, Node* l, Node* root)
         }
         l = l->pred;
     }
-    ASSERT(smallestFlow != INT_MAX, std::cerr << "No oppositely directed arcs" << std::endl);
+    ASSERT(smallestFlow != std::numeric_limits<double>::infinity(), std::cerr << "No oppositely directed arcs" << std::endl);
 
     return smallestFlowNode;
 }

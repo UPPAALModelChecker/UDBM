@@ -28,7 +28,7 @@ struct PDBM_s
     uint32_t count;
     double cost;
     double infimum;
-    std::vector<double> rates;
+    double* rates;
     int32_t data[];
 };
 
@@ -46,7 +46,7 @@ bool are_same(double a, double b)
 #define pdbm_cost(pdbm) ((pdbm)->cost)
 
 /** Returns the vectors of coefficients. */
-#define pdbm_rates(pdbm) ((pdbm)->rates.data())
+#define pdbm_rates(pdbm) ((pdbm)->rates)
 
 /** Returns the matrix. */
 #define pdbm_matrix(pdbm) ((pdbm)->data)
@@ -141,7 +141,8 @@ static void pdbm_blank(PDBM& pdbm, cindex_t dim)
 size_t pdbm_size(cindex_t dim)
 {
     assert(dim);
-    return sizeof(struct PDBM_s) + (dim * dim) * sizeof(int32_t) + dim * sizeof(double);
+    return sizeof(struct PDBM_s) + (dim * dim) * sizeof(int32_t);
+    //return sizeof(struct PDBM_s) + (dim * dim) * sizeof(int32_t) + dim * sizeof(double);
 }
 
 PDBM pdbm_reserve(cindex_t dim, void* p)
@@ -151,7 +152,9 @@ PDBM pdbm_reserve(cindex_t dim, void* p)
     PDBM pdbm = (PDBM)p;
     pdbm_count(pdbm) = 0;
     pdbm_cache(pdbm) = INVALID;
-    pdbm_rates(pdbm)[0] = 0;
+    pdbm_rates(pdbm) = (double*)malloc(sizeof(double) * dim);
+    std::fill(pdbm_rates(pdbm), pdbm_rates(pdbm) + dim, 0.0);
+
     return pdbm;
 }
 
@@ -165,6 +168,7 @@ void pdbm_deallocate(PDBM& pdbm)
 {
     assert(pdbm == nullptr || pdbm_count(pdbm) == 0);
 
+    free(pdbm->rates);
     free(pdbm);
 
     /* Setting the pointer to NULL protects against accidental use of
@@ -182,6 +186,8 @@ PDBM pdbm_copy(PDBM dst, const PDBM src, cindex_t dim)
     }
 
     memcpy(dst, src, pdbm_size(dim));
+    dst->rates = (double*)malloc(sizeof(double) * dim);
+    std::copy(src->rates, src->rates + dim, dst->rates);
     pdbm_count(dst) = 0;
 
     return dst;
@@ -195,8 +201,8 @@ void pdbm_init(PDBM& pdbm, cindex_t dim)
     dbm_init(pdbm_matrix(pdbm), dim);
     pdbm_cost(pdbm) = 0;
     pdbm_cache(pdbm) = 0;
-    auto* r = pdbm_rates(pdbm);
-    std::fill(r, r + dim, 0);
+    double* r = pdbm_rates(pdbm);
+    std::fill(r, r + dim, 0.0);
 
     assertx(pdbm_isValid(pdbm, dim));
 }
@@ -209,8 +215,8 @@ void pdbm_zero(PDBM& pdbm, cindex_t dim)
     dbm_zero(pdbm_matrix(pdbm), dim);
     pdbm_cost(pdbm) = 0;
     pdbm_cache(pdbm) = 0;
-    auto* r = pdbm_rates(pdbm);
-    std::fill(r, r + dim, 0);
+    double* r = pdbm_rates(pdbm);
+    std::fill(r, r + dim, 0.0);
 
     assertx(pdbm_isValid(pdbm, dim));
 }
@@ -984,15 +990,16 @@ int32_t* pdbm_writeToMinDBMWithOffset(const PDBM pdbm, cindex_t dim, bool minimi
 
 void pdbm_readFromMinDBM(PDBM& dst, cindex_t dim, mingraph_t src)
 {
-    assert(dst && dim);
-
-    pdbm_blank(dst, dim);
-    pdbm_cost(dst) = src[0];
-    pdbm_cache(dst) = src[1];
-    std::copy(src + 2, src + 2 + dim, pdbm_rates(dst));
-    dbm_readFromMinDBM(pdbm_matrix(dst), src + dim + 2);
-
-    assertx(pdbm_isValid(dst, dim));
+    throw std::logic_error("pdbm_readFromMinDBM not implemented");
+//    assert(dst && dim);
+//
+//    pdbm_blank(dst, dim);
+//    pdbm_cost(dst) = src[0];
+//    pdbm_cache(dst) = src[1];
+//    std::copy(src + 2, src + 2 + dim, pdbm_rates(dst));
+//    dbm_readFromMinDBM(pdbm_matrix(dst), src + dim + 2);
+//
+//    assertx(pdbm_isValid(dst, dim));
 }
 
 bool pdbm_findNextZeroCycle(const PDBM pdbm, cindex_t dim, cindex_t x, cindex_t* out)

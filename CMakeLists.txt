@@ -6,6 +6,8 @@ include(GNUInstallDirs)
 option(TESTING OFF)
 option(STATIC OFF)
 
+set(CMAKE_BUILD_TYPE Debug)
+
 cmake_policy(SET CMP0048 NEW) # project() command manages VERSION variables
 set(CMAKE_CXX_STANDARD 17)
 set(UDBM_PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
