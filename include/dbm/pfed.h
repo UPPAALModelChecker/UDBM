@@ -100,7 +100,7 @@ namespace dbm
         /**
          * Returns the cost of the offset point in the pdbm.
          */
-        int32_t getOffsetCost() const { return pdbm_getCostAtOffset(pdbm, dim); };
+        [[nodiscard]] double getOffsetCost() const { return pdbm_getCostAtOffset(pdbm, dim); };
 
         /**
          * Returns a hash value for the priced DBM.
