@@ -25,6 +25,9 @@ if(STATIC)
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive")
 endif(STATIC)
 
+
+set(CMAKE_BUILD_TYPE Debug)
+
 target_include_directories(UDBM
     PRIVATE
         # where the library itself will look for its internal headers

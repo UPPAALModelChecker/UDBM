@@ -697,7 +697,10 @@ namespace dbm
         /*
          * Non-exact union. Keeps all zones that are not subseteq of another zone. Returns true if the zones changed.
          */
-        bool unionWith(pfed_t& arg);
+        bool unionWith(const pfed_t& arg);
+
+        // Performs unionWith operation and returns whether the fed changed
+        bool unionWithChanged(const pfed_t& arg) { return unionWith(pfed_t(arg)); };
 
         /// Not implemented
         int32_t maxOnZero(cindex_t clock);

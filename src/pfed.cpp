@@ -212,8 +212,6 @@ namespace dbm
 
     pfed_t& pfed_t::up(int32_t rate)
     {
-        assert(rate >= 0);
-
         uint32_t dim = ptr->dim;
 
         prepare();
@@ -598,11 +596,11 @@ namespace dbm
         throw std::logic_error("pfed_t::eq not implemented");
     }
 
-    bool pfed_t::unionWith(pfed_t& other) {
+    bool pfed_t::unionWith(const pfed_t& other) {
         assert(ptr->dim == other.ptr->dim);
         bool changed = false;
 
-        for (auto ot = other.beginMutable(); ot != other.endMutable(); ++ot) {
+        for (auto ot = other.begin(); ot != other.end(); ++ot) {
             bool maybe_insert = true;
             bool definitely_insert = false;
             for (auto it = beginMutable(); it != endMutable();) {
@@ -626,6 +624,7 @@ namespace dbm
         }
         return changed;
     }
+
 
     int32_t pfed_t::maxOnZero(cindex_t x){
         throw std::logic_error("pfed_t::maxOnZero not implemented");
