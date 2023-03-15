@@ -98,6 +98,11 @@ namespace dbm
         operator PDBM() const { return pdbm; }
 
         /**
+         * Returns the cost of the offset point in the pdbm.
+         */
+        int32_t getOffsetCost() const { return pdbm_getCostAtOffset(pdbm, dim); };
+
+        /**
          * Returns a hash value for the priced DBM.
          */
         uint32_t hash(uint32_t seed = 0) const;
