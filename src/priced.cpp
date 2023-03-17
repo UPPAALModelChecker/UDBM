@@ -21,7 +21,7 @@
 #include <stdexcept>
 #include <cassert>
 #include <cstdlib>
-#include <float.h>
+#include <limits>
 
 struct PDBM_s
 {
@@ -31,13 +31,6 @@ struct PDBM_s
     double* rates;
     int32_t data[];
 };
-
-double epsilon = DBL_EPSILON;//TODO: Change epsilon
-
-bool are_same(double a, double b)
-{
-    return std::abs(a - b) < epsilon;
-}
 
 /** Convenient macro for accessing DBM entries. */
 #define DBM(I, J) dbm[(I)*dim + (J)]
@@ -58,7 +51,7 @@ bool are_same(double a, double b)
 #define pdbm_count(pdbm) ((pdbm)->count)
 
 /** Constant to mark the cached infimum as void. */
-#define INVALID INT_MAX
+#define INVALID std::numeric_limits<double>::infinity()
 
 #ifndef NDEBUG
 /**
@@ -409,21 +402,21 @@ std::pair<relation_t, bool> pdbm_compare_cost_identical_pdbms(const PDBM pdbm1, 
          * see which one is cheaper.
      */
     double c = infOfDiff(dbm1, dim, cost2, rates2, cost1, rates1);
-    if (c > 0) {
+    if (c - epsilon > 0.0) {
         return {base_SUPERSET, true};
     }
 
     double d = infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2);
-    if (c == 0 && d == 0) {
+    if (are_same(c, 0.0) && are_same(d, 0.0)) {
         return {base_EQUAL, false};
     }
-    if (d > 0) {
+    if (d - epsilon > 0.0) {
         return {base_SUBSET, true};
     }
-    if (c >= 0) {
+    if (c + epsilon >= 0) {
         return {base_SUPERSET, false};
     }
-    if (d >= 0) {
+    if (d + epsilon >= 0) {
         return {base_SUBSET, false};
     }
     return {base_DIFFERENT, false};
@@ -500,7 +493,7 @@ relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)
          * unpack dbm2.
          */
         c = infOfDiff(dbm1, dim, cost2, rates2, cost1, rates1);
-        if (c > 0) {
+        if (c - epsilon > 0.0) {
             /* Early return to avoid unnecessary computation of the
              * second subtraction.
              */
@@ -508,13 +501,13 @@ relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)
         }
 
         d = infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2);
-        if (c == 0 && d == 0) {
+        if (are_same(c, 0.0) && are_same(d, 0.0)) {
             return base_EQUAL;
         }
-        if (c >= 0) {
+        if (c + epsilon >= 0) {
             return base_SUPERSET;
         }
-        if (d >= 0) {
+        if (d + epsilon >= 0) {
             return base_SUBSET;
         }
         return base_DIFFERENT;
@@ -697,7 +690,7 @@ bool pdbm_satisfies(const PDBM pdbm, cindex_t dim, cindex_t i, cindex_t j, raw_t
 
 bool pdbm_isEmpty(const PDBM pdbm, cindex_t dim)
 {
-    assert(pdbm && dim);
+    assert(dim);
     return pdbm == nullptr || dbm_isEmpty(pdbm_matrix(pdbm), dim);
 }
 
@@ -773,6 +766,7 @@ void pdbm_upZero(PDBM& pdbm, cindex_t dim, double rate, cindex_t zero)
     dbm_up(dbm, dim);
     rates[zero] = 0;
     rates[zero] = rate - pdbm_getSlopeOfDelayTrajectory(pdbm, dim);
+    pdbm->infimum = INVALID;
 
     assertx(pdbm_isValid(pdbm, dim));
 }
@@ -908,11 +902,11 @@ void pdbm_diagonalExtrapolateMaxBounds(PDBM& pdbm, cindex_t dim, int32_t* max)
     }
 
     /* It is only safe to extrapolate clocks with a zero cost rate. */
-    for (cindex_t i = 1; i < dim; i++) {
-        if (rates[i] != 0) {
-            max[i] = dbm_INFINITY;
-        }
-    }
+//    for (cindex_t i = 1; i < dim; i++) {
+//        if (rates[i] != 0) {
+//            max[i] = dbm_INFINITY;
+//        }
+//    }
 
     pdbm_prepare(pdbm, dim);
     dbm_diagonalExtrapolateMaxBounds(pdbm_matrix(pdbm), dim, max);
@@ -949,7 +943,7 @@ void pdbm_incrementCost(PDBM& pdbm, cindex_t dim, double value)
 
     pdbm_prepare(pdbm, dim);
     pdbm_cost(pdbm) += value;
-    if (pdbm_cache(pdbm) != INVALID && pdbm_cache(pdbm) != -dbm_INFINITY) {
+    if (pdbm_cache(pdbm) != INVALID && pdbm_cache(pdbm) != -std::numeric_limits<double>::infinity()) {
         pdbm_cache(pdbm) += value;
     }
 
@@ -1262,8 +1256,8 @@ bool pdbm_isValid(const PDBM pdbm, cindex_t dim)
     double cache = pdbm_cache(pdbm);
     double inf = pdbm_infimum(dbm, dim, cost, rates);
 
-    return (cache == INVALID || cache == inf) && dbm_isValid(dbm, dim) && rates[0] == 0 &&
-           (!(pdbm_isUnbounded(pdbm, dim) && pdbm_getSlopeOfDelayTrajectory(pdbm, dim) < 0) || inf == -dbm_INFINITY);
+    return (cache == INVALID || cache == inf) && dbm_isValid(dbm, dim) && rates[0] == 0.0 &&
+           (!(pdbm_isUnbounded(pdbm, dim) && pdbm_getSlopeOfDelayTrajectory(pdbm, dim) < 0) || inf == -std::numeric_limits<double>::infinity());
 }
 
 void pdbm_freeClock(PDBM& pdbm, cindex_t dim, cindex_t clock)
@@ -1435,4 +1429,11 @@ bool pdbm_hasNormalForm(PDBM pdbm, cindex_t dim)
     }
 
     return true;
+}
+
+
+PDBM pdbm_from_dbm(const int32_t* dbm, cindex_t dim) {
+    PDBM pdbm = pdbm_allocate(dim);
+    memcpy(pdbm->data, dbm, dim * dim * sizeof(int32_t));
+    return pdbm;
 }

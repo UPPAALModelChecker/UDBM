@@ -12,6 +12,11 @@
 
 #include "dbm/constraints.h"
 
+#include <cmath>
+
+const double epsilon = 0.000001;
+bool are_same(double a, double b);
+
 double pdbm_infimum(const raw_t* dbm, uint32_t dim, double offsetCost, const double* rates);
 void pdbm_infimum(const raw_t* dbm, uint32_t dim, double offsetCost, const double* rates, int32_t* valuation);
 

@@ -35,3 +35,10 @@ cd build
 cmake $CMAKE_ARGS -DCMAKE_INSTALL_PREFIX="$SOURCE_DIR/libs/UUtils" ..
 cmake --build . --config Release
 cmake --install . --config Release
+
+cd $SOURCE_DIR/libs/sources;
+wget -nc https://boostorg.jfrog.io/artifactory/main/release/1.81.0/source/boost_1_81_0.tar.gz
+tar -xvf boost_1_81_0.tar.gz
+mkdir -p "$SOURCE_DIR/libs/sources/boost_1_81_0/build"
+cd "$SOURCE_DIR/libs/sources/boost_1_81_0/build"
+cp -r "$SOURCE_DIR/libs/sources/boost_1_81_0/boost" "$SOURCE_DIR/libs/"

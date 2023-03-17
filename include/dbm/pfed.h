@@ -102,6 +102,8 @@ namespace dbm
          */
         [[nodiscard]] double getOffsetCost() const { return pdbm_getCostAtOffset(pdbm, dim); };
 
+        bool constrain(cindex_t i, cindex_t j, raw_t c);
+
         /**
          * Returns a hash value for the priced DBM.
          */
@@ -124,6 +126,11 @@ namespace dbm
         /** @see dbm_t::getDBM() */
         raw_t* getDBM();
 
+        /** Converts the pdbm_t to a dbm_t, discarding the cost information */
+        dbm_t to_dbm() const { return dbm_t(const_dbm(), dim); };
+
+        static pdbm_t from_dbm(const dbm_t& dbm) { return pdbm_t(pdbm_from_dbm(dbm.const_dbm(), dbm.getDimension()), dbm.getDimension()); };
+
         /** @see dbm_t::analyseForMinDBM() */
         size_t analyzeForMinDBM(uint32_t* bitMatrix) const;
 
@@ -133,6 +140,15 @@ namespace dbm
 
         /** @see pdbm_relationWithMinDBM() */
         relation_t relation(const int32_t*, raw_t*) const;
+
+        /*
+         * Compares the cost of this pdbm with the cost of the other pdbm, where their zones are identical.
+         * Returns a pair of the relation between the two costs and a strictness.
+         */
+        [[nodiscard]] std::pair<relation_t, strictness_t> compare_to_identical(const pdbm_t& other) const {
+            auto [rel, is_strict] = pdbm_compare_cost_identical_pdbms(pdbm, other.pdbm, dim);
+            return std::make_pair(rel, is_strict ? strictness_t::dbm_STRICT : strictness_t::dbm_WEAK);
+        };
 
         /** @see dbm_t::freeClock() */
         pdbm_t& freeClock(cindex_t clock);
@@ -483,6 +499,9 @@ namespace dbm
         bool contains(const double* point, cindex_t dim) const;
 
         pfed_t& predt(const pfed_t& bad, const raw_t* restrict = NULL);
+
+
+        [[nodiscard]] fed_t to_fed() const;
 
         /**
          * Returns true iff the federation contains \v, ignoring

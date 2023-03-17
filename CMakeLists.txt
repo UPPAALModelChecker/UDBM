@@ -19,6 +19,8 @@ set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${CMAKE_CURRENT_SOURCE_DIR}/libs")
 find_package(xxHash 0.8.0 CONFIG REQUIRED)
 find_package(UUtils 1.1.1 REQUIRED COMPONENTS base hash debug)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs)
+
 add_library(UDBM src/DBMAllocator.cpp src/dbm.c src/fed_dbm.cpp src/mingraph.c src/mingraph_read.c src/partition.cpp src/print.cpp src/gen.c src/mingraph_cache.cpp src/mingraph_relation.c src/pfed.cpp src/fed.cpp src/infimum.cpp src/mingraph_equal.c src/mingraph_write.c src/priced.cpp)
 target_link_libraries(UDBM UUtils::base UUtils::udebug UUtils::hash)
 

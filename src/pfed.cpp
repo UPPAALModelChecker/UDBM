@@ -403,6 +403,14 @@ namespace dbm
         return *this;
     }
 
+    fed_t pfed_t::to_fed() const {
+        fed_t fed;
+        for (const pdbm_t& pdbm : *this) {
+            fed.add(pdbm.to_dbm());
+        }
+        return fed;
+    }
+
     pfed_t& pfed_t::operator|=(const pfed_t& pfed)
     {
         // REVISIT: Eliminate included zones.
@@ -573,8 +581,15 @@ namespace dbm
         throw std::logic_error("pfed_t::getDelay not implemented");
     }
 
+    bool pdbm_t::constrain(cindex_t i, cindex_t j, raw_t c) {
+        if (!isEmpty()) {
+            return pdbm_constrain1(pdbm, dim, i, j, c);
+        }
+        return false;
+    }
+
     bool pdbm_t::isEmpty() const {
-        throw std::logic_error("pdbm_t::isEmpty not implemented");
+        return pdbm_isEmpty(pdbm, dim);
     }
 
     bool pfed_t::le(const pfed_t& arg) const {

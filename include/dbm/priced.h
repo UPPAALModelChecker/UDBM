@@ -65,6 +65,13 @@
  * DBMs allocated in this manner must not be reference counted.
  */
 
+#include <boost/rational.hpp>
+
+/**
+ * The type used to represent cost in the pdbm
+ */
+typedef boost::rational<int> CostType;
+
 /**
  * Data type for priced dbm.
  */
@@ -799,6 +806,8 @@ bool pdbm_hasNormalForm(PDBM pdbm, cindex_t dim);
  * @param dim   is the dimension of \a pdbm.
  */
 void pdbm_normalise(PDBM pdbm, cindex_t dim);
+
+PDBM pdbm_from_dbm(const int32_t* dbm, cindex_t dim);
 
 ///////////////////////////////////////////////////////////////////////////
 

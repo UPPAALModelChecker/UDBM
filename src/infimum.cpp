@@ -42,7 +42,7 @@ struct Node
     Node* thread;      /**< Next according to the preorder. */
     bool inbound;      /**< Is the arc pointing to me or away. */
     double flow;      /**< Flow for the current solution. */
-    double potential; /**< Node potential for spanning tree solution. */
+    int32_t potential; /**< Node potential for spanning tree solution. */
 };
 
 /*
@@ -111,7 +111,7 @@ static bool checkTreeIntegrity(const raw_t* dbm, const double* rates, Node* node
         }
     }
     for (i = 0; i < dim; i++) {
-        if (sum[i] != 0) {
+        if (!are_same(sum[i], 0.0)) {
             treeOK = false;
             std::cerr << "sum[" << i << "] is corrupted: " << sum[i] << ", should be: " << (i == 0 ? total : b(i))
                       << std::endl;
@@ -258,7 +258,7 @@ static void findInitialSpanningTreeSolution(const raw_t* dbm, uint32_t dim, cons
     node->depth = 0;
     node->thread = nodes + 1;
     node->inbound = 0;
-    node->flow = -1;
+    node->flow = -1.0;
     node->potential = 0;
 
     for (node++; node != last; node++) {
@@ -289,7 +289,7 @@ static void findInitialSpanningTreeSolution(const raw_t* dbm, uint32_t dim, cons
  * Pre: leave should be on the path from arcs[enter].{i,j} to the root.
  */
 
-static void updatePotentials(Node* leave, double change)
+static void updatePotentials(Node* leave, int32_t change)
 {
     /* Update the entire subtree rooted at leave with a change
      * corresponding the reduced cost of the entering arc.  This is
@@ -480,7 +480,7 @@ static void updateFlowInCycle(Node* k, Node* l, Node* root, double flowToAugment
     if (flowToAugment > 0) {
         while (k != root) {
             k->flow += k->inbound ? flowToAugment : -flowToAugment;
-            ASSERT(k->flow >= 0, std::cerr << "flow(" << k << "): " << k->flow << std::endl);
+            ASSERT(k->flow + epsilon >= 0.0, std::cerr << "flow(" << k << "): " << k->flow << std::endl);
             k = k->pred;
         }
         while (l != root) {
@@ -495,9 +495,9 @@ static void updateFlowInCycle(Node* k, Node* l, Node* root, double flowToAugment
  * Update the spanning tree so the node information is updated
  * including flow and node potentials.
  */
-static void updateSpanningTree(Node* k, Node* l, Node* leave, Node* root, double costEnter)
+static void updateSpanningTree(Node* k, Node* l, Node* leave, Node* root, int32_t costEnter)
 {
-    double reducedCostEnter = costEnter - k->potential + l->potential;
+    int32_t reducedCostEnter = costEnter - k->potential + l->potential;
     double flowToAugment = leave->flow;
     updateFlowInCycle(k, l, root, flowToAugment);
     if (!isPredecessorOf(leave, k)) {
@@ -623,7 +623,7 @@ static Node* findLeavingArc(Node* k, Node* l, Node* root)
     while (l != root) {
         if (l->inbound)  // If inbound then opposite of (i,j)
         {
-            if (l->flow <= smallestFlow)  // <= since we need the last along (i,j)
+            if (l->flow <= smallestFlow + epsilon)  // <= since we need the last along (i,j)
             {
                 smallestFlow = l->flow;
                 smallestFlowNode = l;
@@ -648,13 +648,13 @@ static Node* findLeavingArc(Node* k, Node* l, Node* root)
 static void testAndRemoveArtificialArcs(const raw_t* dbm, const double* rates, Node* nodes, uint32_t dim)
 {
     for (uint32_t i = 1; i < dim; i++) {
-        if (potential(i) == dbm_INFINITY && pred(i) == 0 && flow(i) == 0) {
+        if (potential(i) == dbm_INFINITY && pred(i) == 0 && are_same(flow(i), 0)) {
             inbound(i) = true;
 
             Node* tmp = nodes[i].thread;
             double rateSum = b(i);
 
-            double minPotential = dbm_INFINITY + constraintValue(0, i);
+            int32_t minPotential = dbm_INFINITY + constraintValue(0, i);
 
             /*
              * Find the highest potential we can decrease i with and
@@ -666,7 +666,7 @@ static void testAndRemoveArtificialArcs(const raw_t* dbm, const double* rates, N
                     minPotential = tmp->potential;
                 tmp = tmp->thread;
             }
-            assert(rateSum == 0);
+            assert(are_same(rateSum, 0));
 
             /*
              * Update all potentials in the thread by subtracting
@@ -783,8 +783,8 @@ double pdbm_infimum(const raw_t* dbm, uint32_t dim, double offsetCost, const dou
          * Check if best solution has positive flow on artificial arc
          * if so, return minus infinity as the solution is unbounded.
          */
-        if (potential(i) == dbm_INFINITY && pred(i) == 0 && flow(i) > 0) {
-            return -dbm_INFINITY;
+        if (potential(i) == dbm_INFINITY && pred(i) == 0 && flow(i) + epsilon > 0.0) {
+            return -std::numeric_limits<double>::infinity();
         }
         solution += rates[i] * (potential(i) + constraintValue(0, i));
     }
@@ -815,7 +815,7 @@ void pdbm_infimum(const raw_t* dbm, uint32_t dim, double offsetCost, const doubl
              * if so, infimum is not well defined as it is minus infinity
              * and we throw an exception.
              */
-            if (potential(i) == dbm_INFINITY && pred(i) == 0 && flow(i) > 0) {
+            if (potential(i) == dbm_INFINITY && pred(i) == 0 && flow(i) + epsilon > 0.0) {
                 throw std::domain_error("Infimum is downward unbound, thus, no well-defined infimum valuation.");
             }
 
@@ -823,3 +823,6 @@ void pdbm_infimum(const raw_t* dbm, uint32_t dim, double offsetCost, const doubl
         }
     }
 }
+
+
+bool are_same(double a, double b) { return std::abs(a - b) < epsilon; }
