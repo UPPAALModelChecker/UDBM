@@ -51,7 +51,7 @@ struct PDBM_s
 #define pdbm_count(pdbm) ((pdbm)->count)
 
 /** Constant to mark the cached infimum as void. */
-#define INVALID std::numeric_limits<CostType>::infinity()
+#define INVALID INFINITE_COST
 
 #ifndef NDEBUG
 /**
@@ -946,7 +946,7 @@ void pdbm_incrementCost(PDBM& pdbm, cindex_t dim, CostType value)
 
     pdbm_prepare(pdbm, dim);
     pdbm_cost(pdbm) += value;
-    if (pdbm_cache(pdbm) != INVALID && pdbm_cache(pdbm) != -std::numeric_limits<CostType>::infinity()) {
+    if (pdbm_cache(pdbm) != INVALID && pdbm_cache(pdbm) != -INFINITE_COST) {
         pdbm_cache(pdbm) += value;
     }
 
