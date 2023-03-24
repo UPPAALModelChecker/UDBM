@@ -14,8 +14,10 @@
 #include "fed.h"
 
 #include "dbm/priced.h"
+#include "dbm/cost_type.h"
 
 #include <list>
+
 #include <stdexcept>
 
 
@@ -100,7 +102,11 @@ namespace dbm
         /**
          * Returns the cost of the offset point in the pdbm.
          */
-        [[nodiscard]] double getOffsetCost() const { return pdbm_getCostAtOffset(pdbm, dim); };
+        [[nodiscard]] CostType getOffsetCost() const { return pdbm_getCostAtOffset(pdbm, dim); };
+
+        [[nodiscard]] CostType getInfimum() const { return pdbm_getInfimum(pdbm, dim); };
+
+        [[nodiscard]] const CostType* getRates() const { return pdbm_getRates(pdbm, dim); };
 
         bool constrain(cindex_t i, cindex_t j, raw_t c);
 
@@ -463,7 +469,7 @@ namespace dbm
         bool constrain(const constraint_t& c);
 
         /** Returns the infimum of the federation. */
-        double getInfimum() const;
+        CostType getInfimum() const;
 
         /**
          * Check if the federation satisfies a given constraint.
@@ -513,7 +519,7 @@ namespace dbm
         pfed_t& up();
 
         /** Delay with rate \a rate. */
-        pfed_t& up(double rate);
+        pfed_t& up(CostType rate);
 
         /** Set x(clock) to \a value. */
         pfed_t& updateValue(cindex_t clock, uint32_t value);
@@ -528,9 +534,9 @@ namespace dbm
         void diagonalExtrapolateMaxBounds(int32_t* max);
         void diagonalExtrapolateLUBounds(int32_t* lower, int32_t* upper);
 
-        void incrementCost(double value);
+        void incrementCost(CostType value);
 
-        double getCostOfValuation(const IntValuation& valuation) const;
+        CostType getCostOfValuation(const IntValuation& valuation) const;
 
 
         void relax();
@@ -767,7 +773,7 @@ namespace dbm
          * Returns the infimum of the federation given a partial
          * valuation.
          */
-        double getInfimumValuation(IntValuation& valuation, const bool* free = nullptr) const;
+        CostType getInfimumValuation(IntValuation& valuation, const bool* free = nullptr) const;
 
         /** Returns the number of zones in the federation. */
         size_t size() const;

@@ -15,6 +15,7 @@
 #include "dbm/dbm.h"
 #include "dbm/mingraph.h"
 #include "base/inttypes.h"
+#include "dbm/cost_type.h"
 
 #include <iosfwd>
 #include <utility>
@@ -64,13 +65,6 @@
  * for the use by the library by calling \c pdbm_reserve(). Priced
  * DBMs allocated in this manner must not be reference counted.
  */
-
-#include <boost/rational.hpp>
-
-/**
- * The type used to represent cost in the pdbm
- */
-typedef boost::rational<int> CostType;
 
 /**
  * Data type for priced dbm.
@@ -286,7 +280,7 @@ relation_t pdbm_relationWithMinDBM(const PDBM pdbm, cindex_t dim, const mingraph
  * @param  dim  is the dimension of \a pdbm.
  * @return The infimum cost of \a pdbm.
  */
-double pdbm_getInfimum(const PDBM pdbm, cindex_t dim);
+CostType pdbm_getInfimum(const PDBM pdbm, cindex_t dim);
 
 /**
  * Generates a valuation which has the infimum cost of the priced DBM.
@@ -310,7 +304,7 @@ double pdbm_getInfimum(const PDBM pdbm, cindex_t dim);
  * @throw out_of_range if no valuation with the given constraints can
  * be found.
  */
-double pdbm_getInfimumValuation(const PDBM pdbm, cindex_t dim, int32_t* valuation, const bool* free);
+CostType pdbm_getInfimumValuation(const PDBM pdbm, cindex_t dim, int32_t* valuation, const bool* free);
 
 /**
  * Check if a priced DBM satisfies a given constraint.
@@ -406,7 +400,7 @@ void pdbm_up(PDBM& pdbm, cindex_t dim);
  *              reference clock.
  * @post  The priced DBM is closed.
  */
-void pdbm_upZero(PDBM& pdbm, cindex_t dim, double rate, cindex_t zero);
+void pdbm_upZero(PDBM& pdbm, cindex_t dim, CostType rate, cindex_t zero);
 
 /**
  * Updates \a clock to \a value. This is only legitimate if the
@@ -477,7 +471,7 @@ void pdbm_diagonalExtrapolateLUBounds(PDBM& pdbm, cindex_t dim, int32_t* lower, 
  * @post  The priced DBM is closed.
  * @pre   value >= 0
  */
-void pdbm_incrementCost(PDBM& pdbm, cindex_t dim, double value);
+void pdbm_incrementCost(PDBM& pdbm, cindex_t dim, CostType value);
 
 /**
  * Compute the closure of a priced DBM. This function is only relevant
@@ -590,7 +584,7 @@ bool pdbm_findNextZeroCycle(const PDBM pdbm, cindex_t dim, cindex_t x, cindex_t*
  * @param pdbm  is a closed priced DBM of dimension \a dim.
  * @param dim   is the dimension of \a pdbm.
  */
-double pdbm_getSlopeOfDelayTrajectory(const PDBM pdbm, cindex_t dim);
+CostType pdbm_getSlopeOfDelayTrajectory(const PDBM pdbm, cindex_t dim);
 
 /**
  * Returns the rate (coefficient of the hyperplane) of \a clock.
@@ -600,9 +594,9 @@ double pdbm_getSlopeOfDelayTrajectory(const PDBM pdbm, cindex_t dim);
  * @param  clock is the clock for which to return the coefficient.
  * @return the rate of \a clock.
  */
-double pdbm_getRate(const PDBM pdbm, cindex_t dim, cindex_t clock);
+CostType pdbm_getRate(const PDBM pdbm, cindex_t dim, cindex_t clock);
 
-const double* pdbm_getRates(const PDBM pdbm, cindex_t dim);
+const CostType* pdbm_getRates(const PDBM pdbm, cindex_t dim);
 
 /**
  * Returns the cost of the offset point.
@@ -610,7 +604,7 @@ const double* pdbm_getRates(const PDBM pdbm, cindex_t dim);
  * @param pdbm  is a closed priced DBM of dimension \a dim.
  * @param dim   is the dimension of \a pdbm.
  */
-double pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim);
+CostType pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim);
 
 /**
  * Sets the cost at the offset point.
@@ -624,7 +618,7 @@ double pdbm_getCostAtOffset(const PDBM pdbm, cindex_t dim);
  * @param dim   is the dimension of \a pdbm.
  * @param value is the new cost of the offset point.
  */
-void pdbm_setCostAtOffset(PDBM& pdbm, cindex_t dim, double value);
+void pdbm_setCostAtOffset(PDBM& pdbm, cindex_t dim, CostType value);
 
 /**
  * Returns true if the DBM is valid. Useful for debugging.
@@ -693,7 +687,7 @@ uint32_t pdbm_getUpperFacets(PDBM& pdbm, cindex_t dim, cindex_t* facets);
  * @pre    pdbm_containsInt(pdbm, dim, valuation)
  * @return The cost of \a valuation in \a pdbm.
  */
-double pdbm_getCostOfValuation(const PDBM pdbm, cindex_t dim, const int32_t* valuation);
+CostType pdbm_getCostOfValuation(const PDBM pdbm, cindex_t dim, const int32_t* valuation);
 
 /**
  * Makes all strong constraints of a priced DBM weak.
@@ -722,7 +716,7 @@ void pdbm_getOffset(const PDBM pdbm, cindex_t dim, int32_t* valuation);
  * @param clock is the index of a clock for which to set the coefficient.
  * @param rate  is the coefficient.
  */
-void pdbm_setRate(PDBM& pdbm, cindex_t dim, cindex_t clock, double rate);
+void pdbm_setRate(PDBM& pdbm, cindex_t dim, cindex_t clock, CostType rate);
 
 /**
  * Returns the inner matrix of a priced DBM. The matrix can be

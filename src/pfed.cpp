@@ -87,26 +87,27 @@ namespace dbm
         return !isEmpty();
     }
 
-    static double min(double a, double b) { return a < b ? a : b; }
+    static CostType min(CostType a, CostType b) { return a < b ? a : b; }
 
-    double pfed_t::getInfimum() const
+    CostType pfed_t::getInfimum() const
     {
-        /* The binary operator used in the following accumulation is
-         * lambda inf zone.min(inf, pdbm_getInfimum(zone, ptr->dim));
-         */
-        return accumulate(begin(), end(), DBL_MAX, bind(min, _1, bind(pdbm_getInfimum, _2, ptr->dim)));
+        CostType inf = INFINITE_COST;
+        for (const auto& zone : *this) {
+            inf = min(inf, pdbm_getInfimum(zone, ptr->dim));
+        }
+        return inf;
     }
 
-    double pfed_t::getInfimumValuation(IntValuation& valuation, const bool* free) const
+    CostType pfed_t::getInfimumValuation(IntValuation& valuation, const bool* free) const
     {
         uint32_t dim = ptr->dim;
-        double infimum = INT_MAX;
+        CostType infimum = INFINITE_COST;
         int32_t copy[dim];
 
         for_each_const(zone)
         {
             std::copy(valuation.begin(), valuation.end(), copy);
-            double inf = pdbm_getInfimumValuation(*zone, dim, copy, free);
+            CostType inf = pdbm_getInfimumValuation(*zone, dim, copy, free);
             if (inf < infimum) {
                 infimum = inf;
                 std::copy(copy, copy + dim, valuation.begin());
@@ -211,7 +212,7 @@ namespace dbm
         return *this;
     }
 
-    pfed_t& pfed_t::up(double rate)
+    pfed_t& pfed_t::up(CostType rate)
     {
         uint32_t dim = ptr->dim;
 
@@ -220,7 +221,7 @@ namespace dbm
         for_each__(zone)
         {
             cindex_t x;
-            double oldrate = pdbm_getSlopeOfDelayTrajectory(*zone, dim);
+            CostType oldrate = pdbm_getSlopeOfDelayTrajectory(*zone, dim);
 
 //            pdbm_print(std::cout, zone->operator PDBM(), dim);
 
@@ -282,7 +283,7 @@ namespace dbm
         for_each__(zone)
         {
             cindex_t k;
-            double rate = pdbm_getRate(*zone, dim, clock);
+            CostType rate = pdbm_getRate(*zone, dim, clock);
 
             if (rate == 0) {
                 pdbm_updateValue(*zone, dim, clock, value);
@@ -336,18 +337,14 @@ namespace dbm
         for_each(beginMutable(), endMutable(), bind(pdbm_diagonalExtrapolateLUBounds, _1, ptr->dim, lower, upper));
     }
 
-    void pfed_t::incrementCost(double value)
+    void pfed_t::incrementCost(CostType value)
     {
         for_each(beginMutable(), endMutable(), bind(pdbm_incrementCost, _1, ptr->dim, value));
     }
 
-    double pfed_t::getCostOfValuation(const IntValuation& valuation) const
+    CostType pfed_t::getCostOfValuation(const IntValuation& valuation) const
     {
-        /* The binary operator used in the following accumulation is
-         * lambda x y . min(x, pdbm_getCostOfValuation(y, dim, val))
-         */
-        return accumulate(begin(), end(), DBL_MAX,
-                          bind(min, _1, bind(pdbm_getCostOfValuation, _2, ptr->dim, valuation())));
+        throw std::logic_error("pfed_t::getCostOfValuation not implemented");
     }
 
     void pfed_t::relax() { for_each(beginMutable(), endMutable(), bind(pdbm_relax, _1, ptr->dim)); }

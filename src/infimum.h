@@ -13,11 +13,10 @@
 #include "dbm/constraints.h"
 
 #include <cmath>
+#include "dbm/cost_type.h"
 
-const double epsilon = 0.000001;
-bool are_same(double a, double b);
 
-double pdbm_infimum(const raw_t* dbm, uint32_t dim, double offsetCost, const double* rates);
-void pdbm_infimum(const raw_t* dbm, uint32_t dim, double offsetCost, const double* rates, int32_t* valuation);
+CostType pdbm_infimum(const raw_t* dbm, uint32_t dim, CostType offsetCost, const CostType* rates);
+void pdbm_infimum(const raw_t* dbm, uint32_t dim, CostType offsetCost, const CostType* rates, int32_t* valuation);
 
 #endif
