@@ -165,6 +165,9 @@ namespace dbm
         /** @see dbm_t::readFromMinDBM() */
         static pdbm_t readFromMinDBM(cindex_t dimension, const int32_t*);
 
+        /** Sets the offset to <cost> and all rates to 0 */
+        void setUniformCost(CostType cost);
+
 
         /// @return string representation of the
         /// constraints of this PDBM. A clock
@@ -470,6 +473,9 @@ namespace dbm
 
         /** Returns the infimum of the federation. */
         CostType getInfimum() const;
+
+        /** Sets the offset to <cost> and all rates to 0 */
+        void setUniformCost(CostType cost);
 
         /**
          * Check if the federation satisfies a given constraint.

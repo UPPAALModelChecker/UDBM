@@ -98,6 +98,12 @@ namespace dbm
         return inf;
     }
 
+    void pfed_t::setUniformCost(CostType cost) {
+        for (auto it = beginMutable(); it != endMutable(); ++it) {
+            it->setUniformCost(cost);
+        }
+    }
+
     CostType pfed_t::getInfimumValuation(IntValuation& valuation, const bool* free) const
     {
         uint32_t dim = ptr->dim;
@@ -583,6 +589,13 @@ namespace dbm
             return pdbm_constrain1(pdbm, dim, i, j, c);
         }
         return false;
+    }
+
+    void pdbm_t::setUniformCost(CostType cost) {
+        pdbm_setCostAtOffset(pdbm, dim, cost);
+        for (cindex_t x = 1; x < dim; ++x) {
+            pdbm_setRate(pdbm, dim, x, 0);
+        }
     }
 
     bool pdbm_t::isEmpty() const {
