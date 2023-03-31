@@ -106,7 +106,11 @@ namespace dbm
 
         [[nodiscard]] CostType getInfimum() const { return pdbm_getInfimum(pdbm, dim); };
 
+        [[nodiscard]] CostType getSupremum() const { return pdbm_getSupremum(pdbm, dim); };
+
         [[nodiscard]] const CostType* getRates() const { return pdbm_getRates(pdbm, dim); };
+
+        [[nodiscard]] bool canDelay() const;
 
         bool constrain(cindex_t i, cindex_t j, raw_t c);
 
@@ -473,6 +477,12 @@ namespace dbm
 
         /** Returns the infimum of the federation. */
         CostType getInfimum() const;
+
+        /** Returns the supremum of the federation */
+        CostType getSupremum() const;
+
+
+        bool canDelay() const;
 
         /** Sets the offset to <cost> and all rates to 0 */
         void setUniformCost(CostType cost);

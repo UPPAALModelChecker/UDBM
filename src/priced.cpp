@@ -639,6 +639,26 @@ CostType pdbm_getInfimum(const PDBM pdbm, cindex_t dim)
     return cache;
 }
 
+CostType pdbm_getSupremum(const PDBM pdbm, cindex_t dim)
+{
+    assert(pdbm && dim);
+    assert(dbm_isValid(pdbm_matrix(pdbm), dim));
+
+    // Supremum is infimum of zone where rates are inversed
+    CostType inv_rates[dim];
+    std::transform(pdbm_rates(pdbm), pdbm_rates(pdbm) + dim, inv_rates, [](CostType c){ return -c; });
+    return -pdbm_infimum(pdbm_matrix(pdbm), dim, -pdbm_cost(pdbm), inv_rates);
+}
+
+void pdbm_setUniformCost(PDBM pdbm, cindex_t dim, CostType cost) {
+    pdbm_setCostAtOffset(pdbm, dim, cost);
+    for (cindex_t x = 1; x < dim; ++x) {
+        pdbm_setRate(pdbm, dim, x, 0);
+    }
+    pdbm_cache(pdbm) = cost;
+}
+
+
 CostType pdbm_getInfimumValuation(const PDBM pdbm, cindex_t dim, int32_t* valuation, const bool* free)
 {
     assert(pdbm && dim && valuation);

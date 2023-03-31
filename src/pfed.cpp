@@ -88,6 +88,7 @@ namespace dbm
     }
 
     static CostType min(CostType a, CostType b) { return a < b ? a : b; }
+    static CostType max(CostType a, CostType b) { return a > b ? a : b; }
 
     CostType pfed_t::getInfimum() const
     {
@@ -96,6 +97,25 @@ namespace dbm
             inf = min(inf, pdbm_getInfimum(zone, ptr->dim));
         }
         return inf;
+    }
+
+    CostType pfed_t::getSupremum() const
+    {
+        CostType sup = -INFINITE_COST;
+        for (const auto& zone : *this) {
+            sup = max(sup, pdbm_getSupremum(zone, ptr->dim));
+        }
+        return sup;
+    }
+
+
+    bool pfed_t::canDelay() const {
+        for (const auto& zone : *this) {
+            if (zone.canDelay()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void pfed_t::setUniformCost(CostType cost) {
@@ -592,9 +612,8 @@ namespace dbm
     }
 
     void pdbm_t::setUniformCost(CostType cost) {
-        pdbm_setCostAtOffset(pdbm, dim, cost);
-        for (cindex_t x = 1; x < dim; ++x) {
-            pdbm_setRate(pdbm, dim, x, 0);
+        if (!isEmpty()) {
+            pdbm_setUniformCost(pdbm, dim, cost);
         }
     }
 
@@ -704,5 +723,22 @@ namespace dbm
     }
 
     cindex_t pdbm_t::pdim() const { return dim; }
+
+
+#define DBM_IJ(DBM, I, J) DBM[(I)*dim + (J)]
+#define DBM(I, J)         DBM_IJ(dbm, I, J)
+
+    bool pdbm_t::canDelay() const {
+        if (isEmpty())
+            return false;
+        const raw_t* dbm = const_dbm();
+        cindex_t dim = pdim();
+        for (cindex_t i = 1; i < dim; ++i) {
+            if (dbm_rawIsWeak(DBM(i, 0)) && dbm_rawIsWeak(DBM(0, i)) && DBM(i, 0) == dbm_weakNegRaw(DBM(0, i))) {
+                return false;
+            }
+        }
+        return true;
+    }
 }  // namespace dbm
 

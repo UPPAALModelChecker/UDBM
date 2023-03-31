@@ -283,6 +283,16 @@ relation_t pdbm_relationWithMinDBM(const PDBM pdbm, cindex_t dim, const mingraph
 CostType pdbm_getInfimum(const PDBM pdbm, cindex_t dim);
 
 /**
+ * Computes the supremum cost of the priced DBM.
+ * This does not cache the result and it is recomputed every time!
+ *
+ * @param  pdbm is a closed priced DBM of dimension \a dim
+ * @param  dim  is the dimension of \a pdbm.
+ * @return The supremum cost of \a pdbm.
+ */
+CostType pdbm_getSupremum(const PDBM pdbm, cindex_t dim);
+
+/**
  * Generates a valuation which has the infimum cost of the priced DBM.
  *
  * There is no guarantee that the valuation will be contained in the
@@ -334,6 +344,16 @@ bool pdbm_isEmpty(const PDBM pdbm, cindex_t dim);
  * @return true if unbounded, false otherwise.
  */
 bool pdbm_isUnbounded(const PDBM pdbm, cindex_t dim);
+
+
+/**
+ * Sets the cost of a priced zone to be uniform
+ *
+ * @param pdbm is a priced DBM of \a dim
+ * @param dim is the dimension of \a pdbm
+ * @param is the cost to set
+ */
+void pdbm_setUniformCost(PDBM pdbm, cindex_t dim, CostType cost);
 
 /**
  * Compute a hash value for a priced DBM.
