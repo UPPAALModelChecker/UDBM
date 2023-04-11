@@ -21,7 +21,7 @@ find_package(UUtils 1.1.1 REQUIRED COMPONENTS base hash debug)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs)
 
-add_library(UDBM src/DBMAllocator.cpp src/dbm.c src/fed_dbm.cpp src/mingraph.c src/mingraph_read.c src/partition.cpp src/print.cpp src/gen.c src/mingraph_cache.cpp src/mingraph_relation.c src/pfed.cpp src/fed.cpp src/infimum.cpp src/mingraph_equal.c src/mingraph_write.c src/priced.cpp)
+add_library(UDBM src/DBMAllocator.cpp src/dbm.c src/fed_dbm.cpp src/mingraph.c src/mingraph_read.c src/partition.cpp src/print.cpp src/gen.c src/mingraph_cache.cpp src/mingraph_relation.c src/pfed.cpp src/fed.cpp src/infimum.cpp src/mingraph_equal.c src/mingraph_write.c src/priced.cpp src/cost_type.cpp)
 target_link_libraries(UDBM UUtils::base UUtils::udebug UUtils::hash)
 
 if(STATIC)
@@ -30,8 +30,8 @@ if(STATIC)
 endif(STATIC)
 
 
-#set(CMAKE_BUILD_TYPE Release)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 
 target_include_directories(UDBM

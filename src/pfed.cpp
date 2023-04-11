@@ -740,5 +740,14 @@ namespace dbm
         }
         return true;
     }
+    relation_t pdbm_t::relation(const pdbm_t& other) const {
+        assert(dim == other.dim);
+        return pdbm_relation(pdbm, other.pdbm, dim);
+    }
+
+    relation_t pdbm_t::strict_relation(const pdbm_t& other) const {
+        assert(dim == other.dim);
+        return pdbm_relation_strict(pdbm, other.pdbm, dim);
+    }
 }  // namespace dbm
 

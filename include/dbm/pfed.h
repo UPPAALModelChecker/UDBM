@@ -151,6 +151,22 @@ namespace dbm
         /** @see pdbm_relationWithMinDBM() */
         relation_t relation(const int32_t*, raw_t*) const;
 
+
+        /*
+         * Same as relation
+         */
+        [[nodiscard]] relation_t relation(const pdbm_t& other) const;
+
+        /*
+         * Strict relation, requires cost to be stricly cheaper. Warning return relation may not be as expected.
+         * Returns
+         * (Z,c) ⊃ (Z',c') iff (Z ⊇ Z' ∧ c < c')                        // (Z,c) strictly dominates (Z',c')
+         * (Z,c) ⊂ (Z',c') iff (Z ⊆ Z' ∧ c > c') ∨ (Z ⊂ Z' ∧ c ≥ c')    // (Z',c') weakly dominates (Z,c)
+         * (Z,c) = (Z',c') iff Z = Z' ∧ c = c'                          // (Z,c) = (Z',c')
+         */
+        [[nodiscard]] relation_t strict_relation(const pdbm_t& other) const;
+
+
         /*
          * Compares the cost of this pdbm with the cost of the other pdbm, where their zones are identical.
          * Returns a pair of the relation between the two costs and a strictness.

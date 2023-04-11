@@ -246,6 +246,8 @@ bool pdbm_constrainToFacet(PDBM& pdbm, cindex_t dim, cindex_t i, cindex_t j);
  */
 relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim);
 
+relation_t pdbm_relation_strict(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim);
+
 /*
  * Compares the costs of two identical DBMs.
  * If the zones are not identical, it returns {base_DIFFERENT, false}

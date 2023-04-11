@@ -344,6 +344,36 @@ inline static bool leq(const CostType* first, const CostType* last, const CostTy
 }
 
 /**
+ * Given two planes, returns true if the slope of the first is strictly less
+ * than to the slope of the other.
+ *
+ * @param first is a pointer to the first coefficient of the first plane.
+ * @param last  is a pointer to the last coefficient of the first plane.
+ * @param rate  is a pointer to the first coefficient of the second plane.
+ */
+inline static bool le(const CostType* first, const CostType* last, const CostType* rate)
+{
+    assert(first && last && rate);
+
+    return std::equal(first, last, rate, std::less<>());
+}
+
+/**
+ * Given two planes, returns true if the slope of the first is equal to
+ * the slope of the other.
+ *
+ * @param first is a pointer to the first coefficient of the first plane.
+ * @param last  is a pointer to the last coefficient of the first plane.
+ * @param rate  is a pointer to the first coefficient of the second plane.
+ */
+inline static bool eq(const CostType* first, const CostType* last, const CostType* rate)
+{
+    assert(first && last && rate);
+
+    return std::equal(first, last, rate, std::equal_to<>());
+}
+
+/**
  * Given two planes, returns true if the slope of the first is less
  * than to the slope of the other.
  *
@@ -422,6 +452,12 @@ std::pair<relation_t, bool> pdbm_compare_cost_identical_pdbms(const PDBM pdbm1, 
     return {base_DIFFERENT, false};
 }
 
+/*
+ * Returns
+ * (Z,c) ⊃ (Z',c') iff (Z ⊃ Z' ∧ c ≤ c') ∨ (Z = Z' ∧ c ≤ c')
+ * (Z,c) ⊂ (Z',c') iff (Z ⊂ Z' ∧ c ≥ c') ∨ (Z = Z' ∧ c ≥ c')
+ * (Z,c) = (Z',c') iff Z = Z' ∧ c = c'
+ */
 relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)
 {
     assert(pdbm1 && pdbm2 && dim);
@@ -506,6 +542,92 @@ relation_t pdbm_relation(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)
         }
         if (c >= 0) {
             return base_SUPERSET;
+        }
+        if (d >= 0) {
+            return base_SUBSET;
+        }
+        return base_DIFFERENT;
+
+    default: return base_DIFFERENT;
+    }
+}
+
+/*
+ * Returns
+ * (Z,c) ⊃ (Z',c') iff (Z ⊇ Z' ∧ c < c')                        // (Z,c) strictly dominates (Z',c')
+ * (Z,c) ⊂ (Z',c') iff (Z ⊆ Z' ∧ c > c') ∨ (Z ⊂ Z' ∧ c ≥ c')    // (Z',c') weakly dominates (Z,c)
+ * (Z,c) = (Z',c') iff Z = Z' ∧ c = c'                          // (Z,c) = (Z',c')
+ */
+relation_t pdbm_relation_strict(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim)
+{
+    assert(pdbm1 && pdbm2 && dim);
+
+    raw_t* dbm1 = pdbm_matrix(pdbm1);
+    raw_t* dbm2 = pdbm_matrix(pdbm2);
+    CostType* rates1 = pdbm_rates(pdbm1);
+    CostType* rates2 = pdbm_rates(pdbm2);
+    CostType cost1 = pdbm_cost(pdbm1);
+    CostType cost2 = pdbm_cost(pdbm2);
+
+    bool a, b;
+    CostType c, d;
+
+    switch (dbm_relation(dbm1, dbm2, dim)) {
+    case base_SUPERSET:
+        // pdbm2 is smaller. Check whether it is also strictly more expensive:
+        cost1 = costAtOtherOffset(dbm1, rates1, cost1, dbm2, dim);
+        if (cost1 < cost2 &&
+            (le(rates1, rates1 + dim, rates2) || infOfDiff(dbm2, dim, cost2, rates2, cost1, rates1) > 0)) {
+            return base_SUPERSET;
+        } else {
+            return base_DIFFERENT;
+        }
+
+    case base_SUBSET:
+        // pdbm2 is bigger. Check whether it is also weakly less expensive:
+        cost2 = costAtOtherOffset(dbm2, rates2, cost2, dbm1, dim);
+        if (cost2 <= cost1 &&
+            (leq(rates2, rates2 + dim, rates1) || infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2) >= 0)) {
+            return base_SUBSET;
+        } else {
+            return base_DIFFERENT;
+        }
+
+    case base_EQUAL:
+        /* Both have the same size. We need to compare the planes to
+         * see which one is cheaper.
+         */
+
+        /* Do sound and cheap comparison first.
+         */
+        if (cost1 == cost2 && eq(rates1, rates1 + dim, rates2)) {
+            return base_EQUAL;
+        } else if (cost1 < cost2 && le(rates1, rates1 + dim, rates2)) {
+            return base_SUPERSET;
+        } else if (cost2 <= cost1 && leq(rates2, rates2 + dim, rates1)) {
+            return base_SUBSET;
+        }
+
+        /* The planes are incomparable, so we need to do the
+         * subtraction. Notice that priced zones are not canonical,
+         * so the two zones can in fact be equal even though the rates
+         * are different.  Therefore we must also check for the
+         * situation where both infima are zero.
+         *
+         * Notice that dbm1 equals dbm2, hence we do not need to
+         * unpack dbm2.
+         */
+        c = infOfDiff(dbm1, dim, cost2, rates2, cost1, rates1);
+        if (c > 0) {
+            /* Early return to avoid unnecessary computation of the
+             * second subtraction.
+             */
+            return base_SUPERSET;
+        }
+
+        d = infOfDiff(dbm1, dim, cost1, rates1, cost2, rates2);
+        if (c == 0 && d == 0) {
+            return base_EQUAL;
         }
         if (d >= 0) {
             return base_SUBSET;
@@ -723,7 +845,12 @@ bool pdbm_isUnbounded(const PDBM pdbm, cindex_t dim)
 uint32_t pdbm_hash(const PDBM pdbm, cindex_t dim, uint32_t seed)
 {
     assert(pdbm && dim && !(pdbm_size(dim) & 3));
-    return hash_computeI32((int32_t*)pdbm, pdbm_size(dim) >> 2, seed);
+    uint32_t hash = seed ^ dbm_hash(pdbm_matrix(pdbm), dim);
+    hash ^= hash_cost_type(pdbm_cost(pdbm));
+    for (cindex_t i = 1; i < dim; ++i) {
+        hash ^= (hash ^ hash_cost_type(pdbm_rates(pdbm)[i])) << 4;
+    }
+    return hash;
 }
 
 static bool isPointIncludedWeakly(const int32_t* pt, const raw_t* dbm, cindex_t dim)
