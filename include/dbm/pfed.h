@@ -24,6 +24,28 @@
 
 namespace dbm
 {
+
+    struct CostPlaneOperation
+    {
+        enum Type {
+            Delay, // delay from a facet of clock i with rate value
+            DiscreteOffset, // increase offset by value
+            ContinuousOffset, // increase offset by value * rate(i)
+            RelativeReset, // reset clock i on a facet relative to clock j
+        };
+        Type type{};
+        cindex_t clock_i;
+        union {
+            cindex_t clock_j;
+            CostType value;
+        };
+        CostPlaneOperation(Type type, cindex_t clock_i, cindex_t clock_j)
+                : type(type), clock_i(clock_i), clock_j(clock_j) {}
+
+        CostPlaneOperation(Type type, cindex_t clock_i, CostType value)
+                : type(type), clock_i(clock_i), value(value) {}
+    };
+
     class pdbm_t;
 
     /**
@@ -48,8 +70,10 @@ namespace dbm
     protected:
         PDBM pdbm;
         cindex_t dim;
-
     public:
+
+        std::vector<CostPlaneOperation> cost_plane_operations;
+
         /**
          * The default constructor constructs an empty priced DBM of
          * dimension zero.  This must not be assigned to another
@@ -211,7 +235,7 @@ namespace dbm
 
     inline pdbm_t::pdbm_t(PDBM pdbm, cindex_t dim): pdbm(pdbm), dim(dim) { pdbm_incRef(pdbm); }
 
-    inline pdbm_t::pdbm_t(const pdbm_t& other): pdbm(other.pdbm), dim(other.dim) { pdbm_incRef(pdbm); }
+    inline pdbm_t::pdbm_t(const pdbm_t& other): pdbm(other.pdbm), dim(other.dim), cost_plane_operations(other.cost_plane_operations) { pdbm_incRef(pdbm); }
 
     inline pdbm_t::~pdbm_t() { pdbm_decRef(pdbm); }
 
@@ -754,6 +778,10 @@ namespace dbm
 
         /// Not implemented
         bool eq(const pfed_t& arg) const;
+
+        void clear_cost_plane_operations() {
+            std::for_each(ptr->zones.begin(), ptr->zones.end(), [](pdbm_t& z) { z.cost_plane_operations.clear(); });
+        }
 
 
         /*

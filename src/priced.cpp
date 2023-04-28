@@ -577,7 +577,7 @@ relation_t pdbm_relation_strict(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim
         // pdbm2 is smaller. Check whether it is also strictly more expensive:
         cost1 = costAtOtherOffset(dbm1, rates1, cost1, dbm2, dim);
         if (cost1 < cost2 &&
-            (le(rates1, rates1 + dim, rates2) || infOfDiff(dbm2, dim, cost2, rates2, cost1, rates1) > 0)) {
+            (leq(rates1, rates1 + dim, rates2) || infOfDiff(dbm2, dim, cost2, rates2, cost1, rates1) > 0)) {
             return base_SUPERSET;
         } else {
             return base_DIFFERENT;
@@ -602,7 +602,7 @@ relation_t pdbm_relation_strict(const PDBM pdbm1, const PDBM pdbm2, cindex_t dim
          */
         if (cost1 == cost2 && eq(rates1, rates1 + dim, rates2)) {
             return base_EQUAL;
-        } else if (cost1 < cost2 && le(rates1, rates1 + dim, rates2)) {
+        } else if (cost1 < cost2 && leq(rates1, rates1 + dim, rates2)) {
             return base_SUPERSET;
         } else if (cost2 <= cost1 && leq(rates2, rates2 + dim, rates1)) {
             return base_SUBSET;
