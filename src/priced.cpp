@@ -146,6 +146,7 @@ PDBM pdbm_reserve(cindex_t dim, void* p)
     pdbm_count(pdbm) = 0;
     pdbm_cache(pdbm) = INVALID;
     pdbm_rates(pdbm) = (CostType*)malloc(sizeof(CostType) * dim);
+    pdbm_cost(pdbm) = 0;
     std::fill(pdbm_rates(pdbm), pdbm_rates(pdbm) + dim, 0);
 
     return pdbm;
@@ -772,7 +773,7 @@ CostType pdbm_getSupremum(const PDBM pdbm, cindex_t dim)
     return -pdbm_infimum(pdbm_matrix(pdbm), dim, -pdbm_cost(pdbm), inv_rates);
 }
 
-void pdbm_setUniformCost(PDBM pdbm, cindex_t dim, CostType cost) {
+void pdbm_setUniformCost(PDBM& pdbm, cindex_t dim, CostType cost) {
     pdbm_setCostAtOffset(pdbm, dim, cost);
     for (cindex_t x = 1; x < dim; ++x) {
         pdbm_setRate(pdbm, dim, x, 0);
@@ -1591,4 +1592,36 @@ PDBM pdbm_from_dbm(const int32_t* dbm, cindex_t dim) {
     PDBM pdbm = pdbm_allocate(dim);
     memcpy(pdbm->data, dbm, dim * dim * sizeof(int32_t));
     return pdbm;
+}
+
+void pdbm_intersect(PDBM& dst, const PDBM& src, cindex_t dim) {
+    assert(dst && src && dim > 0);
+    pdbm_prepare(dst, dim);
+
+    /* Compute the cost at the origin.
+     */
+    CostType cost = pdbm_cost(dst);
+    CostType* rates = pdbm_rates(dst);
+    raw_t* dbm = pdbm_matrix(dst);
+    for (uint32_t k = 1; k < dim; k++) {
+        cost += rates[k] * dbm_raw2bound(DBM(0, k));
+    }
+
+    if (!dbm_intersection(dbm, pdbm_matrix(src), dim)) {
+        // If there was no intersection, dst becomes empty.
+        pdbm_decRef(dst);
+        dst = nullptr;
+    } else {
+        // Compute the cost at the new offset point and invalidate the cache.
+        for (uint32_t k = 1; k < dim; k++) {
+            cost -= rates[k] * dbm_raw2bound(DBM(0, k));
+        }
+        pdbm_cost(dst) = cost;
+        pdbm_cache(dst) = INVALID;
+
+        assertx(pdbm_isValid(dst, dim));
+
+        pdbm_cache(dst) = INVALID;
+    }
+
 }

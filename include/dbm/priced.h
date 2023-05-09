@@ -355,7 +355,7 @@ bool pdbm_isUnbounded(const PDBM pdbm, cindex_t dim);
  * @param dim is the dimension of \a pdbm
  * @param is the cost to set
  */
-void pdbm_setUniformCost(PDBM pdbm, cindex_t dim, CostType cost);
+void pdbm_setUniformCost(PDBM& pdbm, cindex_t dim, CostType cost);
 
 /**
  * Compute a hash value for a priced DBM.
@@ -824,6 +824,11 @@ bool pdbm_hasNormalForm(PDBM pdbm, cindex_t dim);
 void pdbm_normalise(PDBM pdbm, cindex_t dim);
 
 PDBM pdbm_from_dbm(const int32_t* dbm, cindex_t dim);
+
+/**
+ * Calculates the intersection of dst and src and saves it in dst using the cost plane of dst and ignoring the cost plane of src.
+ */
+void pdbm_intersect(PDBM& dst, const PDBM& src, cindex_t dim);
 
 ///////////////////////////////////////////////////////////////////////////
 

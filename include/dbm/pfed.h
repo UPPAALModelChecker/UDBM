@@ -29,6 +29,7 @@ namespace dbm
     {
         enum Type {
             Delay, // delay from a facet of clock i with rate value
+            DelayKeep, // delay but keeping the rates of previous zone, value is delay that was overwritten
             DiscreteOffset, // increase offset by value
             ContinuousOffset, // increase offset by value * rate(i)
             RelativeReset, // reset clock i on a facet relative to clock j
@@ -134,6 +135,12 @@ namespace dbm
 
         [[nodiscard]] const CostType* getRates() const { return pdbm_getRates(pdbm, dim); };
 
+        void setRates(CostType* rates) {
+            for (cindex_t x = 1; x < dim; x++) {
+                pdbm_setRate(pdbm, dim, x, rates[x]);
+            }
+        };
+
         [[nodiscard]] bool canDelay() const;
 
         bool constrain(cindex_t i, cindex_t j, raw_t c);
@@ -211,6 +218,9 @@ namespace dbm
 
         /** Sets the offset to <cost> and all rates to 0 */
         void setUniformCost(CostType cost);
+
+
+        pdbm_t& operator&=(const dbm::pdbm_t& other);
 
 
         /// @return string representation of the
@@ -296,6 +306,7 @@ namespace dbm
         pdbm_freeClock(pdbm, dim, clock);
         return *this;
     }
+
 
     /**
      * Implementation of priced federations.

@@ -94,7 +94,7 @@ namespace dbm
             pdbm_getOffset(*it, ptr->dim, new_offset);
             for (int x = 1; x < ptr->dim; x++) {
                 if (prev_offset[x] != new_offset[x]) {
-                    it->cost_plane_operations.emplace_back(CostPlaneOperation::Type::ContinuousOffset, x, new_offset[x] - prev_offset[x]);
+                    it->cost_plane_operations.emplace_back(CostPlaneOperation::Type::ContinuousOffset, x, CostType(new_offset[x] - prev_offset[x]));
                 }
             }
             it++;
@@ -121,7 +121,7 @@ namespace dbm
             pdbm_getOffset(*it, ptr->dim, new_offset);
             for (int x = 1; x < ptr->dim; x++) {
                 if (prev_offset[x] != new_offset[x]) {
-                    it->cost_plane_operations.emplace_back(CostPlaneOperation::Type::ContinuousOffset, x, new_offset[x] - prev_offset[x]);
+                    it->cost_plane_operations.emplace_back(CostPlaneOperation::Type::ContinuousOffset, x, CostType(new_offset[x] - prev_offset[x]));
                 }
             }
             it++;
@@ -313,11 +313,11 @@ namespace dbm
                     ptr->zones.push_front(*zone);
                     pdbm_constrainToFacet(ptr->zones.front(), dim, 0, facets[j]);
                     pdbm_upZero(ptr->zones.front(), dim, rate, facets[j]);
-                    zone->cost_plane_operations.emplace_back(CostPlaneOperation::Delay, x, rate);
+                    ptr->zones.front().cost_plane_operations.emplace_back(CostPlaneOperation::Delay, facets[j], rate);
                 }
                 pdbm_constrainToFacet(*zone, dim, 0, facets[count - 1]);
                 pdbm_upZero(*zone, dim, rate, facets[count - 1]);
-                zone->cost_plane_operations.emplace_back(CostPlaneOperation::Delay, x, rate);
+                zone->cost_plane_operations.emplace_back(CostPlaneOperation::Delay, facets[count - 1], rate);
             } else {
                 assert(rate > oldrate);
 
@@ -331,8 +331,9 @@ namespace dbm
                     ptr->zones.push_front(*zone);
                     pdbm_constrainToFacet(ptr->zones.front(), dim, facets[j], 0);
                     pdbm_upZero(ptr->zones.front(), dim, rate, facets[j]);
-                    zone->cost_plane_operations.emplace_back(CostPlaneOperation::Delay, x, rate);
+                    ptr->zones.front().cost_plane_operations.emplace_back(CostPlaneOperation::Delay, facets[j], rate);
                 }
+                zone->cost_plane_operations.emplace_back(CostPlaneOperation::DelayKeep, 0, rate);
 //                pdbm_constrainToFacet(*zone, dim, facets[count - 1], 0);
 //                pdbm_upZero(*zone, dim, rate, facets[count - 1]);
             }
@@ -811,6 +812,16 @@ namespace dbm
     relation_t pdbm_t::strict_relation(const pdbm_t& other) const {
         assert(dim == other.dim);
         return pdbm_relation_strict(pdbm, other.pdbm, dim);
+    }
+
+    pdbm_t& pdbm_t::operator&=(const dbm::pdbm_t& arg) {
+        assert(getDimension() == arg.getDimension());
+        if (arg.isEmpty()) {
+            pdbm_decRef(pdbm);
+            pdbm = nullptr;
+        } else if (!isEmpty()) {
+            pdbm_intersect(pdbm, arg.pdbm, dim);
+        }
     }
 }  // namespace dbm
 
