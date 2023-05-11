@@ -460,6 +460,7 @@ namespace dbm
         PDBM pdbm = nullptr;
         pdbm_zero(pdbm, ptr->dim);
         *this = pfed_t(pdbm, ptr->dim);
+        pdbm_decRef(pdbm); // We do not reference this, the pdbm_t does now.
     }
 
     void pfed_t::setInit()
@@ -467,6 +468,7 @@ namespace dbm
         PDBM pdbm = nullptr;
         pdbm_init(pdbm, ptr->dim);
         *this = pfed_t(pdbm, ptr->dim);
+        pdbm_decRef(pdbm); // We do not reference this, the pdbm_t does now.
     }
 
     void pfed_t::nil()

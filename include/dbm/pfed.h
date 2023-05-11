@@ -247,7 +247,7 @@ namespace dbm
 
     inline pdbm_t::pdbm_t(const pdbm_t& other): pdbm(other.pdbm), dim(other.dim), cost_plane_operations(other.cost_plane_operations) { pdbm_incRef(pdbm); }
 
-    inline pdbm_t::~pdbm_t() { pdbm_decRef(pdbm); }
+        inline pdbm_t::~pdbm_t() { pdbm_decRef(pdbm); }
 
     inline pdbm_t& pdbm_t::operator=(const pdbm_t& other)
     {

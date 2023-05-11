@@ -179,6 +179,8 @@ PDBM pdbm_copy(PDBM dst, const PDBM src, cindex_t dim)
         dst = pdbm_allocate(dim);
     }
 
+    free(dst->rates); // We overwrite the rates pointer in the memcpy below, so make sure to free it first.
+
     memcpy(dst, src, pdbm_size(dim));
     dst->rates = (CostType*)malloc(sizeof(CostType) * dim);
     std::copy(src->rates, src->rates + dim, dst->rates);
@@ -774,6 +776,7 @@ CostType pdbm_getSupremum(const PDBM pdbm, cindex_t dim)
 }
 
 void pdbm_setUniformCost(PDBM& pdbm, cindex_t dim, CostType cost) {
+    pdbm_prepare(pdbm, dim);
     pdbm_setCostAtOffset(pdbm, dim, cost);
     for (cindex_t x = 1; x < dim; ++x) {
         pdbm_setRate(pdbm, dim, x, 0);
@@ -1596,7 +1599,6 @@ PDBM pdbm_from_dbm(const int32_t* dbm, cindex_t dim) {
 
 void pdbm_intersect(PDBM& dst, const PDBM& src, cindex_t dim) {
     assert(dst && src && dim > 0);
-    pdbm_prepare(dst, dim);
 
     /* Compute the cost at the origin.
      */
@@ -1612,6 +1614,7 @@ void pdbm_intersect(PDBM& dst, const PDBM& src, cindex_t dim) {
         pdbm_decRef(dst);
         dst = nullptr;
     } else {
+        pdbm_prepare(dst, dim);
         // Compute the cost at the new offset point and invalidate the cache.
         for (uint32_t k = 1; k < dim; k++) {
             cost -= rates[k] * dbm_raw2bound(DBM(0, k));
