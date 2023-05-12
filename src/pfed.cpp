@@ -358,10 +358,15 @@ namespace dbm
             cindex_t k;
             CostType rate = pdbm_getRate(*zone, dim, clock);
 
-            if (rate == 0) {
-                pdbm_updateValue(*zone, dim, clock, value);
-            } else if (pdbm_findZeroCycle(*zone, dim, clock, &k)) {
+            // Remove this because we cannot know which facet was reset
+//            if (rate == 0) {
+//                pdbm_updateValue(*zone, dim, clock, value);
+//            } else
+            if (pdbm_findZeroCycle(*zone, dim, clock, &k)) {
                 pdbm_updateValueZero(*zone, dim, clock, value, k);
+                if (0 != k) {
+                    zone->cost_plane_operations.emplace_back(CostPlaneOperation::RelativeReset, clock, k);
+                }
             } else if (rate > 0) {
                 /* Find and reset lower facets when rate is positive.
                  */
@@ -824,6 +829,7 @@ namespace dbm
         } else if (!isEmpty()) {
             pdbm_intersect(pdbm, arg.pdbm, dim);
         }
+        return *this;
     }
 }  // namespace dbm
 

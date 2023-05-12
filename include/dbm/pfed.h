@@ -45,6 +45,27 @@ namespace dbm
 
         CostPlaneOperation(Type type, cindex_t clock_i, CostType value)
                 : type(type), clock_i(clock_i), value(value) {}
+
+        friend std::ostream& operator<<(std::ostream& os, const CostPlaneOperation& op) {
+            switch (op.type) {
+                case Delay:
+                    os << "↑" << op.clock_i << "," << op.value << "";
+                    break;
+                case DelayKeep:
+                    os << "↑" << op.clock_i << ",?";
+                    break;
+                case DiscreteOffset:
+                    os << "Δ" << op.value << "";
+                    break;
+                case ContinuousOffset:
+                    os << "Δ"  << op.value << "⋅r(" << op.clock_i << ")";
+                    break;
+                case RelativeReset:
+                    os << "↓" << op.clock_i << "," << op.clock_j << "";
+                    break;
+            }
+            return os;
+        }
     };
 
     class pdbm_t;
@@ -791,6 +812,7 @@ namespace dbm
         bool eq(const pfed_t& arg) const;
 
         void clear_cost_plane_operations() {
+            cow();
             std::for_each(ptr->zones.begin(), ptr->zones.end(), [](pdbm_t& z) { z.cost_plane_operations.clear(); });
         }
 
