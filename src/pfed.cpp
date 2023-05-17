@@ -290,8 +290,23 @@ namespace dbm
         {
             cindex_t x;
             CostType oldrate = pdbm_getSlopeOfDelayTrajectory(*zone, dim);
+            int prev_offset[ptr->dim];
+            pdbm_getOffset(*zone, ptr->dim, prev_offset);
 
 //            pdbm_print(std::cout, zone->operator PDBM(), dim);
+
+            auto constrain_and_up = [&](pdbm_t& z, cindex_t i, cindex_t j, cindex_t zero) {
+                pdbm_constrainToFacet(z, dim, i, j);
+                pdbm_upZero(z, dim, rate, zero);
+                int new_offset[ptr->dim];
+                pdbm_getOffset(z, ptr->dim, new_offset);
+                for (int x = 1; x < ptr->dim; x++) {
+                    if (prev_offset[x] != new_offset[x]) {
+                        z.cost_plane_operations.emplace_back(CostPlaneOperation::Type::ContinuousOffset, x, CostType(new_offset[x] - prev_offset[x]));
+                    }
+                }
+                z.cost_plane_operations.emplace_back(CostPlaneOperation::Delay, zero, rate);
+            };
 
             if (rate == oldrate) {
                 /* This is a simple case which does not require splits.
@@ -311,15 +326,11 @@ namespace dbm
                 assert(count > 0 && count <= dim);
                 for (uint32_t j = 0; j < count - 1; j++) {
                     ptr->zones.push_front(*zone);
-                    pdbm_constrainToFacet(ptr->zones.front(), dim, 0, facets[j]);
-                    pdbm_upZero(ptr->zones.front(), dim, rate, facets[j]);
-                    ptr->zones.front().cost_plane_operations.emplace_back(CostPlaneOperation::Delay, facets[j], rate);
+                    constrain_and_up(ptr->zones.front(), 0, facets[j], facets[j]);
                 }
-                pdbm_constrainToFacet(*zone, dim, 0, facets[count - 1]);
-                pdbm_upZero(*zone, dim, rate, facets[count - 1]);
-                zone->cost_plane_operations.emplace_back(CostPlaneOperation::Delay, facets[count - 1], rate);
+                constrain_and_up(*zone, 0, facets[count - 1], facets[count - 1]);
             } else {
-                assert(rate > oldrate);
+//                assert(rate > oldrate);
 
                 /* New rate is bigger than old rate, so we delay from the
                  * upper facets. We also need the original zone.
@@ -329,9 +340,7 @@ namespace dbm
                 assert(count > 0 && count <= dim);
                 for (uint32_t j = 0; j < count; j++) {
                     ptr->zones.push_front(*zone);
-                    pdbm_constrainToFacet(ptr->zones.front(), dim, facets[j], 0);
-                    pdbm_upZero(ptr->zones.front(), dim, rate, facets[j]);
-                    ptr->zones.front().cost_plane_operations.emplace_back(CostPlaneOperation::Delay, facets[j], rate);
+                    constrain_and_up(ptr->zones.front(), facets[j], 0, facets[j]);
                 }
                 zone->cost_plane_operations.emplace_back(CostPlaneOperation::DelayKeep, 0, rate);
 //                pdbm_constrainToFacet(*zone, dim, facets[count - 1], 0);
@@ -358,6 +367,26 @@ namespace dbm
             cindex_t k;
             CostType rate = pdbm_getRate(*zone, dim, clock);
 
+            uint32_t facets[dim];
+            int prev_offset[ptr->dim];
+            pdbm_getOffset(*zone, ptr->dim, prev_offset);
+
+            // Constrain to the facet i - j < m where zero is the clock in the constraint that is not clock; reset clock
+            auto constrain_and_reset = [&](pdbm_t& z, uint32_t i, uint32_t j, uint32_t zero) {
+                pdbm_constrainToFacet(z, dim, i, j);
+                pdbm_updateValueZero(z, dim, clock, value, zero);
+                if (0 != zero) {
+                    z.cost_plane_operations.emplace_back(CostPlaneOperation::Type::RelativeReset, clock, zero);
+                }
+                int new_offset[ptr->dim];
+                pdbm_getOffset(z, ptr->dim, new_offset);
+                for (int x = 1; x < ptr->dim; x++) {
+                    if (prev_offset[x] != new_offset[x]) {
+                        z.cost_plane_operations.emplace_back(CostPlaneOperation::Type::ContinuousOffset, x, CostType(new_offset[x] - prev_offset[x]));
+                    }
+                }
+            };
+
             // Remove this because we cannot know which facet was reset
 //            if (rate == 0) {
 //                pdbm_updateValue(*zone, dim, clock, value);
@@ -370,23 +399,14 @@ namespace dbm
             } else if (rate > 0) {
                 /* Find and reset lower facets when rate is positive.
                  */
-                uint32_t facets[dim];
                 int32_t count = pdbm_getLowerRelativeFacets(*zone, dim, clock, facets);
 
                 assert(count >= 1);
                 for (int32_t j = 0; j < count - 1; j++) {
                     ptr->zones.push_front(*zone);
-                    pdbm_constrainToFacet(ptr->zones.front(), dim, facets[j], clock);
-                    pdbm_updateValueZero(ptr->zones.front(), dim, clock, value, facets[j]);
-                    if (0 != facets[j]) {
-                        ptr->zones.front().cost_plane_operations.emplace_back(CostPlaneOperation::Type::RelativeReset, clock, facets[j]);
-                    }
+                    constrain_and_reset(ptr->zones.front(), facets[j], clock, facets[j]);
                 }
-                pdbm_constrainToFacet(*zone, dim, facets[count - 1], clock);
-                pdbm_updateValueZero(*zone, dim, clock, value, facets[count - 1]);
-                if (0 != facets[count - 1]) {
-                    ptr->zones.front().cost_plane_operations.emplace_back(CostPlaneOperation::Type::RelativeReset, clock, facets[count - 1]);
-                }
+                constrain_and_reset(*zone, facets[count - 1], clock, facets[count - 1]);
             } else {
                 /* Find and reset upper facets when rate is negative.
                  */
@@ -396,17 +416,9 @@ namespace dbm
                 assert(count >= 1);
                 for (int32_t j = 0; j < count - 1; j++) {
                     ptr->zones.push_front(*zone);
-                    pdbm_constrainToFacet(ptr->zones.front(), dim, clock, facets[j]);
-                    pdbm_updateValueZero(ptr->zones.front(), dim, clock, value, facets[j]);
-                    if (0 != facets[j]) {
-                        ptr->zones.front().cost_plane_operations.emplace_back(CostPlaneOperation::Type::RelativeReset, clock, facets[j]);
-                    }
+                    constrain_and_reset(ptr->zones.front(), clock, facets[j], facets[j]);
                 }
-                pdbm_constrainToFacet(*zone, dim, clock, facets[count - 1]);
-                pdbm_updateValueZero(*zone, dim, clock, value, facets[count - 1]);
-                if (0 != facets[count - 1]) {
-                    ptr->zones.front().cost_plane_operations.emplace_back(CostPlaneOperation::Type::RelativeReset, clock, facets[count - 1]);
-                }
+                constrain_and_reset(*zone, clock, facets[count - 1], facets[count - 1]);
             }
         }
         return *this;
@@ -498,7 +510,7 @@ namespace dbm
     }
 
     fed_t pfed_t::to_fed() const {
-        fed_t fed;
+        fed_t fed(getDimension());
         for (const pdbm_t& pdbm : *this) {
             fed.add(pdbm.to_dbm());
         }
@@ -792,6 +804,11 @@ namespace dbm
     pfed_t& pfed_t::mergeReduce(size_t skip, int expensiveTry){
         throw std::logic_error("pfed_t::mergeReduce not implemented");
     }
+    void pfed_t::simplify_rational_cost() {
+        for (auto it = beginMutable(); it != endMutable(); ++it) {
+            it->simplify_rational_cost();
+        }
+    }
 
     cindex_t pdbm_t::pdim() const { return dim; }
 
@@ -830,6 +847,11 @@ namespace dbm
             pdbm_intersect(pdbm, arg.pdbm, dim);
         }
         return *this;
+    }
+    void pdbm_t::simplify_rational_cost() {
+        if (!isEmpty()) {
+            pdbm_simplify_rational_cost(pdbm, dim);
+        }
     }
 }  // namespace dbm
 

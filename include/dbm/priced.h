@@ -830,6 +830,11 @@ PDBM pdbm_from_dbm(const int32_t* dbm, cindex_t dim);
  */
 void pdbm_intersect(PDBM& dst, const PDBM& src, cindex_t dim);
 
+/**
+ * Simplifies the rational cost values in the pdbm by approximating them as integers
+ */
+void pdbm_simplify_rational_cost(PDBM& pdbm, cindex_t dim);
+
 ///////////////////////////////////////////////////////////////////////////
 
 #endif /* INCLUDE_DBM_PRICED_H */

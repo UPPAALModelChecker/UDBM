@@ -256,6 +256,8 @@ namespace dbm
         /// @return dimension
         cindex_t pdim() const;
 
+        void simplify_rational_cost();
+
         bool contains(const int32_t* point, cindex_t dim) const;
         bool contains(const double* point, cindex_t dim) const;
     };
@@ -506,6 +508,14 @@ namespace dbm
          */
         ~pfed_t();
 
+        static pfed_t from_fed(const fed_t& fed) {
+            pfed_t pfed(fed.getDimension());
+            for (const dbm::dbm_t& dbm : fed) {
+                pfed.add(pdbm_t::from_dbm(dbm));
+            }
+            return pfed;
+        }
+
         /**
          * Constrain x(i) to value.
          *
@@ -630,6 +640,8 @@ namespace dbm
         void relax();
 
         void freeClock(cindex_t clock);
+
+        void simplify_rational_cost();
 
         /**
          * Resets the federation to the federation containing only the

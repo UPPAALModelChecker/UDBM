@@ -1628,3 +1628,12 @@ void pdbm_intersect(PDBM& dst, const PDBM& src, cindex_t dim) {
     }
 
 }
+
+void pdbm_simplify_rational_cost(PDBM& pdbm, cindex_t dim) {
+    pdbm_prepare(pdbm, dim);
+    pdbm_cost(pdbm) = pdbm_cost(pdbm).numerator() / pdbm_cost(pdbm).denominator();
+    for (cindex_t i = 1; i < dim; i++) {
+        pdbm_rates(pdbm)[i] = pdbm_rates(pdbm)[i].numerator() / pdbm_rates(pdbm)[i].denominator();
+    }
+    pdbm_cache(pdbm) = INVALID;
+}
