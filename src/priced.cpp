@@ -920,7 +920,7 @@ void pdbm_upZero(PDBM& pdbm, cindex_t dim, CostType rate, cindex_t zero)
     dbm_up(dbm, dim);
     rates[zero] = 0;
     rates[zero] = rate - pdbm_getSlopeOfDelayTrajectory(pdbm, dim);
-    pdbm->infimum = INVALID;
+    pdbm_cache(pdbm) = INVALID;
 
     assertx(pdbm_isValid(pdbm, dim));
 }
@@ -949,7 +949,7 @@ void pdbm_updateValueZero(PDBM& pdbm, cindex_t dim, cindex_t clock, uint32_t val
     if (zero) {
         rates[zero] += rates[clock];
     }
-    rates[clock] = 0;
+//    rates[clock] = 0;
     dbm_updateValue(pdbm_matrix(pdbm), dim, clock, value);
 
     assertx(pdbm_isValid(pdbm, dim));

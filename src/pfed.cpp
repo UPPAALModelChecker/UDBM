@@ -297,7 +297,6 @@ namespace dbm
 
             auto constrain_and_up = [&](pdbm_t& z, cindex_t i, cindex_t j, cindex_t zero) {
                 pdbm_constrainToFacet(z, dim, i, j);
-                pdbm_upZero(z, dim, rate, zero);
                 int new_offset[ptr->dim];
                 pdbm_getOffset(z, ptr->dim, new_offset);
                 for (int x = 1; x < ptr->dim; x++) {
@@ -305,19 +304,21 @@ namespace dbm
                         z.cost_plane_operations.emplace_back(CostPlaneOperation::Type::ContinuousOffset, x, CostType(new_offset[x] - prev_offset[x]));
                     }
                 }
+                pdbm_upZero(z, dim, rate, zero);
                 z.cost_plane_operations.emplace_back(CostPlaneOperation::Delay, zero, rate);
             };
 
-            if (rate == oldrate) {
-                /* This is a simple case which does not require splits.
-                 */
-                pdbm_up(*zone, dim);
-            } else if (pdbm_findZeroCycle(*zone, dim, 0, &x)) {
+//            if (rate == oldrate) {
+//                /* This is a simple case which does not require splits.
+//                 */
+//                pdbm_up(*zone, dim);
+//            } else
+            if (pdbm_findZeroCycle(*zone, dim, 0, &x)) {
                 /* This is a simple case which does not require splits.
                  */
                 pdbm_upZero(*zone, dim, rate, x);
                 zone->cost_plane_operations.emplace_back(CostPlaneOperation::Delay, x, rate);
-            } else if (rate < oldrate) {
+            } else if (rate <= oldrate) {
                 /* New rate is smaller than old rate, so we delay from the
                  * lower facets
                  */
@@ -330,7 +331,7 @@ namespace dbm
                 }
                 constrain_and_up(*zone, 0, facets[count - 1], facets[count - 1]);
             } else {
-//                assert(rate > oldrate);
+                assert(rate > oldrate);
 
                 /* New rate is bigger than old rate, so we delay from the
                  * upper facets. We also need the original zone.
@@ -374,16 +375,16 @@ namespace dbm
             // Constrain to the facet i - j < m where zero is the clock in the constraint that is not clock; reset clock
             auto constrain_and_reset = [&](pdbm_t& z, uint32_t i, uint32_t j, uint32_t zero) {
                 pdbm_constrainToFacet(z, dim, i, j);
-                pdbm_updateValueZero(z, dim, clock, value, zero);
-                if (0 != zero) {
-                    z.cost_plane_operations.emplace_back(CostPlaneOperation::Type::RelativeReset, clock, zero);
-                }
                 int new_offset[ptr->dim];
                 pdbm_getOffset(z, ptr->dim, new_offset);
                 for (int x = 1; x < ptr->dim; x++) {
                     if (prev_offset[x] != new_offset[x]) {
-                        z.cost_plane_operations.emplace_back(CostPlaneOperation::Type::ContinuousOffset, x, CostType(new_offset[x] - prev_offset[x]));
+                      z.cost_plane_operations.emplace_back(CostPlaneOperation::Type::ContinuousOffset, x, CostType(new_offset[x] - prev_offset[x]));
                     }
+                }
+                pdbm_updateValueZero(z, dim, clock, value, zero);
+                if (0 != zero) {
+                    z.cost_plane_operations.emplace_back(CostPlaneOperation::Type::RelativeReset, clock, zero);
                 }
             };
 
