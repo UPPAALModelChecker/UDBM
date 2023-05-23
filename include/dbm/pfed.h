@@ -516,6 +516,10 @@ namespace dbm
             return pfed;
         }
 
+        const pdbm_t& first() {
+            return ptr->zones.front();
+        }
+
         /**
          * Constrain x(i) to value.
          *
