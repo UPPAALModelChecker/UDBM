@@ -31,7 +31,7 @@ jobs:
     - name: Set mingw environment variables
       if: matrix.target == 'mingw'
       run: |
-          echo "CMAKE_TOOLCHAIN_FILE=$(pwd)/toolchains/mingw.cmake" >> "$GITHUB_ENV"
+          echo "CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/x86_64-w64-mingw32.cmake" >> "$GITHUB_ENV"
           echo "STATIC=ON" >> "$GITHUB_ENV"
     - name: Get ubuntu dependencies
       if: matrix.target == 'ubuntu'
@@ -64,10 +64,9 @@ jobs:
           bash ./getlibs.sh
     - name: Build and test
       run: |
-          cmake -DCMAKE_BUILD_TYPE=Release -DUDBM_WITH_TESTS=ON "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_PREFIX_PATH=$(pwd)/local -B build -S .
+          cmake -DCMAKE_BUILD_TYPE=Release -DUDBM_WITH_TESTS=ON "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_PREFIX_PATH=$PWD/local/x86_64-w64-mingw32 -B build -S .
           cmake --build build --config Release
-          cd build
-          ctest --output-on-failure -C Release
+          (cd build ; ctest --output-on-failure -C Release)
   build-macos:
     runs-on: macos-latest
     strategy:

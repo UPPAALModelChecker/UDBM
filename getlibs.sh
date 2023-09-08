@@ -1,52 +1,91 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -eo pipefail
 
-SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-PREFIX="$SOURCE_DIR/local"
-SOURCES="$SOURCE_DIR/local/sources"
-mkdir -p "$SOURCES"
-
-CMAKE_PREFIX_PATH="$PREFIX"
-
-CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH -DCMAKE_INSTALL_PREFIX=$PREFIX"
-if [ -z ${CMAKE_TOOLCHAIN_FILE+x} ]; then
-	echo "Not using a custom toolchain";
+if [ -z "$CMAKE_TOOLCHAIN_FILE" ]; then
+    TARGET=$(uname --machine)-$(uname --kernel-name)
+    TARGET="${TARGET,,}"
 else
-	echo "Using toolchain $CMAKE_TOOLCHAIN_FILE";
-	CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE";
+    TARGET=$(basename $CMAKE_TOOLCHAIN_FILE)
+    TARGET=${TARGET%%.*}
 fi
 
-# doctest for unit testing
+PREFIX="$PROJECT_DIR/local/$TARGET"
+SOURCES="$PROJECT_DIR/local/sources"
+
+[ -n "$CMAKE_BUILD_TYPE" ]     || export CMAKE_BUILD_TYPE=Release
+[ -n "$CMAKE_PREFIX_PATH" ]    || export CMAKE_PREFIX_PATH="$PREFIX"
+[ -n "$CMAKE_INSTALL_PREFIX" ] || export CMAKE_INSTALL_PREFIX="$PREFIX"
+
+echo "  TARGET=$TARGET"
+echo "  CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
+echo "  CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
+echo "  CMAKE_INSTALL_PREFIX=$CMAKE_INSTALL_PREFIX"
+
+mkdir -p "$SOURCES"
 cd "$SOURCES"
-curl -L https://github.com/doctest/doctest/archive/refs/tags/v2.4.8.tar.gz -o doctest-2.4.8.tar.gz
-tar -xf doctest-2.4.8.tar.gz
-SOURCE_DIR="$SOURCES/doctest-2.4.8"
-BUILD_DIR="$SOURCE_DIR/build"
-mkdir -p "$BUILD_DIR"
-cmake $CMAKE_ARGS -DDOCTEST_WITH_TESTS=OFF -B "$BUILD_DIR" "$SOURCE_DIR"
+
+# doctest for unit testing
+PACKAGE=doctest
+VERSION=2.4.11
+ARCHIVE="$PACKAGE-$VERSION.tar.gz"
+SOURCE_DIR="$PACKAGE-$VERSION"
+BUILD_DIR="build-${SOURCE_DIR}-$TARGET"
+[ -r "$ARCHIVE" ] || curl -sL "https://github.com/doctest/doctest/archive/refs/tags/v${VERSION}.tar.gz" -o "$ARCHIVE"
+[ -d "$SOURCE_DIR" ] || tar -xf "$ARCHIVE"
+cmake  -S "$SOURCE_DIR" -B "$BUILD_DIR" -DDOCTEST_WITH_TESTS=OFF \
+       -DDOCTEST_WITH_MAIN_IN_STATIC_LIB=ON -DDOCTEST_USE_STD_HEADERS=OFF
 cmake --build "$BUILD_DIR" --config Release
-cmake --install "$BUILD_DIR" --config Release
+cmake --install "$BUILD_DIR" --config Release --prefix "$CMAKE_INSTALL_PREFIX"
+rm -Rf "$BUILD_DIR"
+rm -Rf "$SOURCE_DIR"
 
 # xxHash for fast high quality hashing
-cd "$SOURCES"
-curl -L https://github.com/Cyan4973/xxHash/archive/refs/tags/v0.8.0.tar.gz -o xxHash-0.8.0.tar.gz
-tar -xf xxHash-0.8.0.tar.gz
-SOURCE_DIR="$SOURCES/xxHash-0.8.0"
-BUILD_DIR="$SOURCE_DIR/build"
-mkdir -p "$BUILD_DIR"
-cmake $CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -B "$BUILD_DIR" "$SOURCE_DIR/cmake_unofficial"
+PACKAGE=xxHash
+VERSION=0.8.2
+ARCHIVE="$PACKAGE-$VERSION.tar.gz"
+SOURCE_DIR="$PACKAGE-$VERSION"
+BUILD_DIR="build-${SOURCE_DIR}-$TARGET"
+[ -r "$ARCHIVE" ] || curl -sL "https://github.com/Cyan4973/xxHash/archive/refs/tags/v${VERSION}.tar.gz" -o "$ARCHIVE"
+[ -d "$SOURCE_DIR" ] || tar -xf "$ARCHIVE"
+echo "Building $SOURCE_DIR"
+cmake -S "$SOURCE_DIR/cmake_unofficial" -B "$BUILD_DIR" -DBUILD_SHARED_LIBS=OFF
 cmake --build "$BUILD_DIR" --config Release
-cmake --install "$BUILD_DIR" --config Release
+cmake --install "$BUILD_DIR" --config Release --prefix="$CMAKE_INSTALL_PREFIX"
+rm -Rf "$BUILD_DIR"
+rm -Rf "$SOURCE_DIR"
+
+# Boost
+PACKAGE=boost
+VERSION=1.83.0
+ARCHIVE="$PACKAGE-$VERSION.tar.xz"
+SOURCE_DIR="$PACKAGE-$VERSION"
+BUILD_DIR="build-${SOURCE_DIR}-$TARGET"
+[ -r "$ARCHIVE" ] || curl -sL "https://github.com/boostorg/boost/releases/download/${SOURCE_DIR}/${ARCHIVE}" -o "$ARCHIVE"
+[ -d "$SOURCE_DIR" ] || tar -xf "$ARCHIVE"
+echo "Building $SOURCE_DIR"
+cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" -DBOOST_ENABLE_CMAKE=ON -DBUILD_SHARED_LIBS=OFF \
+      -DBOOST_INCLUDE_LIBRARIES="headers;math" -DBOOST_ENABLE_MPI=OFF -DBOOST_ENABLE_PYTHON=OFF \
+      -DBOOST_RUNTIME_LINK=static -DBUILD_TESTING=OFF -DBOOST_USE_STATIC_LIBS=ON -DBOOST_USE_DEBUG_LIBS=ON \
+      -DBOOST_USE_RELEASE_LIBS=ON -DBOOST_USE_STATIC_RUNTIME=ON -DBOOST_INSTALL_LAYOUT=system
+cmake --build "$BUILD_DIR" --config Release
+cmake --install "$BUILD_DIR" --config Release --prefix="$CMAKE_INSTALL_PREFIX"
+rm -Rf "$BUILD_DIR"
+rm -Rf "$SOURCE_DIR"
 
 # UUtils various low level Uppaal utilities
 #git clone https://github.com/UPPAALModelChecker/UUtils "$SOURCE_DIR/libs/sources/UUtils";
-cd "$SOURCES"
-curl -L https://github.com/UPPAALModelChecker/UUtils/archive/refs/tags/v1.1.1.tar.gz -o UUtils-1.1.1.tar.gz
-tar -xf UUtils-1.1.1.tar.gz
-SOURCE_DIR="$SOURCES/UUtils-1.1.1"
-BUILD_DIR="$SOURCE_DIR/build"
-mkdir -p "$BUILD_DIR"
-cmake $CMAKE_ARGS -B "$BUILD_DIR" "$SOURCE_DIR"
+PACKAGE=UUtils
+VERSION=2.0.0
+ARCHIVE="$PACKAGE-$VERSION.tar.gz"
+SOURCE_DIR="$PACKAGE-$VERSION"
+BUILD_DIR="build-${SOURCE_DIR}-$TARGET"
+[ -r "$ARCHIVE" ] || curl -sL "https://github.com/UPPAALModelChecker/UUtils/archive/refs/tags/v${VERSION}.tar.gz" -o "$ARCHIVE"
+[ -d "$SOURCE_DIR" ] || tar -xf "$ARCHIVE"
+echo "Building $SOURCE_DIR"
+cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" -DUUtils_WITH_TESTS=OFF -DUUtils_WITH_BENCHMARKS=OFF
 cmake --build "$BUILD_DIR" --config Release
-cmake --install "$BUILD_DIR" --config Release
+cmake --install "$BUILD_DIR" --config Release --prefix="$CMAKE_INSTALL_PREFIX"
+rm -Rf "$BUILD_DIR"
+rm -Rf "$SOURCE_DIR"

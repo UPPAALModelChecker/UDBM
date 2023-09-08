@@ -15,19 +15,11 @@
 
 #include "dbm/dbm.h"
 #include "dbm/fed.h"
-#include "io/FileStreamBuffer.h"
-#include "base/bitstring.h"
 
-/** For easy conversion FILE* to ostream */
-class file_ostream
-{
-    io::FileStreamBuffer buffer;
-    std::ostream os;
+#include <base/bitstring.h>
+#include <base/file_stream.hpp>
 
-public:
-    file_ostream(FILE* file): buffer{file}, os{&buffer} {}
-    operator std::ostream&() { return os; }
-};
+using base::file_ostream;
 
 static const char* _print_prefix = "";
 static bool _ruby_format = false;
@@ -109,10 +101,8 @@ std::ostream& dbm_cppPrint(std::ostream& os, dbm::reader dbm)
 }
 void dbm_print(FILE* file, const raw_t* dbm, cindex_t dim)
 {
-    if (dbm != nullptr) {
-        auto fos = file_ostream{file};
-        dbm_cppPrint(fos, {dbm, dim});
-    }
+    if (dbm != nullptr)
+        dbm_cppPrint(file_ostream{file}, {dbm, dim});
 }
 
 /* Shortcuts to print the difference highlight
@@ -216,9 +206,9 @@ void dbm_printCloseDiff(FILE* file, const raw_t* dbm, cindex_t dim)
 /* check for infinity values
  * before printing.
  */
-std::ostream& dbm_cppPrintRaw(std::ostream& out, raw_t c)
+std::ostream& dbm_cppPrintRaw(std::ostream& os, raw_t c)
 {
-    return dbm_cppPrintBound(out << (dbm_rawIsWeak(c) ? "<=" : "<"), dbm_raw2bound(c));
+    return dbm_cppPrintBound(os << (dbm_rawIsWeak(c) ? "<=" : "<"), dbm_raw2bound(c));
 }
 void dbm_printRaw(FILE* file, raw_t c) { dbm_cppPrintRaw(file_ostream{file}, c); }
 
