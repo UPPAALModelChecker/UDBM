@@ -44,4 +44,4 @@ void mingraph_putCachedResult(const raw_t* dbm, cindex_t dim, const uint32_t* bi
 #endif
 
 #endif /* DBM_MINGRAPH_CACHE_H */
-#endif
+#endif /* ENABLE_MINGRAPH_CACHE */

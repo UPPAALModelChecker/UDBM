@@ -12,9 +12,9 @@
 
 #include "dbm/valuation.h"
 
-#include <iostream>
-
 #include <doctest/doctest.h>
+
+#include <iostream>
 
 using namespace std;
 using namespace dbm;

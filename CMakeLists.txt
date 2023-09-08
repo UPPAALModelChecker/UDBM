@@ -3,11 +3,14 @@ project(UDBM VERSION 2.0.11 LANGUAGES CXX C)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
-option(UDBM_WITH_TESTS "UDBM Unit tests" OFF)
+option(UDBM_WITH_TESTS "UDBM Unit tests" ON)
 option(UDBM_STATIC "Static linking" OFF)
 
 cmake_policy(SET CMP0048 NEW) # project() command manages VERSION variables
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(UDBM_PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 set(UDBM_VERSION "${PACKAGE_VERSION}")
 set(ENABLE_STORE_MINGRAPH 1)
@@ -15,7 +18,9 @@ CONFIGURE_FILE("src/config.h.cmake" "include/dbm/config.h")
 
 include(cmake/sanitizer.cmake)
 include(cmake/clang-tidy.cmake)
-include(cmake/doctest.cmake)
+if (UDBM_WITH_TESTS)
+    include(cmake/doctest.cmake)
+endif (UDBM_WITH_TESTS)
 include(cmake/xxhash.cmake)
 find_package(UUtils 2.0.0 REQUIRED COMPONENTS base hash debug)
 
@@ -30,7 +35,9 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_compile_options(/W4)
 endif()
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_definitions(-DXXHASH_INLINE_ALL=1)
+add_compile_definitions(XXHASH_INLINE_ALL) # workaround for xxHash::xxhash
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include ${XXHASH_INCLUDE_DIR})
 
 add_subdirectory("src")
 

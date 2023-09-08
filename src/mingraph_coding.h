@@ -16,7 +16,8 @@
 
 #include "dbm/config.h"
 #include "dbm/constraints.h"  // bit_t
-#include "base/bitstring.h"   // bit_t
+
+#include <base/bitstring.h>  // bit_t
 
 #include <limits.h>
 

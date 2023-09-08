@@ -18,8 +18,9 @@
 #define INCLUDE_DBM_MINGRAPH_H
 
 #include "dbm/dbm.h"
-#include "base/c_allocator.h"
-#include "base/intutils.h"
+
+#include <base/c_allocator.h>
+#include <base/intutils.h>
 
 #ifdef __cplusplus
 extern "C" {

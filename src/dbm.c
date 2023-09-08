@@ -19,14 +19,13 @@
 #define VECTORIZE_FLOYD
 #endif
 
-#include "dbm/dbm.h"
-
 #include "dbm.h"
-
+#include "dbm/dbm.h"
 #include "dbm/print.h"
-#include "base/bitstring.h"
-#include "base/doubles.h"
-#include "debug/macros.h"
+
+#include <base/bitstring.h>
+#include <base/doubles.h>
+#include <debug/macros.h>
 
 #include <stdio.h>
 

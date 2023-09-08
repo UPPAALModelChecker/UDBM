@@ -18,8 +18,9 @@
 #endif
 
 #include "dbm/mingraph.h"
-#include "base/bitstring.h"
-#include "debug/macros.h"
+
+#include <base/bitstring.h>
+#include <debug/macros.h>
 
 /**
  * @file

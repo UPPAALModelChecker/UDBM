@@ -3,7 +3,7 @@ add_library(UDBM STATIC DBMAllocator.cpp dbm.c fed_dbm.cpp mingraph.c mingraph_r
         priced.cpp valuation.cpp)
 set_property(TARGET UDBM PROPERTY C_VISIBILITY_PRESET hidden)
 set_property(TARGET UDBM PROPERTY VISIBILITY_INLINES_HIDDEN ON)
-target_link_libraries(UDBM PRIVATE UUtils::base UUtils::udebug UUtils::hash xxHash)
+target_link_libraries(UDBM PRIVATE UUtils::base UUtils::udebug UUtils::hash xxhash)
 
 target_include_directories(UDBM
     PRIVATE

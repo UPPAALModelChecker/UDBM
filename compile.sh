@@ -13,16 +13,16 @@ for target in $targets ; do
     unset BUILD_EXTRA
     unset CMAKE_BUILD_TYPE
     case $target in
-        x86_64-linux-*)
+        x86_64-linux*|linux64*)
             PLATFORM=x86_64-linux
             ;;
-        i686-linux-*)
+        i686-linux*|linux32*)
             PLATFORM=i686-linux
             ;;
-        x86_64-w64-mingw32-*)
+        x86_64-w64-mingw32*|win64*)
             PLATFORM=x86_64-w64-mingw32
             ;;
-        i686-w64-mingw32-*)
+        i686-w64-mingw32*|win32*)
             PLATFORM=i686-w64-mingw32
             ;;
         *)
@@ -65,10 +65,10 @@ for target in $targets ; do
             BUILD_DIR="${BUILD_DIR}-release"
             echo "Unrecognized build type: $target, assuming $CMAKE_BUILD_TYPE"
     esac
-    echo "Building $target with $BUILD_EXTRA into $BUILD_DIR"
+    echo "Building $target${BUILD_EXTRA:+ with$BUILD_EXTRA} into $BUILD_DIR"
     echo "  CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
     echo "  CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
-    cmake -S "$PROJECT_DIR" -B "$BUILD_DIR" $BUILD_EXTRA
+    cmake -S "$PROJECT_DIR" -B "$BUILD_DIR" $BUILD_EXTRA -DFIND_FATAL=ON
     cmake --build "$BUILD_DIR" --config $CMAKE_BUILD_TYPE
     (cd "$BUILD_DIR" ; ctest -C $CMAKE_BUILD_TYPE --output-on-failure)
 done

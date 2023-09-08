@@ -4,8 +4,9 @@
 
 #include "dbm/dbm_raw.hpp"
 #include "dbm/mingraph.h"
-#include "base/bitstring.h"
-#include "debug/macros.h"
+
+#include <base/bitstring.h>
+#include <debug/macros.h>
 
 #include <algorithm>
 #include <stdexcept>

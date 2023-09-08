@@ -1,10 +1,10 @@
 #include "dbm/constraints.h"
 
+#include <doctest/doctest.h>
+
 #include <algorithm>
 #include <set>
 #include <vector>
-
-#include <doctest/doctest.h>
 
 TEST_CASE("Constraint operators")
 {

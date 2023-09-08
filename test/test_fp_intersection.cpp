@@ -2,12 +2,12 @@
 #include "dbm/print.h"
 #include "base/doubles.h"
 
+#include <doctest/doctest.h>
+
 #include <iostream>
 #include <limits>
 #include <cmath>
 #include <cstdint>
-
-#include <doctest/doctest.h>
 
 void printConstraint(const raw_t raw, const double i, const double j)
 {

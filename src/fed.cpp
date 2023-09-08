@@ -18,8 +18,9 @@
 #include "dbm/config.h"
 #include "dbm/mingraph.h"
 #include "dbm/print.h"
-#include "base/bitstring.h"
-#include "base/doubles.h"
+
+#include <base/bitstring.h>
+#include <base/doubles.h>
 
 #include <algorithm>  // find_if
 #include <forward_list>

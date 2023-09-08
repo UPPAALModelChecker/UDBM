@@ -13,10 +13,10 @@
 
 #include "DBMAllocator.h"
 #include "dbm.h"
-
 #include "dbm/config.h"
-#include "base/bitstring.h"
-#include "base/doubles.h"
+
+#include <base/bitstring.h>
+#include <base/doubles.h>
 
 #include <sstream>
 #include <vector>

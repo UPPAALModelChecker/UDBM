@@ -19,9 +19,10 @@
 #define INCLUDE_DBM_DBM_H
 
 #include "dbm/constraints.h"
-#include "base/intutils.h"
-#include "base/relation.h"
-#include "hash/compute.h"
+
+#include <base/intutils.h>
+#include <base/relation.h>
+#include <hash/compute.h>
 
 #ifdef __cplusplus
 extern "C" {
