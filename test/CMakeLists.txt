@@ -1,6 +1,6 @@
 # dbm tests...
 
-set(libs UDBM xxHash)
+set(libs UDBM base xxHash)
 
 file(GLOB test_c_sources "test_*.c" "test_allocation.cpp")
 foreach(source ${test_c_sources})
@@ -9,7 +9,7 @@ foreach(source ${test_c_sources})
   target_link_libraries(${test_target} ${libs})
 endforeach()
 
-file(GLOB test_cpp_sources test_fed.cpp test_fed_dbm.cpp test_fp_intersection.cpp test_valuation.cpp test_constraint.cpp)
+file(GLOB test_cpp_sources test_fed.cpp test_fed_dbm.cpp test_fp_intersection.cpp test_valuation.cpp test_constraint.cpp test_hash.cpp)
 foreach(source ${test_cpp_sources})
   get_filename_component(test_target ${source} NAME_WE)
   add_executable(${test_target} ${source})

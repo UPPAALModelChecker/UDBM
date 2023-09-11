@@ -16,7 +16,11 @@ if (XXHASH_PATH)
     cmake_path(GET XXHASH_PATH PARENT_PATH XXHASH_INCLUDE_DIR)
     add_library(xxHash INTERFACE)
     target_compile_definitions(xxHash INTERFACE XXH_INLINE_ALL)
-    target_include_directories(xxHash INTERFACE ${XXHASH_INCLUDE_DIR})
+    target_include_directories(xxHash
+            INTERFACE
+            $<BUILD_INTERFACE:${XXHASH_INCLUDE_DIR}>
+            $<INSTALL_INTERFACE:include>
+    )
   else()
     message(STATUS "Found xxHash-${XXHASH_VERSION} is too old, need at lease ${XXHASH_VERSION_MINIMUM}")
   endif()
@@ -27,7 +31,7 @@ if (xxHash_FOUND)
 else(xxHash_FOUND)
   message(STATUS "Failed to find xxHash, going to compile from source.")
   if (FIND_FATAL)
-    message(FATAL_ERROR "Failed to find with CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
+    message(FATAL_ERROR "Failed to find xxHash with CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
   endif(FIND_FATAL)
   include(ExternalProject)
   set(XXHASH_BUILD_ENABLE_INLINE_API ON CACHE BOOL "adds xxhash.c for the -DXXH_INLINE_ALL api. Default ON")
@@ -47,19 +51,19 @@ else(xxHash_FOUND)
     USES_TERMINAL_BUILD ON
     USES_TERMINAL_INSTALL ON
     )
-  FetchContent_MakeAvailable(xxHash)
-  if (xxHash_SOURCE_DIR)
-    cmake_path(GET xxHash_SOURCE_DIR PARENT_PATH XXHASH_INCLUDE_DIR) # drop "cmake_unofficial"
-#    add_library(xxHash ALIAS xxHash::xxhash)
+  FetchContent_GetProperties(xxHash)
+  if (xxhash_POPULATED)
+    message(STATUS "Found populated xxHash: ${xxhash_SOURCE_DIR}")
+  else (xxhash_POPULATED)
+    FetchContent_Populate(xxHash)
+    add_subdirectory(${xxhash_SOURCE_DIR}/cmake_unofficial ${xxhash_BINARY_DIR} EXCLUDE_FROM_ALL)
     add_library(xxHash INTERFACE)
-#    set_property(TARGET xxHash APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${XXHASH_INCLUDE_DIR})
     target_compile_definitions(xxHash INTERFACE XXH_INLINE_ALL)
-    target_include_directories(xxHash INTERFACE ${XXHASH_INCLUDE_DIR})
-#    target_link_libraries(xxHash INTERFACE xxHash::xhash)
-    set(xxHash_FOUND TRUE)
-    message(STATUS "Got xxHash: ${XXHASH_INCLUDE_DIR}")
-  else(xxHash_SOURCE_DIR)
-    message(FATAL_ERROR "Failed to fetch xxHash")
-  endif (xxHash_SOURCE_DIR)
-  # Custom config: https://github.com/untrioctium/refrakt/blob/main/CMakeLists.txt
+    target_include_directories(xxHash
+            INTERFACE
+            $<BUILD_INTERFACE:${xxhash_SOURCE_DIR}>
+            $<INSTALL_INTERFACE:include>
+    )
+    message(STATUS "Got xxHash: ${xxhash_SOURCE_DIR}")
+  endif (xxhash_POPULATED)
 endif(xxHash_FOUND)

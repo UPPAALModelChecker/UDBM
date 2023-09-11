@@ -22,7 +22,7 @@ if (UDBM_WITH_TESTS)
     include(cmake/doctest.cmake)
 endif (UDBM_WITH_TESTS)
 include(cmake/xxhash.cmake)
-find_package(UUtils 2.0.0 REQUIRED COMPONENTS base hash debug)
+include(cmake/UUtils.cmake)
 
 if(UDBM_STATIC)
 	set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ -lwsock32 -lws2_32 ${CMAKE_CXX_STANDARD_LIBRARIES}")
@@ -35,14 +35,15 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_compile_options(/W4)
 endif()
 
-add_definitions(-DXXHASH_INLINE_ALL=1)
-add_compile_definitions(XXHASH_INLINE_ALL) # workaround for xxHash::xxhash
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include ${XXHASH_INCLUDE_DIR})
+if(UDBM_WITH_TESTS)
+    enable_testing()
+endif(UDBM_WITH_TESTS)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_subdirectory("src")
 
 if(UDBM_WITH_TESTS)
-    enable_testing()
     add_subdirectory(test)
 endif(UDBM_WITH_TESTS)
 
