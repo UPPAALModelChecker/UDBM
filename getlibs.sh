@@ -45,35 +45,16 @@ for target in $targets ; do
     rm -Rf "$BUILD_DIR"
     rm -Rf "$SOURCE_DIR"
 
-    # xxHash for fast high quality hashing
-    PACKAGE=xxHash
-    VERSION=0.8.2
-    ARCHIVE="$PACKAGE-$VERSION.tar.gz"
-    SOURCE_DIR="$PACKAGE-$VERSION"
-    BUILD_DIR="build-${SOURCE_DIR}-$target"
-    [ -r "$ARCHIVE" ] || curl -sL "https://github.com/Cyan4973/xxHash/archive/refs/tags/v${VERSION}.tar.gz" -o "$ARCHIVE"
-    [ -d "$SOURCE_DIR" ] || tar -xf "$ARCHIVE"
-    echo "Building $SOURCE_DIR"
-    echo "  CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
-    echo "  CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
-    echo "  CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
-    echo "  CMAKE_INSTALL_PREFIX=$CMAKE_INSTALL_PREFIX"
-    echo "  CMAKE_GENERATOR=$CMAKE_GENERATOR"
-    cmake -S "$SOURCE_DIR/cmake_unofficial" -B "$BUILD_DIR" -DBUILD_SHARED_LIBS=OFF
-    cmake --build "$BUILD_DIR" --config Release
-    cmake --install "$BUILD_DIR" --config Release --prefix="$CMAKE_INSTALL_PREFIX"
-    rm -Rf "$BUILD_DIR"
-    rm -Rf "$SOURCE_DIR"
-
     # UUtils various low level Uppaal utilities
     #git clone https://github.com/UPPAALModelChecker/UUtils "$SOURCE_DIR/libs/sources/UUtils";
     PACKAGE=UUtils
-    VERSION=2.0.2
+    VERSION=2.0.3
     ARCHIVE="$PACKAGE-$VERSION.tar.gz"
     SOURCE_DIR="$PACKAGE-$VERSION"
     BUILD_DIR="build-${SOURCE_DIR}-$target"
     [ -r "$ARCHIVE" ] || curl -sL "https://github.com/UPPAALModelChecker/UUtils/archive/refs/tags/v${VERSION}.tar.gz" -o "$ARCHIVE"
     [ -d "$SOURCE_DIR" ] || tar -xf "$ARCHIVE"
+#    git clone -b cmake-alias --single-branch --depth 1 https://github.com/mikucionisaau/UUtils.git "$SOURCE_DIR"
     echo "Building $SOURCE_DIR"
     echo "  CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
     echo "  CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"

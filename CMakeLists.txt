@@ -21,7 +21,6 @@ include(cmake/clang-tidy.cmake)
 if (UDBM_WITH_TESTS)
     include(cmake/doctest.cmake)
 endif (UDBM_WITH_TESTS)
-include(cmake/xxhash.cmake)
 include(cmake/UUtils.cmake)
 
 if(UDBM_STATIC)

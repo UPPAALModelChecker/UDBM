@@ -1,15 +1,15 @@
 # dbm tests...
 
-set(libs UDBM base xxHash)
+set(libs UDBM UUtils::base)
 
 file(GLOB test_c_sources "test_*.c" "test_allocation.cpp")
 foreach(source ${test_c_sources})
   get_filename_component(test_target ${source} NAME_WE)
   add_executable(${test_target} ${source})
-  target_link_libraries(${test_target} ${libs})
+  target_link_libraries(${test_target} PRIVATE ${libs})
 endforeach()
 
-file(GLOB test_cpp_sources test_fed.cpp test_fed_dbm.cpp test_fp_intersection.cpp test_valuation.cpp test_constraint.cpp test_hash.cpp)
+file(GLOB test_cpp_sources test_fed.cpp test_fed_dbm.cpp test_fp_intersection.cpp test_valuation.cpp test_constraint.cpp)
 foreach(source ${test_cpp_sources})
   get_filename_component(test_target ${source} NAME_WE)
   add_executable(${test_target} ${source})
