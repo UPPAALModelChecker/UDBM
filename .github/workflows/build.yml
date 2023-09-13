@@ -61,7 +61,7 @@ jobs:
     runs-on: macos-latest
     env:
       CMAKE_TOOLCHAIN_FILE: ${{ github.workspace }}/cmake/toolchain/x86_64-darwin.cmake
-      CMAKE_BUILD_TYPE: Debug
+      CMAKE_BUILD_TYPE: Release
       CTEST_OUTPUT_ON_FAILURE: 1
       CTEST_TEST_TIMEOUT: 20
       STATIC: ON
@@ -89,7 +89,7 @@ jobs:
     runs-on: windows-latest
     env:
       CMAKE_TOOLCHAIN_FILE: C:/vcpkg/scripts/buildsystems/vcpkg.cmake
-      CMAKE_BUILD_TYPE: Debug
+      CMAKE_BUILD_TYPE: Release
       STATIC: ON
       CTEST_OUTPUT_ON_FAILURE: 1
       CTEST_TEST_TIMEOUT: 20
