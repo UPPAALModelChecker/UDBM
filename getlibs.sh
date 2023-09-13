@@ -4,11 +4,14 @@ set -eo pipefail
 PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 if [ $# -eq 0 ]; then
-    targets=$(uname --machine)-$(uname --kernel-name)
-    targets="${targets,,}"
-    echo "No targets specified on command line, assuming: $targets"
+  echo "Script $0 fetches, compiles and installs dependent libraries."
+  machine=$(uname --machine)
+  kernel=$(uname --kernel-name)
+  targets=${machine,,}-${kernel,,}
+  echo "Expects targets as arguments, for example: $targets"
+  exit 1
 else
-    targets="$@"
+  targets="$@"
 fi
 
 SOURCES="$PROJECT_DIR/local/sources"
