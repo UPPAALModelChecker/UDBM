@@ -1,5 +1,5 @@
 ---
-name: Build and Test
+name: Build
 
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
   formatting:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Formatting
         run: find src include test -iregex '.*\.\(c\|h\|cpp\|hpp\|cc\|hh\|cxx\|hxx\)$' | xargs clang-format -n -Werror
   build-linux:
@@ -27,12 +27,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CMAKE_TOOLCHAIN_FILE: ${{ github.workspace }}/cmake/toolchain/${{ matrix.target }}.cmake
-      CMAKE_PREFIX_PATH: ${{ github.workspace }}/local/${{ matrix.target }}
       CMAKE_BUILD_TYPE: Release
       CTEST_OUTPUT_ON_FAILURE: 1
+      CTEST_TEST_TIMEOUT: 20
       STATIC: OFF
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install MinGW64 cross-compiler and wine
         if: matrix.target == 'x86_64-w64-mingw32'
         run: |
@@ -43,57 +43,74 @@ jobs:
           WINEPATH=$($PWD/winepath-for ${{ matrix.target }})
           echo "WINEPATH=$WINEPATH" >> $GITHUB_ENV
           echo "WINARCH=win64" >> $GITHUB_ENV
+      - name: Build without getlibs
+        run: |
+          BUILD="build-${{ matrix.target }}-${CMAKE_BUILD_TYPE,,}"
+          cmake -S . -B "$BUILD" -DUDBM_STATIC=$STATIC -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DENABLE_DBM_NEW=${{ matrix.newdbm }}
+          cmake --build "$BUILD" --config $CMAKE_BUILD_TYPE
+          (cd "$BUILD" ; ctest -C $CMAKE_BUILD_TYPE)
       - name: Getlibs
         run: ./getlibs.sh ${{ matrix.target }}
-      - name: Build and test
+      - name: Build with getlibs
         run: |
-          echo "  CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
-          echo "  CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
-          echo "  CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
-          cmake -S . -B build -DUDBM_WITH_TESTS=ON -DUDBM_STATIC=$STATIC -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DENABLE_DBM_NEW=${{ matrix.newdbm }}
-          cmake --build build --config $CMAKE_BUILD_TYPE
-          (cd build ; ctest -C $CMAKE_BUILD_TYPE)
-  build-windows:
-    runs-on: windows-latest
-    env:
-      CMAKE_TOOLCHAIN_FILE: C:/vcpkg/scripts/buildsystems/vcpkg.cmake
-      CMAKE_PREFIX_PATH: ${{ github.workspace }}/local/x86_64-w64-mingw32
-      CMAKE_BUILD_TYPE: Release
-      STATIC: ON
-      CTEST_OUTPUT_ON_FAILURE: 1
-    steps:
-      - uses: actions/checkout@v2
-      - name: Get dependencies
-        run: |
-          vcpkg integrate install
-          vcpkg install doctest --triplet x64-windows
-          bash ./getlibs.sh x86_64-w64-mingw32
-      - name: Build and test
-        run: |
-          cmake -S . -B build -DUDBM_WITH_TESTS=ON
-          cmake --build build --config %CMAKE_BUILD_TYPE%
-          (cd build ; ctest -C %CMAKE_BUILD_TYPE%)
+          BUILD="build-${{ matrix.target }}-libs-${CMAKE_BUILD_TYPE,,}"          
+          cmake -S . -B "$BUILD" -DCMAKE_PREFIX_PATH="${{ github.workspace }}/local/${{ matrix.target }}" -DUDBM_STATIC=$STATIC -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DENABLE_DBM_NEW=${{ matrix.newdbm }}
+          cmake --build "$BUILD" --config $CMAKE_BUILD_TYPE
+          (cd "$BUILD" ; ctest -C $CMAKE_BUILD_TYPE)
   build-macos:
     runs-on: macos-latest
     env:
       CMAKE_TOOLCHAIN_FILE: ${{ github.workspace }}/cmake/toolchain/x86_64-darwin.cmake
-      CMAKE_PREFIX_PATH: ${{ github.workspace }}/local/x86_64-darwin
-      CMAKE_BUILD_TYPE: Release
-      STATIC: ON
+      CMAKE_BUILD_TYPE: Debug
       CTEST_OUTPUT_ON_FAILURE: 1
+      CTEST_TEST_TIMEOUT: 20
+      STATIC: ON
     strategy:
       fail-fast: false
       matrix:
         sanitizers: [ON, OFF]
     steps:
-      - uses: actions/checkout@v2
-      - name: Get dependencies
-        run: ./getlibs.sh x86_64-darwin
-      - name: Build and test
+      - uses: actions/checkout@v3
+      - name: Build without getlibs
         run: |
-          echo "  CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
-          echo "  CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
-          echo "  CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
-          cmake -S . -B build -DUDBM_WITH_TESTS=ON -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }}
-          cmake --build build --config $CMAKE_BUILD_TYPE
-          (cd build ; ctest -C $CMAKE_BUILD_TYPE)
+          BUILD=build-x86_64-darwin-$CMAKE_BUILD_TYPE
+          cmake -S . -B "$BUILD" -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }}
+          cmake --build "$BUILD" --config $CMAKE_BUILD_TYPE
+          (cd "$BUILD" ; ctest -C $CMAKE_BUILD_TYPE)
+      - name: Get dependencies
+        run: CMAKE_BUILD_TYPE=Release ./getlibs.sh x86_64-darwin
+      - name: Build with getlibs
+        run: |
+          BUILD=build-x86_64-darwin-libs-$CMAKE_BUILD_TYPE
+          cmake -S . -B "$BUILD" -DCMAKE_PREFIX_PATH="${{ github.workspace }}/local/x86_64-darwin" -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }}
+          cmake --build "$BUILD" --config $CMAKE_BUILD_TYPE
+          (cd "$BUILD" ; ctest -C $CMAKE_BUILD_TYPE)
+  build-windows:
+    runs-on: windows-latest
+    env:
+      CMAKE_TOOLCHAIN_FILE: C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+      CMAKE_BUILD_TYPE: Release
+      STATIC: ON
+      CTEST_OUTPUT_ON_FAILURE: 1
+      CTEST_TEST_TIMEOUT: 20
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build without getlibs
+        run: |
+          $env:BUILD='build-x86_64-windows'
+          cmake -S . -B $env:BUILD
+          cmake --build $env:BUILD --config $env:CMAKE_BUILD_TYPE
+          cd $env:BUILD
+          ctest -C $env:CMAKE_BUILD_TYPE
+      - name: Get dependencies
+        run: |
+          vcpkg integrate install
+          vcpkg install doctest --triplet x64-windows
+          pwsh -Command { $env:CMAKE_BUILD_TYPE=Release ; bash ./getlibs.sh x86_64-w64-mingw32 }
+      - name: Build with getlibs
+        run: |
+          $env:BUILD='build-x86_64-windows-libs'
+          cmake -S . -B $env:BUILD -DCMAKE_PREFIX_PATH="${{ github.workspace }}/local/x86_64-w64-mingw32"
+          cmake --build $env:BUILD --config $env:CMAKE_BUILD_TYPE
+          cd $env:BUILD
+          ctest -C $env:CMAKE_BUILD_TYPE

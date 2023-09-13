@@ -17,7 +17,11 @@ fi
 SOURCES="$PROJECT_DIR/local/sources"
 mkdir -p "$SOURCES"
 
-[ -n "$CMAKE_BUILD_TYPE" ]     || export CMAKE_BUILD_TYPE=Release
+if [ -z "${CMAKE_BUILD_TYPE+x}" ]; then
+    export CMAKE_BUILD_TYPE=Release
+elif [ "$CMAKE_BUILD_TYPE" != Release ]; then
+    echo "WARNING: building libs with CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
+fi
 
 for target in $targets ; do
     PREFIX="$PROJECT_DIR/local/$target"
@@ -55,7 +59,7 @@ for target in $targets ; do
 
     # UUtils various low level Uppaal utilities
     NAME=UUtils
-    VERSION=2.0.3
+    VERSION=2.0.4
     LIBRARY="${NAME}-${VERSION}"
     if [ -r "$PREFIX/include/base/Enumerator.h" ]; then
       echo "$LIBRARY is already installed in $PREFIX"
@@ -66,8 +70,8 @@ for target in $targets ; do
       pushd "$SOURCES"
       [ -r "$ARCHIVE" ] || curl -sL "https://github.com/UPPAALModelChecker/UUtils/archive/refs/tags/v${VERSION}.tar.gz" -o "$ARCHIVE"
       [ -d "$SOURCE" ] || tar -xf "$ARCHIVE"
+      #git clone -b native-windows --single-branch --depth 1 https://github.com/mikucionisaau/UUtils.git "$LIBRARY"
       popd
-      # git clone -b cmake-alias --single-branch --depth 1 https://github.com/mikucionisaau/UUtils.git "$SOURCE_DIR"
       echo "Building $LIBRARY in $BUILD"
       echo "  CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
       echo "  CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
