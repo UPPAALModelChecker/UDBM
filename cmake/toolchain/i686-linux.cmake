@@ -6,6 +6,7 @@ set(CMAKE_C_COMPILER cc)
 set(CMAKE_C_FLAGS -m32)
 set(CMAKE_CXX_COMPILER c++)
 set(CMAKE_CXX_FLAGS -m32)
+set(CMAKE_ASM_FLAGS -m32)
 
 # here is the target environment located
 set(CMAKE_FIND_ROOT_PATH "${CMAKE_PREFIX_PATH}")

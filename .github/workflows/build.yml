@@ -1,3 +1,4 @@
+---
 name: Build and Test
 
 on:
@@ -7,106 +8,118 @@ on:
     branches: [ main ]
 
 jobs:
-  format:
+  formatting:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Format
-      run: find src include test -iregex '.*\.\(c\|h\|cpp\|hpp\|cc\|hh\|cxx\|hxx\)$' | xargs clang-format -n -Werror
-  build-linux-win:
+      - uses: actions/checkout@v2
+      - name: Formatting
+        run: find src include test -iregex '.*\.\(c\|h\|cpp\|hpp\|cc\|hh\|cxx\|hxx\)$' | xargs clang-format -n -Werror
+  build-win64:
     strategy:
       fail-fast: false
       matrix:
-        target: [mingw, ubuntu]
+        target: [x86_64-w64-mingw32, x86_64-linux]
         sanitizers: [ON, OFF]
         newdbm: [ON, OFF]
         exclude:
-          - target: mingw
+          - target: x86_64-w64-mingw32
             sanitizers: ON
     runs-on: ubuntu-latest
+    env:
+      CMAKE_TOOLCHAIN_FILE: ${{ github.workspace }}/cmake/toolchain/{{ matrix.target }}.cmake
+      CMAKE_PREFIX_PATH: ${{ github.workspace }}/local/{{ matrix.target }}
+      CMAKE_BUILD_TYPE: Release
+      CTEST_OUTPUT_ON_FAILURE: 1
+      STATIC: ON
     steps:
-    - uses: actions/checkout@v2
-    - name: Set default environment variables
-      run: echo "STATIC=OFF" >> "$GITHUB_ENV"
-    - name: Set mingw environment variables
-      if: matrix.target == 'mingw'
-      run: |
-          echo "CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/x86_64-w64-mingw32.cmake" >> "$GITHUB_ENV"
-          echo "STATIC=ON" >> "$GITHUB_ENV"
-    - name: Get ubuntu dependencies
-      if: matrix.target == 'ubuntu'
-      run: |
-          sudo apt-get update
-          sudo apt-get install libboost-all-dev doctest-dev
-    - name: Get mingw dependencies
-      if: matrix.target == 'mingw'
-      run: |
-          sudo apt-get update
-          sudo apt-get install cmake make g++-mingw-w64-x86-64 mingw-w64-x86-64-dev mingw-w64-tools wine wine-binfmt
+      - uses: actions/checkout@v2
+      - name: Set default environment variables
+        run: echo "STATIC=OFF" >> "$GITHUB_ENV"
+      - name: Get MinGW64 dependencies
+        if: matrix.target == 'mingw'
+        run: |
+          sudo apt-get -qqy update
+          sudo apt-get -qqy install cmake make g++-mingw-w64-x86-64 mingw-w64-x86-64-dev mingw-w64-tools wine wine-binfmt
           sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
           sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
-    - name: Getlibs
-      run: ./getlibs.sh
-    - name: Build and test
-      run: |
-          export CTEST_OUTPUT_ON_FAILURE=1
-          cmake -DUDBM_WITH_TESTS=ON -DUDBM_STATIC=$STATIC  -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release -DENABLE_DBM_NEW=${{ matrix.newdbm }} -DCMAKE_PREFIX_PATH=$(pwd)/local -B build -S .
-          cmake --build build
-          (cd build ; ctest)
-  build-win-native:
+      - name: Getlibs
+        run: ./getlibs.sh {{ matrix.target }}
+      - name: Build and test
+        run: |
+          echo "  CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
+          echo "  CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
+          echo "  CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
+          cmake -S . -B build -DUDBM_WITH_TESTS=ON -DUDBM_STATIC=$STATIC -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DENABLE_DBM_NEW=${{ matrix.newdbm }}
+          cmake --build build --config $CMAKE_BUILD_TYPE
+          (cd build ; ctest -C $CMAKE_BUILD_TYPE)
+  build-win64-native:
     runs-on: windows-latest
+    env:
+      CMAKE_TOOLCHAIN_FILE: C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+      CMAKE_PREFIX_PATH: ${{ github.workspace }}/local/x86_64-w64-mingw32
+      CMAKE_BUILD_TYPE: Release
+      STATIC: ON
+      CTEST_OUTPUT_ON_FAILURE: 1
     steps:
-    - uses: actions/checkout@v2
-    - name: Get dependencies
-      run: |
+      - uses: actions/checkout@v2
+      - name: Get dependencies
+        run: |
           vcpkg integrate install
           vcpkg install doctest --triplet x64-windows
-          bash ./getlibs.sh
-    - name: Build and test
-      run: |
-          cmake -DCMAKE_BUILD_TYPE=Release -DUDBM_WITH_TESTS=ON "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_PREFIX_PATH=$PWD/local/x86_64-w64-mingw32 -B build -S .
-          cmake --build build --config Release
-          (cd build ; ctest --output-on-failure -C Release)
+          bash ./getlibs.sh x86_64-w64-mingw32
+      - name: Build and test
+        run: |
+          cmake -S . -B build -DUDBM_WITH_TESTS=ON
+          cmake --build build --config %CMAKE_BUILD_TYPE%
+          (cd build ; ctest -C %CMAKE_BUILD_TYPE%)
   build-macos:
     runs-on: macos-latest
+    env:
+      CMAKE_TOOLCHAIN_FILE: ${{ github.workspace }}/cmake/toolchain/x86_64-darwin.cmake
+      CMAKE_PREFIX_PATH: ${{ github.workspace }}/local/x86_64-darwin
+      CMAKE_BUILD_TYPE: Release
+      STATIC: ON
+      CTEST_OUTPUT_ON_FAILURE: 1
     strategy:
       fail-fast: false
       matrix:
         sanitizers: [ON, OFF]
     steps:
-    - uses: actions/checkout@v2
-    - name: Get dependencies
-      run: brew install boost doctest && ./getlibs.sh
-    - name: Build and test
-      run: |
-          export CTEST_OUTPUT_ON_FAILURE=1
-          cmake -DUDBM_WITH_TESTS=ON -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$(pwd)/local -B build -S .
-          cmake --build build
-          (cd build ; ctest)
+      - uses: actions/checkout@v2
+      - name: Get dependencies
+        run: brew install boost doctest && ./getlibs.sh
+      - name: Build and test
+        run: |
+          echo "  CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
+          echo "  CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
+          echo "  CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
+          cmake -S . -B build -DUDBM_WITH_TESTS=ON -DASAN=${{ matrix.sanitizers }} -DUBSAN=${{ matrix.sanitizers }}
+          cmake --build build --config $CMAKE_BUILD_TYPE
+          (cd build ; ctest -C $CMAKE_BUILD_TYPE)
   build-nix:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v15
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - name: Build and test
-      run: nix build -L
+      - uses: actions/checkout@v2
+      - uses: cachix/install-nix-action@v15
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Build and test
+        run: nix build -L
   build-nix-mac:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v15
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - name: Build and test
-      run: nix build -L
+      - uses: actions/checkout@v2
+      - uses: cachix/install-nix-action@v15
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Build and test
+        run: nix build -L
   build-nix-cross:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v15
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - name: Build and test
-      run: nix build -L .\#packages.crossPackage.x86_64-linux
+      - uses: actions/checkout@v2
+      - uses: cachix/install-nix-action@v15
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Build and test
+        run: nix build -L .\#packages.crossPackage.x86_64-linux

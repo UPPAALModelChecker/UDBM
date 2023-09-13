@@ -16,7 +16,7 @@ else(UUtils_FOUND)
             #GIT_TAG cmake-alias
             GIT_REPOSITORY https://github.com/UPPAALModelChecker/UUtils.git
             GIT_TAG v2.0.3
-            GIT_SHALLOW TRtliUE # get only the last commit version
+            GIT_SHALLOW TRUE # get only the last commit version
             GIT_PROGRESS TRUE # show progress of download
             # FIND_PACKAGE_ARGS NAMES doctest
             USES_TERMINAL_DOWNLOAD TRUE # show progress in ninja generator
