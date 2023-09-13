@@ -18,6 +18,7 @@
 
 #include <debug/macros.h>
 
+#include <algorithm>  // transform
 #include <functional>
 #include <iostream>
 #include <stdexcept>
