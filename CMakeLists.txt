@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(UDBM VERSION 2.0.11 LANGUAGES CXX C)
+project(UDBM VERSION 2.0.13 LANGUAGES CXX C)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
