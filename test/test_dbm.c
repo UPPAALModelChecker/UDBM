@@ -22,8 +22,9 @@
 #include "dbm/dbm.h"
 #include "dbm/gen.h"
 #include "dbm/print.h"
-#include "base/bitstring.h"
-#include "debug/macros.h"
+
+#include <base/bitstring.h>
+#include <debug/macros.h>
 
 #include <stdio.h>
 #include <stdlib.h>

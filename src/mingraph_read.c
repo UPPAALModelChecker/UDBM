@@ -14,8 +14,9 @@
 #include "mingraph_coding.h"
 
 #include "dbm/mingraph.h"
-#include "base/bitstring.h"
-#include "debug/macros.h"
+
+#include <base/bitstring.h>
+#include <debug/macros.h>
 
 #include <stdio.h>
 #include <stdlib.h>

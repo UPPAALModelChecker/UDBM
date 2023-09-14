@@ -24,7 +24,8 @@
 #include "dbm/dbm.h"
 #include "dbm/gen.h"
 #include "dbm/print.h"
-#include "debug/macros.h"
+
+#include <debug/macros.h>
 
 #include <stdlib.h>
 #include <time.h>

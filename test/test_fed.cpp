@@ -18,14 +18,15 @@
 #include "dbm/fed.h"
 #include "dbm/gen.h"
 #include "dbm/print.h"
-#include "debug/utils.h"
+
+#include <debug/utils.h>
+
+#include <doctest/doctest.h>
 
 #include <algorithm>  // sort
 #include <iostream>
 #include <random>
 #include <ctime>
-
-#include <doctest/doctest.h>
 
 using namespace std;
 using namespace dbm;

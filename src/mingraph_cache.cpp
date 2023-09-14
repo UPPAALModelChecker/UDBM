@@ -15,15 +15,14 @@
 
 #include "mingraph_cache.h"
 
-#include "base/intutils.h"
-#include "base/stats.h"
-#include "debug/macros.h"
+#include <base/intutils.h>
+#include <base/stats.h>
+#ifndef NDEBUG
+#include <base/bitstring.h>
+#endif
+#include <debug/macros.h>
 
 #include <iostream>
-
-#ifndef NDEBUG
-#include "base/bitstring.h"
-#endif
 
 /* Default size for the cache, can redefined to anything > 0 */
 /* Choose your favorite prime among http://primes.utm.edu/lists/small/1000.txt. */
@@ -100,4 +99,4 @@ void mingraph_putCachedResult(const raw_t* dbm, cindex_t dim, const uint32_t* bi
     assert(base_countBitsN(&entry->data[dim2], bits2intsize(dim2)) == entry->cnt);
 }
 
-#endif
+#endif /* ENABLE_MINGRAPH_CACHE */

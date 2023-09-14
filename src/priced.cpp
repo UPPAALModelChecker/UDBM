@@ -15,8 +15,10 @@
 
 #include "dbm/dbm_raw.hpp"
 #include "dbm/print.h"
-#include "debug/macros.h"
 
+#include <debug/macros.h>
+
+#include <algorithm>  // transform
 #include <functional>
 #include <iostream>
 #include <stdexcept>

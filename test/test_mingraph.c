@@ -23,8 +23,9 @@
 #include "dbm/gen.h"
 #include "dbm/mingraph.h"
 #include "dbm/print.h"
-#include "base/bitstring.h"
-#include "debug/macros.h"
+
+#include <base/bitstring.h>
+#include <debug/macros.h>
 
 #include <assert.h>
 #include <stdlib.h>
