@@ -5,6 +5,7 @@ include(GNUInstallDirs)
 
 option(UDBM_WITH_TESTS "UDBM Unit tests" ON)
 option(UDBM_STATIC "Static linking" OFF)
+option(FIND_FATAL "Stop upon find_package errors" OFF)
 
 cmake_policy(SET CMP0048 NEW) # project() command manages VERSION variables
 set(CMAKE_CXX_STANDARD 17)
@@ -37,8 +38,6 @@ endif()
 if(UDBM_WITH_TESTS)
     enable_testing()
 endif(UDBM_WITH_TESTS)
-
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_subdirectory("src")
 

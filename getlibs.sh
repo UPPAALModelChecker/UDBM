@@ -37,10 +37,12 @@ for target in $targets ; do
       echo "$LIBRARY is already installed in $PREFIX"
     else
       ARCHIVE="${LIBRARY}.tar.gz"
+      SHA256=632ed2c05a7f53fa961381497bf8069093f0d6628c5f26286161fbd32a560186
       SOURCE="${SOURCES}/${LIBRARY}"
       BUILD="${PREFIX}/build-${LIBRARY}"
       pushd "$SOURCES"
       [ -r "$ARCHIVE" ] || curl -sL "https://github.com/doctest/doctest/archive/refs/tags/v${VERSION}.tar.gz" -o "$ARCHIVE"
+      if [ -n "$(command -v sha256sum)" ]; then echo "$SHA256 $ARCHIVE" | sha256sum --check ; fi
       [ -d "$SOURCE" ] || tar -xf "$ARCHIVE"
       popd
       echo "Building $LIBRARY in $BUILD"
@@ -59,18 +61,20 @@ for target in $targets ; do
 
     # UUtils various low level Uppaal utilities
     NAME=UUtils
-    VERSION=2.0.4
+    VERSION=2.0.5
     LIBRARY="${NAME}-${VERSION}"
     if [ -r "$PREFIX/include/base/Enumerator.h" ]; then
       echo "$LIBRARY is already installed in $PREFIX"
     else
       ARCHIVE="${LIBRARY}.tar.gz"
+      SHA256=e213f936af73344de071a7794233a328028045c08df58ac9c637a0e6a2ad7b3f
       SOURCE="${SOURCES}/${LIBRARY}"
       BUILD="${PREFIX}/build-${LIBRARY}"
       pushd "$SOURCES"
+      #git clone -b dev-branch --single-branch --depth 1 https://github.com/UPPAALModelChecker/UUtils.git "$LIBRARY"
       [ -r "$ARCHIVE" ] || curl -sL "https://github.com/UPPAALModelChecker/UUtils/archive/refs/tags/v${VERSION}.tar.gz" -o "$ARCHIVE"
+      if [ -n "$(command -v sha256sum)" ]; then echo "$SHA256 $ARCHIVE" | sha256sum --check ; fi
       [ -d "$SOURCE" ] || tar -xf "$ARCHIVE"
-      #git clone -b native-windows --single-branch --depth 1 https://github.com/mikucionisaau/UUtils.git "$LIBRARY"
       popd
       echo "Building $LIBRARY in $BUILD"
       echo "  CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"

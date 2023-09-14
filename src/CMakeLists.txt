@@ -9,13 +9,9 @@ endif()
 target_link_libraries(UDBM PRIVATE UUtils::base UUtils::udebug UUtils::hash)
 
 target_include_directories(UDBM
-    PRIVATE
-        # where the library itself will look for its internal headers
-        ${PROJECT_BINARY_DIR}/include
-        ${PROJECT_SOURCE_DIR}/include
     PUBLIC
         # where top-level project will look for the library's public headers
-        $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
+        $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include> # dbm/config.h
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         # where external projects will look for the library's public headers
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>

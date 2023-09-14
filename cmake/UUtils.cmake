@@ -1,4 +1,4 @@
-find_package(UUtils 2.0.4 COMPONENTS base hash debug QUIET)
+find_package(UUtils 2.0.5 COMPONENTS base hash debug QUIET)
 
 if (UUtils_FOUND)
   message(STATUS "Found UUtils: ${UUtils_DIR}")
@@ -12,10 +12,8 @@ else(UUtils_FOUND)
     set(UUtils_WITH_BENCHMARKS OFF CACHE BOOL "UUtils benchmarks")
     FetchContent_Declare(
             UUtils
-            #GIT_REPOSITORY https://github.com/mikucionisaau/UUtils.git
-            #GIT_TAG cmake-alias
             GIT_REPOSITORY https://github.com/UPPAALModelChecker/UUtils.git
-            GIT_TAG v2.0.4
+            GIT_TAG v2.0.5
             GIT_SHALLOW TRUE # get only the last commit version
             GIT_PROGRESS TRUE # show progress of download
             # FIND_PACKAGE_ARGS NAMES doctest
