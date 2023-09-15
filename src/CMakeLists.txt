@@ -6,7 +6,9 @@ set_property(TARGET UDBM PROPERTY VISIBILITY_INLINES_HIDDEN ON)
 if (NOT CMAKE_SYSTEM_NAME STREQUAL Windows) # unknown argument: '-fno-keep-inline-dllexport'
     set_target_properties(UDBM PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}")
 endif()
-target_link_libraries(UDBM PRIVATE UUtils::base UUtils::udebug UUtils::hash)
+target_link_libraries(UDBM
+        PUBLIC UUtils::base UUtils::hash UUtils::udebug # include/inline_fed.h includes base, hash and debug
+)
 
 target_include_directories(UDBM
     PUBLIC

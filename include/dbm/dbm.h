@@ -20,9 +20,9 @@
 
 #include "dbm/constraints.h"
 
-#include <base/intutils.h>
-#include <base/relation.h>
-#include <hash/compute.h>
+#include <base/intutils.h>  // size_t
+#include <base/relation.h>  // relation_t
+#include <hash/compute.h>   // hash_computeI32
 
 #ifdef __cplusplus
 extern "C" {
