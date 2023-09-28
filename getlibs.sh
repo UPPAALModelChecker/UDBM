@@ -42,3 +42,13 @@ tar -xvf boost_1_81_0.tar.gz
 mkdir -p "$SOURCE_DIR/libs/sources/boost_1_81_0/build"
 cd "$SOURCE_DIR/libs/sources/boost_1_81_0/build"
 cp -r "$SOURCE_DIR/libs/sources/boost_1_81_0/boost" "$SOURCE_DIR/libs/"
+
+cd $SOURCE_DIR/libs/sources;
+wget https://github.com/doctest/doctest/archive/refs/tags/v2.4.11.tar.gz
+tar -xvf v2.4.11.tar.gz
+mkdir -p "$SOURCE_DIR/libs/sources/doctest-2.4.11/build"
+cd "$SOURCE_DIR/libs/sources/doctest-2.4.11"
+cd build
+cmake $CMAKE_ARGS -DOCTEST_WITH_TESTS=OFF -DDOCTEST_WITH_MAIN_IN_STATIC_LIB=ON -DDOCTEST_USE_STD_HEADERS=ON -DCMAKE_INSTALL_PREFIX="$SOURCE_DIR/libs" ..
+cmake --build . --config Release
+cmake --install . --config Release

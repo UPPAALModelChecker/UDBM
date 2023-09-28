@@ -16,6 +16,7 @@ set(ENABLE_STORE_MINGRAPH 1)
 CONFIGURE_FILE("src/config.h.cmake" "include/dbm/config.h")
 
 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${CMAKE_CURRENT_SOURCE_DIR}/libs")
+find_package(doctest 2.4.11 REQUIRED)
 find_package(xxHash 0.8.0 CONFIG REQUIRED)
 find_package(UUtils 1.1.1 REQUIRED COMPONENTS base hash debug)
 

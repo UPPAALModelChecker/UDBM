@@ -3,13 +3,12 @@
 set(libs UDBM UUtils::udebug UUtils::base UUtils::hash m)
 
 if (TESTING)
-  file(GLOB test_sources "test_*.c" "test_*.cpp")
+  add_executable(test_dbm test_dbm.c)
+  target_link_libraries(test_dbm ${libs})
 
-  foreach(source ${test_sources})
-    get_filename_component(test_target ${source} NAME_WE)
-    add_executable(${test_target} ${source})
-    target_link_libraries(${test_target} ${libs})
-  endforeach()
+  add_executable(test_pfed test_pfed.cpp)
+  target_compile_definitions(test_pfed PRIVATE DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
+  target_link_libraries(test_pfed PRIVATE ${libs} doctest::doctest)
 
   # comments contain expected time of Linux debug build, YMMV, whereas timeouts are worst case
   add_test(NAME dbm_dbm_1_10 COMMAND test_dbm 1 10)
