@@ -3,7 +3,8 @@
 
 #include <doctest/doctest.h>
 
-void any_contains(const dbm::pfed_t& pfed, int* valuation, size_t dim, CostType expected) {
+// Asserts that the valuation is contained in some pdbm in the pfed and that the cost of that valuation is the expected cost
+void any_contains_with_cost(const dbm::pfed_t& pfed, int* valuation, size_t dim, CostType expected) {
     bool any_contains = false;
     for (const auto& pdbm : pfed) {
         if (pdbm_containsInt(pdbm, dim, valuation)) {
@@ -42,24 +43,37 @@ TEST_SUITE("pfed")
         REQUIRE((pfed.size() == 2));
         REQUIRE((pfed.getInfimum() == 1));
 
-
-        {
-
-        }
         // Assert that some pdbm in pfed contains the valuation (1,1) and has cost 4
         {
             int valuation[3] = {0, 1, 1};
-            any_contains(pfed, valuation, 3, 4);
+            any_contains_with_cost(pfed, valuation, 3, 4);
         }
 
         {
             int valuation[3] = {0, 2, 2};
-            any_contains(pfed, valuation, 3, 7);
+            any_contains_with_cost(pfed, valuation, 3, 7);
         }
 
         {
             int valuation[3] = {0, 2, 0};
-            any_contains(pfed, valuation, 3, 4);
+            any_contains_with_cost(pfed, valuation, 3, 4);
+        }
+    }
+
+    TEST_CASE("set_uniform_cost") {
+        dbm::pfed_t pfed(3);
+        pfed.setZero();
+        pfed.up(1);
+        pfed.setUniformCost(3);
+        // All valuations in the zone should now have cost 3
+        {
+            int valuation[3] = {0, 0, 0};
+            any_contains_with_cost(pfed, valuation, 3, 3);
+        }
+
+        {
+            int valuation[3] = {0, 5, 5};
+            any_contains_with_cost(pfed, valuation, 3, 3);
         }
     }
 }

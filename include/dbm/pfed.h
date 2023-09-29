@@ -645,6 +645,7 @@ namespace dbm
 
         void freeClock(cindex_t clock);
 
+        // Simplifies the rational cost to avoid large numbers, no real guarantees of what the cost is afterwards
         void simplify_rational_cost();
 
         /**
