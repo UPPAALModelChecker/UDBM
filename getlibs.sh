@@ -71,10 +71,10 @@ for target in $targets ; do
 
     ## BOOST for UUtils
     NAME=boost
-    VERSION=1.88.0
+    VERSION=1.89.0
     LIBRARY="${NAME}-${VERSION}"
     ARCHIVE="${LIBRARY}-cmake.tar.xz"
-    SHA256=f48b48390380cfb94a629872346e3a81370dc498896f16019ade727ab72eb1ec
+    SHA256=67acec02d0d118b5de9eb441f5fb707b3a1cdd884be00ca24b9a73c995511f74
     SOURCE="${SOURCES}/${LIBRARY}"
     BUILD="${PREFIX}/build-${LIBRARY}"
     if [ -r "${CMAKE_INSTALL_PREFIX}/include/boost/math/distributions/arcsine.hpp" ] ; then
@@ -100,13 +100,13 @@ for target in $targets ; do
 
     # doctest for unit testing
     NAME=doctest
-    VERSION=2.4.11
+    VERSION=2.4.12
     LIBRARY="${NAME}-${VERSION}"
     if [ -r "$PREFIX/include/doctest/doctest.h" ] ; then
       echo "$LIBRARY is already installed in $PREFIX"
     else
       ARCHIVE="${LIBRARY}.tar.gz"
-      SHA256=632ed2c05a7f53fa961381497bf8069093f0d6628c5f26286161fbd32a560186
+      SHA256=73381c7aa4dee704bd935609668cf41880ea7f19fa0504a200e13b74999c2d70
       SOURCE="${SOURCES}/${LIBRARY}"
       BUILD="${PREFIX}/build-${LIBRARY}"
       pushd "$SOURCES"
