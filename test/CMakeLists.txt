@@ -14,6 +14,7 @@ foreach(source ${test_cpp_sources})
   get_filename_component(test_target ${source} NAME_WE)
   add_executable(${test_target} ${source})
   target_link_libraries(${test_target} ${libs} doctest_with_main)
+  target_compile_definitions(${test_target} PUBLIC DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
 endforeach()
 
 # comments contain expected time of Linux debug build, YMMV, whereas timeouts
