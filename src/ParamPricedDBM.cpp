@@ -1,6 +1,6 @@
 /* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 
-#include "../include/dbm/ParamPricedDBM.h"
+#include "dbm/ParamPricedDBM.h"
 
 #include <debug/macros.h>
 
