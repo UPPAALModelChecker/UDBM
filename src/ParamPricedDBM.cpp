@@ -4,7 +4,7 @@
 
 #include <debug/macros.h>
 
-#include <algorithm>  // transform
+#include <algorithm>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
@@ -12,35 +12,15 @@
 #include <memory>
 
 /**
- * constructs an unrestrained matrix
- * @param dim
- * @param param
- */
-Ppdbm::Ppdbm(int dim, int param)
-    : dim(dim),
-      param(param),
-      DBM(dim),
-      offsetCost(param + 1),
-      rates(dim, std::vector<int>(param + 1))
-{}
-
-/**
  * resets a DBM to its unrestrained state.
  */
 void Ppdbm::reset()
 {
-    std::fill(DBM.data.begin(), DBM.data.end(), INF_BOUND);
-    for (int i = 0; i < dim; ++i) {
-        DBM(i,i)= DIAG_BOUND;
-    }
-
-    std::fill(offsetCost.begin(), offsetCost.end(), 0);
-
-    for (auto& rate : rates) {
-        std::fill(rate.begin(), rate.end(), 0);
-    }
-
-    PC.constraints.clear();
+    _dbm.reset();
+    std::fill(_offsetCost.begin(), _offsetCost.end(), 0);
+    _rates.fill(0);
+    _PC.constraints.clear();
+    _emptyZone = false;
 }
 
 /**
@@ -50,38 +30,35 @@ void Ppdbm::reset()
  * @param constraint
  * @return
  */
-bool Ppdbm::constrain_DBM(int i, int j, DbmBound constraint)
+bool Ppdbm::constrain_DBM(uint32_t i, uint32_t j, DbmBound constraint)
 {
-    assert(i >= 0 && i < dim);
-    assert(j >= 0 && j < dim);
+    assert(i < _dim && j < _dim);
 
     // The constraint is useless?
-    if (constraint.isLooserThan(DBM(i,j))) {
-        return true;
-    }
+    if (_dbm(i,j).dominates(constraint)) { return true; }
 
     // The constraint empties the zone?
-    if (constraint.negate().isLooserThan(DBM(j, i))) {
-        DBM(i, j) = constraint;
-        emptyZone = true;
+    if (DbmBound::isIncompatible(constraint,_dbm(j,i))) {
+        _dbm(i, j) = constraint;
+        _emptyZone = true;
         return false;
     }
 
     // remove the cost at the previous offset
-    for (int h = 1; h < dim; h++) { // for every clock,
-        for (int k = 0; k <= param; k++) { // for every parameter,
-            offsetCost[k] -= rates[h][k] * (-DBM(0, h).value); // x_0 - x_k <= value so x_k >= -value
+    for (uint32_t h = 1; h < _dim; h++) { // for every clock,
+        for (uint32_t k = 0; k <= _param; k++) { // for every parameter,
+            _offsetCost[k] -= _rates(h,k) * (-_dbm(0, h).getValue()); // x_0 - x_k <= value so x_k >= -value
         }
     }
 
     // Add the constraint and close the DBM
-    DBM(i, j) = constraint;
-    DBM.close(i,j);
+    _dbm(i, j) = constraint;
+    //_dbm.close(i,j);
 
     // Add the cost at the new offset
-    for (int h = 1; h < dim; h++) { // for every clock,
-        for (int k = 0; k <= param; k++) { // for every parameter,
-            offsetCost[k] += rates[h][k] * (-DBM(0, h).value); // x_0 - x_k <= value so x_k >= -value
+    for (uint32_t h = 1; h < _dim; h++) { // for every clock,
+        for (uint32_t k = 0; k <= _param; k++) { // for every parameter,
+            _offsetCost[k] += _rates(h,k) * (-_dbm(0, h).getValue()); // x_0 - x_k <= value so x_k >= -value
         }
     }
 

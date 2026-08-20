@@ -9,75 +9,110 @@
 #include <utility>
 #include <memory>
 #include <cstdio>
+#include <limits>
 #include <vector>
+#include <cassert>
+#include <algorithm>
 
 
 
+constexpr auto INF = std::numeric_limits<int>::max() >> 1u;
 
-constexpr int INF = INT_MAX >> 1;
+template <typename T>
+struct Matrix
+{
+    constexpr Matrix(uint32_t rows, uint32_t cols, const T x): _rows{rows}, _cols{cols}, _data(rows * cols, x){}
+    constexpr auto getRows() const { return _rows; }
+    constexpr auto getCols() const { return _cols; }
+    constexpr auto& getData() const { return _data; }
+    constexpr auto& getData() { return _data; }
+    constexpr T& operator()(int i, int j) { return _data[i * _cols + j]; }
+    constexpr const T& operator()(int i, int j) const { return _data[i * _cols + j]; }
+    constexpr auto fill(T x){ std::fill(_data.begin(), _data.end(), x); }
 
+private:
+    uint32_t _rows;
+    uint32_t _cols;
+    std::vector<T> _data;
+};
 
 /**
  * A parameter constraint is of the form (a_0 + sum^n_{i=1} a_i p_i) <= 0
  */
-class ParameterConstraint { public: std::vector<int> coeffs; };
+struct ParameterConstraint { std::vector<int> coeffs; };
 
-class Polyhedron { public: std::vector<ParameterConstraint> constraints; };
+struct Polyhedron { std::vector<ParameterConstraint> constraints; };
 
 /**
  *  a constraint stored in a DBM is of the form x_i - x_j ~ value with ~ being < or <=
  */
-class DbmBound
+struct DbmBound
 {
-public:
-    int value; // constant coeff of the constraint
-    bool strict; // is the constraint strict?
+    constexpr auto getValue() const { return _value; }
+    constexpr auto getStrict() const { return _strict; }
 
-    constexpr DbmBound(int value, bool strict): value(value), strict(strict){}
-    bool isInfinite() const { return value == INF; } // is this constraint unrestraining?
-    bool isLooserThan(const DbmBound& other) const {
-        return value > other.value || (value == other.value && strict && !other.strict);
-    }
-    DbmBound negate() const { assert(!isInfinite()); return DbmBound(-value, !strict); }
+    constexpr DbmBound( int32_t value, bool strict): _value{value}, _strict{strict}{}
+
+    constexpr bool isInfinite() const { return _value == INF; } ///< is this constraint unrestraining?
+    constexpr bool dominates(const DbmBound& other) const {
+        return _value < other._value || (_value == other._value && (_strict || !other._strict)); } ///< is this constraint useless?
+    static constexpr bool isIncompatible(const DbmBound& a, const DbmBound& b) {
+        return a.getValue() + b.getValue() < 0 ||
+               (a.getValue() + b.getValue() == 0 && (a.getStrict() || b.getStrict()));
+    } ///< do the two constraints force the zone to be empty?
+
+private:
+    int32_t _value : 31;
+    bool _strict : 1; // constant coeff of the constraint, is the constraint strict?
 };
-constexpr DbmBound INF_BOUND(INF,true);
-constexpr DbmBound DIAG_BOUND(0,false);
 
-class DBMatrix
+constexpr auto INF_BOUND = DbmBound{INF,true};
+constexpr auto DIAG_BOUND = DbmBound{0,false};
+
+/**
+ *
+ */
+struct DBMatrix
 {
-public:
-    DBMatrix(int dim): dim(dim), data(dim * dim, INF_BOUND)
+    constexpr DBMatrix(uint32_t dim) : _matrix{dim, dim, INF_BOUND}
     {
-        for (int i = 0; i < dim; ++i) {
-            data[i * dim + i] = DIAG_BOUND;
-        };
-    };
+        for (uint32_t i = 0; i < dim; ++i) { _matrix(i, i) = DIAG_BOUND; }
+    }
 
-    DbmBound& operator()(int i, int j){ return data[i * dim + j]; };
-    const DbmBound& operator()(int i, int j) const { return data[i * dim + j]; };
+    constexpr auto getDim() const { return _matrix.getRows(); }
+    constexpr DbmBound& operator()(int i, int j) { return _matrix(i, j); }
+    constexpr const DbmBound& operator()(int i, int j) const { return _matrix(i, j); }
+    void reset()
+    {
+        _matrix.fill(INF_BOUND);
+        for (uint32_t i = 0; i < _matrix.getRows(); ++i) { _matrix(i,i)= DIAG_BOUND; }
+    }
 
-    int dim; // number of clocks + 1 (for the ref clock)
-    std::vector<DbmBound> data;
+private:
+    Matrix<DbmBound> _matrix;
 };
 
 
 /**
  * Parametric priced timed difference bound matrix
  */
-class Ppdbm
+struct Ppdbm
 {
-    int dim, param = 0; // number of clocks and parameters
-    DBMatrix DBM; // the classic zone
-    bool emptyZone = false; // is the zone represented by the dbm empty?
+    Ppdbm(uint32_t dim, uint32_t param): _dim{dim}, _param{param}, _dbm{dim},
+    _offsetCost(param + 1),
+    _rates(dim, param + 1, 0) {}
 
-    std::vector<int> offsetCost; // the cost of the offset (affine function of parameters with int coeffs)
-    std::vector<std::vector<int>> rates; // the cost rates of clocks (affine functions of parameters with int coeffs)
-    Polyhedron PC; // parametric constraints set
-
-public:
-    Ppdbm(int dim, int param);
     void reset();
-    bool constrain_DBM(int i, int j, DbmBound constraint);
+    bool constrain_DBM(uint32_t i, uint32_t j, DbmBound constraint);
+
+private:
+    uint32_t _dim, _param = 0; // number of clocks and parameters
+    DBMatrix _dbm; // the classic zone
+    bool _emptyZone = false; // is the zone represented by the dbm empty?
+
+    std::vector<uint32_t> _offsetCost; // the cost of the offset (affine function of parameters with int coeffs)
+    Matrix<int> _rates; // the cost rates of clocks (affine functions of parameters with int coeffs)
+    Polyhedron _PC; // parametric constraints set
 };
 
 
