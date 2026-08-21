@@ -131,8 +131,8 @@ namespace PPDBM
 
 
 
-    using Vertex     = std::vector<int32_t>; // taille _dim, valuation d'horloges
-    using CostVector = std::vector<int>;     // taille _param + 1, coeffs sur les paramètres
+    using Vertex     = std::vector<int32_t>; // size _dim, clock valuations
+    using CostVector = std::vector<uint32_t>;     // size _param + 1, coeffs on parameters
 
     /**
      * Parametric priced timed difference bound matrix
