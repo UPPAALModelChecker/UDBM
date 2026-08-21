@@ -19,7 +19,7 @@ namespace PPDBM
      * @param i
      * @param j
      */
-    void DBMatrix::close(uint32_t i, uint32_t j)
+    constexpr void DBMatrix::close(uint32_t i, uint32_t j)
     {
         const auto dim = getDim();
         const auto dij = _matrix(i, j);
@@ -38,7 +38,7 @@ namespace PPDBM
     /**
      * resets a DBM to its unrestrained state.
      */
-    void Ppdbm::reset()
+    constexpr void Ppdbm::reset()
     {
         _dbm.reset();
         std::fill(_offsetCost.begin(), _offsetCost.end(), 0);
@@ -50,7 +50,7 @@ namespace PPDBM
     /**
      *
      */
-    void Ppdbm::removeCostAtOffset()
+    constexpr void Ppdbm::removeCostAtOffset()
     {
         for (uint32_t h = 1; h < _dim; h++) {
             for (uint32_t k = 0; k <= _param; k++) {
@@ -62,7 +62,7 @@ namespace PPDBM
     /**
      *
      */
-    void Ppdbm::addCostAtOffset()
+    constexpr void Ppdbm::addCostAtOffset()
     {
         for (uint32_t h = 1; h < _dim; h++) {
             for (uint32_t k = 0; k <= _param; k++) {
@@ -76,7 +76,7 @@ namespace PPDBM
      * @param i
      * @return
      */
-    bool Ppdbm::isDiagonalNegative(uint32_t i) const
+    constexpr bool Ppdbm::isDiagonalNegative(uint32_t i) const
     {
         const auto& d = _dbm(i, i);
         return d.getValue() < 0 || (d.getValue() == 0 && d.getStrict());
@@ -89,7 +89,7 @@ namespace PPDBM
      * @param constraint
      * @return
      */
-    bool Ppdbm::constrain_DBM(uint32_t i, uint32_t j, DbmBound constraint)
+    constexpr bool Ppdbm::constrain_DBM(uint32_t i, uint32_t j, DbmBound constraint)
     {
         assert(i < _dim && j < _dim);
 
@@ -122,7 +122,7 @@ namespace PPDBM
      * @param constraints
      * @return
      */
-    bool Ppdbm::constrain_DBM_N(const std::vector<DbmConstraint>& constraints)
+    constexpr bool Ppdbm::constrain_DBM_N(const std::vector<DbmConstraint>& constraints)
     {
         assert(!constraints.empty());
 
@@ -158,7 +158,7 @@ namespace PPDBM
      * @param otherDbm
      * @return
      */
-    std::vector<uint32_t> Ppdbm::costAtOtherOffset(const DBMatrix& otherDbm) const
+    constexpr std::vector<uint32_t> Ppdbm::costAtOtherOffset(const DBMatrix& otherDbm) const
     {
         std::vector<uint32_t> cost = _offsetCost;
 
@@ -173,6 +173,143 @@ namespace PPDBM
         }
 
         return cost;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    ///////////////////////////////////////////////////attempt at relation/////////////////////////////////////////////
+
+    relation_t DBMatrix::relation(const DBMatrix& other) const
+    {
+        assert(getDim() == other.getDim());
+        const auto dim = getDim();
+
+        bool oneLeqTwo = true; // this <= other partout -> this subset of other
+        bool twoLeqOne = true; // other <= this partout -> other subset of this
+
+        for (uint32_t i = 0; i < dim; ++i) {
+            for (uint32_t j = 0; j < dim; ++j) {
+                if (!(*this)(i, j).dominates(other(i, j))) { oneLeqTwo = false; }
+                if (!other(i, j).dominates((*this)(i, j))) { twoLeqOne = false; }
+            }
+        }
+
+        if (oneLeqTwo && twoLeqOne) { return base_EQUAL; }
+        if (oneLeqTwo) { return base_SUBSET; }
+        if (twoLeqOne) { return base_SUPERSET; }
+        return base_DIFFERENT;
+    }
+
+    CostVector Ppdbm::costAtVertex(const Vertex& v) const
+    {
+        assert(v.size() == _dim);
+
+        CostVector cost = _offsetCost; // copie: coeffs a l'offset
+        for (uint32_t h = 1; h < _dim; ++h) {
+            const int32_t offsetH = -_dbm(0, h).getValue(); // valeur min de l'horloge h
+            const int32_t delta = v[h] - offsetH;
+            for (uint32_t k = 0; k <= _param; ++k) {
+                cost[k] += _rates(h, k) * delta;
+            }
+        }
+        return cost;
+    }
+
+    bool Ppdbm::dominatesVector(const CostVector& a, const CostVector& b)
+    {
+        assert(a.size() == b.size());
+        for (size_t k = 0; k < a.size(); ++k) {
+            if (a[k] > b[k]) { return false; }
+        }
+        return true;
+    }
+
+    bool Ppdbm::equalVector(const CostVector& a, const CostVector& b)
+    {
+        return a == b;
+    }
+
+    relation_t Ppdbm::compareCostLists(const std::vector<CostVector>& c1,
+                                        const std::vector<CostVector>& c2) const
+    {
+        assert(c1.size() == c2.size());
+
+        bool oneLeqTwo = true; // cout de *this* <= cout de other, sur tous les sommets
+        bool twoLeqOne = true;
+
+        for (size_t v = 0; v < c1.size(); ++v) {
+            if (!dominatesVector(c1[v], c2[v])) { oneLeqTwo = false; }
+            if (!dominatesVector(c2[v], c1[v])) { twoLeqOne = false; }
+            if (!oneLeqTwo && !twoLeqOne) { break; } // court-circuit: plus rien a decider
+        }
+
+        if (oneLeqTwo && twoLeqOne) { return base_EQUAL; }
+        if (oneLeqTwo) { return base_SUPERSET; } // *this* moins cher partout -> domine
+        if (twoLeqOne) { return base_SUBSET; }
+        return base_DIFFERENT; // pas de domination (cf. ta preuve, on ne coupe pas la branche)
+    }
+
+    relation_t Ppdbm::relation(const Ppdbm& other) const
+    {
+        assert(_dim == other._dim && _param == other._param);
+
+        switch (_dbm.relation(other._dbm)) {
+        case base_DIFFERENT:
+            return base_DIFFERENT;
+
+        case base_EQUAL: {
+            auto vertices = sommetsDBM(_dbm); // meme zone des deux cotes
+            std::vector<CostVector> c1, c2;
+            c1.reserve(vertices.size());
+            c2.reserve(vertices.size());
+            for (const auto& v : vertices) {
+                c1.push_back(costAtVertex(v));
+                c2.push_back(other.costAtVertex(v));
+            }
+            return compareCostLists(c1, c2);
+        }
+
+        case base_SUPERSET: {
+            // *this* est la zone la plus grande, other la plus petite.
+            auto vertices = sommetsDBM(other._dbm);
+            std::vector<CostVector> c1, c2;
+            c1.reserve(vertices.size());
+            c2.reserve(vertices.size());
+            for (const auto& v : vertices) {
+                c1.push_back(costAtVertex(v));
+                c2.push_back(other.costAtVertex(v));
+            }
+            auto costRel = compareCostLists(c1, c2);
+            return (costRel == base_SUPERSET) ? base_SUPERSET : base_DIFFERENT;
+        }
+
+        case base_SUBSET: {
+            // other est la zone la plus grande, *this* la plus petite.
+            auto vertices = sommetsDBM(_dbm);
+            std::vector<CostVector> c1, c2;
+            c1.reserve(vertices.size());
+            c2.reserve(vertices.size());
+            for (const auto& v : vertices) {
+                c1.push_back(costAtVertex(v));
+                c2.push_back(other.costAtVertex(v));
+            }
+            auto costRel = compareCostLists(c1, c2);
+            return (costRel == base_SUBSET) ? base_SUBSET : base_DIFFERENT;
+        }
+
+        default:
+            return base_DIFFERENT;
+        }
     }
 } // namespace PPBDM
 
