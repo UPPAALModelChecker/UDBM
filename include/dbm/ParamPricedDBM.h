@@ -2,16 +2,11 @@
 #define INCLUDE_DBM_PARAMPRICEDDBM_H
 
 #include "dbm.h"
-#include "mingraph.h"
-#include "constraints.h"
 
-#include <iosfwd>
 #include <utility>
 #include <memory>
-#include <cstdio>
 #include <limits>
 #include <vector>
-#include <cassert>
 #include <algorithm>
 
 
@@ -102,6 +97,8 @@ namespace PPDBM
 
 
 
+    using Vertex = std::vector<int32_t>;
+
     /**
      *
      */
@@ -122,8 +119,10 @@ namespace PPDBM
         }
         constexpr void close(uint32_t i, uint32_t j);
 
-        /// Relation géométrique pure entre deux zones (ignorant le prix).
-        relation_t relation(const DBMatrix& other) const;
+        /// pure zone comparison (no cost involved).
+        constexpr relation_t relation(const DBMatrix& other) const;
+        constexpr std::vector<Vertex> verticesDBM() const;
+
 
     private:
         Matrix<DbmBound> _matrix;
@@ -132,7 +131,7 @@ namespace PPDBM
 
 
     using Vertex     = std::vector<int32_t>; // size _dim, clock valuations
-    using CostVector = std::vector<uint32_t>;     // size _param + 1, coeffs on parameters
+    using CostVector = std::vector<uint32_t>; // size _param + 1, coeffs on parameters
 
     /**
      * Parametric priced timed difference bound matrix
@@ -143,6 +142,10 @@ namespace PPDBM
         _offsetCost(param + 1),
         _rates(dim, param + 1, 0) {}
 
+        constexpr uint32_t getDim() const { return _dim; }
+        constexpr DbmBound& operator()(int i, int j) { return _dbm(i, j); }
+        constexpr const DbmBound& operator()(int i, int j) const { return _dbm(i, j); }
+
         constexpr bool isEmpty() const { return _emptyZone; }
         constexpr void reset();
         constexpr bool constrain_DBM(uint32_t i, uint32_t j, DbmBound constraint);
@@ -151,7 +154,18 @@ namespace PPDBM
         constexpr bool isDiagonalNegative(uint32_t i) const;
         constexpr bool constrain_DBM_N(const std::vector<DbmConstraint>& constraints);
         constexpr std::vector<uint32_t> costAtOtherOffset(const DBMatrix& otherDbm) const;
-        relation_t relation(const Ppdbm& other) const;
+
+        /// Is there a domination relation between the two zones?
+        constexpr relation_t relation(const Ppdbm& other) const;
+        /// Vertices of the zone.
+        constexpr std::vector<Vertex> verticesDBM(const DBMatrix& dbm) const{ return _dbm.verticesDBM(); };
+        /// Evaluates the cost vector(coeffs on parameters) of *this* at vertex `v`.
+        constexpr CostVector costAtVertex(const Vertex& v) const;
+        /// a dominates b coefficient by coefficient?
+        constexpr static bool dominatesVector(const CostVector& a, const CostVector& b);
+        constexpr static bool equalVector(const CostVector& a, const CostVector& b);
+        /// Compare two lists of cost vectors aligned vertex by vertex.
+        constexpr static relation_t compareCostLists(const std::vector<CostVector>& c1, const std::vector<CostVector>& c2);
 
     private:
         uint32_t _dim, _param = 0; // number of clocks and parameters
@@ -160,19 +174,6 @@ namespace PPDBM
         std::vector<uint32_t> _offsetCost; // the cost of the offset (affine function of parameters with int coeffs)
         Matrix<int> _rates; // the cost rates of clocks (affine functions of parameters with int coeffs)
         Polyhedron _PC; // parametric constraints set
-
-        /// Sommets de la zone representee par `dbm`. TODO: a ecrire ensemble.
-        std::vector<Vertex> sommetsDBM(const DBMatrix& dbm) const;
-
-        /// Evalue le vecteur de cout (coeffs sur les parametres) de *this* au sommet `v`.
-        CostVector costAtVertex(const Vertex& v) const;
-
-        /// a domine b (a moins cher ou egal) coefficient par coefficient.
-        static bool dominatesVector(const CostVector& a, const CostVector& b);
-        static bool equalVector(const CostVector& a, const CostVector& b);
-
-        /// Compare deux listes de vecteurs de cout alignees sommet par sommet.
-        relation_t compareCostLists(const std::vector<CostVector>& c1, const std::vector<CostVector>& c2) const;
     };
 } // namespace PPDBM
 

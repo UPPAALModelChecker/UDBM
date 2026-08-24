@@ -6,8 +6,6 @@
 
 #include <algorithm>
 #include <functional>
-#include <iostream>
-#include <stdexcept>
 #include <cassert>
 #include <memory>
 #include <tuple>
@@ -178,16 +176,7 @@ namespace PPDBM
 
 
 
-
-
-
-
-
-
-
-
-
-    ///////////////////////////////////////////////////attempt at relation/////////////////////////////////////////////
+    /////////////////////////////////////////////////// relation /////////////////////////////////////////////////////
 
 
     /**
@@ -195,7 +184,7 @@ namespace PPDBM
      * @param other
      * @return
      */
-    relation_t DBMatrix::relation(const DBMatrix& other) const
+    constexpr relation_t DBMatrix::relation(const DBMatrix& other) const
     {
         assert(getDim() == other.getDim());
         const auto dim = getDim();
@@ -221,7 +210,7 @@ namespace PPDBM
      * @param v
      * @return
      */
-    CostVector Ppdbm::costAtVertex(const Vertex& v) const
+    constexpr CostVector Ppdbm::costAtVertex(const Vertex& v) const
     {
         assert(v.size() == _dim);
 
@@ -242,7 +231,7 @@ namespace PPDBM
      * @param b
      * @return
      */
-    bool Ppdbm::dominatesVector(const CostVector& a, const CostVector& b)
+    constexpr bool Ppdbm::dominatesVector(const CostVector& a, const CostVector& b)
     {
         assert(a.size() == b.size());
         for (uint32_t k = 0; k < a.size(); ++k) {
@@ -257,7 +246,7 @@ namespace PPDBM
      * @param b
      * @return
      */
-    bool Ppdbm::equalVector(const CostVector& a, const CostVector& b)
+    constexpr bool Ppdbm::equalVector(const CostVector& a, const CostVector& b)
     {
         return a == b;
     }
@@ -269,7 +258,7 @@ namespace PPDBM
      * @param c2
      * @return
      */
-    relation_t Ppdbm::compareCostLists(const std::vector<CostVector>& c1, const std::vector<CostVector>& c2) const
+    constexpr relation_t Ppdbm::compareCostLists(const std::vector<CostVector>& c1, const std::vector<CostVector>& c2)
     {
         assert(c1.size() == c2.size());
 
@@ -295,7 +284,7 @@ namespace PPDBM
      * @param other
      * @return
      */
-    relation_t Ppdbm::relation(const Ppdbm& other) const
+    constexpr relation_t Ppdbm::relation(const Ppdbm& other) const
     {
         assert(_dim == other._dim && _param == other._param);
 
@@ -304,7 +293,7 @@ namespace PPDBM
             return base_DIFFERENT;
 
         case base_EQUAL: {
-            auto vertices = sommetsDBM(_dbm); // same zone on both sides
+            auto vertices = _dbm.verticesDBM(); // same zone on both sides
             std::vector<CostVector> c1, c2;
             c1.reserve(vertices.size());
             c2.reserve(vertices.size());
@@ -317,7 +306,7 @@ namespace PPDBM
 
         case base_SUPERSET: {
             // *this* is the bigger zone, other is the smaller
-            auto vertices = sommetsDBM(other._dbm);
+            auto vertices = other._dbm.verticesDBM();
             std::vector<CostVector> c1, c2;
             c1.reserve(vertices.size());
             c2.reserve(vertices.size());
@@ -331,7 +320,7 @@ namespace PPDBM
 
         case base_SUBSET: {
             // other is the bigger zone, *this* is the smaller:
-            auto vertices = sommetsDBM(_dbm);
+            auto vertices = _dbm.verticesDBM();
             std::vector<CostVector> c1, c2;
             c1.reserve(vertices.size());
             c2.reserve(vertices.size());
@@ -346,6 +335,181 @@ namespace PPDBM
         default:
             return base_DIFFERENT;
         }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////// sommetsDBM() with claude's help /////////////////////////////////////
+
+
+    /**
+     * finds the vertices of a dbm! very important function!
+     * @return
+     */
+    constexpr std::vector<Vertex> DBMatrix::verticesDBM() const
+    {
+        const uint32_t dim = getDim();
+        std::vector<Vertex> vertices;
+        if (dim <= 1) {
+            vertices.push_back(Vertex{0}); return vertices;
+        }
+
+        // Matrix of bound values
+        Matrix<int> boundValues{dim,dim,0};
+        for (uint32_t i = 0; i < dim; ++i)
+            for (uint32_t j = 0; j < dim; ++j)
+                if (i != j) boundValues(i,j) = _matrix(i,j).getValue();
+
+        // candidate edges {i,j} (i<j) : at least a finite direction
+        struct Edge { uint32_t i, j; };
+        std::vector<Edge> candidates;
+        for (uint32_t i = 0; i < dim; ++i)
+            for (uint32_t j = i + 1; j < dim; ++j)
+                if (boundValues(i,j) != INF || boundValues(j,i) != INF)
+                    candidates.push_back({i, j});
+
+        // Union-find to build the spanning trees
+        std::vector<uint32_t> parents(dim);
+        for (uint32_t i = 0; i < dim; ++i) {parents[i] = i;};
+
+        std::vector<Edge> chosen;
+
+        //
+        auto find = [&](uint32_t x) {
+            while (parents[x] != x)
+                x = parents[x];
+            return x;
+        };
+
+        // evaluates a spanning tree : tries every possible direction
+        // on every edge, propagates from 0, checks global feasibility.
+        auto evaluateTree = [&](const std::vector<Edge>& tree) {
+            const uint32_t nbedge = tree.size();
+
+            // we register the options of active constraint for each couple (x_i, x_j) with i<j
+            Matrix<std::tuple<uint32_t,uint32_t,int>> options(nbedge,2, {0, 0, INF});
+            for (uint32_t k = 0; k < nbedge; ++k) {
+                auto [i, j] = tree[k];
+                if (boundValues(i,j) != INF) options(k,0) = {i, j, boundValues(i,j)}; // x_i - x_j = w
+                if (boundValues(j,i) != INF) options(k,1) = {j, i, boundValues(j,i)}; // x_j - x_i = w
+            }
+
+            // initial combination: first valid option for everyone
+            std::vector<uint32_t> combination(nbedge);
+            for (uint32_t k = 0; k < nbedge; ++k) {
+                // option 0 is valid
+                if (std::get<2>(options(k, 0)) != INF) { combination[k] = 0; }
+                // otherwise use option 1
+                else { combination[k] = 1; }
+            }
+
+            // function to calculate the next combination of valid options for the edges
+            auto nextCombination = [&]() {
+                uint32_t k = 0;
+                while (k < nbedge) {
+                    ++combination[k];
+                    // We reached the end of the options for this edge?
+                    if (combination[k] >= 2) { combination[k] = 0; ++k; continue; }
+                    // Skip this option if it does not exist.
+                    auto [i, j, w] = options(k, combination[k]);
+                    if (w != INF)  return true;
+                }
+                return false;
+            };
+
+            // we try every possible combination of active constraints for couples (x_i, x_j)
+            for (;;) {
+                // directed adjacency matrix (to go from x to y, costs -3, and from y to x, costs +3...)
+                Matrix<int> directedAdj(dim, dim, INF);
+
+                // fill the adjacency matrix
+                for (uint32_t k = 0; k < nbedge; ++k) {
+                    // example: x_0 - x_1 = 3.
+                    auto [from, to, w] = options(k,combination[k]);
+                    directedAdj(from,to) = -w; // x_1 = x_0 - 3. remove 3 to go from x0 to x1.
+                    directedAdj(to, from) = w;  // x_0 = x_1 + 3. add 3 to go from x1 to x0.
+                }
+
+                // propagate the clock values through the spanning tree
+                std::vector<int> val(dim, INF);
+                val[0] = 0; // the ref clock is always 0
+                std::vector<uint32_t> stack{0};
+
+                while (!stack.empty()) {
+                    uint32_t u = stack.back();
+                    stack.pop_back();
+
+                    for (uint32_t v = 0; v < dim; ++v) {
+                        const int delta = directedAdj(u, v);
+                        // if there is an active constraint linking u and v and v was not already visited
+                        if (delta != INF && val[v] == INF) {
+                            // visit v and add it to the stack
+                            val[v] = val[u] + delta;
+                            stack.push_back(v);
+                        }
+                    }
+                }
+
+                // is every constraint verified with this configuration?
+                bool ok = true;
+                for (uint32_t i = 0; ok && i < dim; ++i)
+                    for (uint32_t j = 0; ok && j < dim; ++j)
+                        if (i != j && boundValues(i, j) != INF && val[i] - val[j] > boundValues(i, j))
+                            ok = false;
+
+                // is the spanning tree covering every clock?
+                for (uint32_t i = 0; i < dim; ++i) {
+                    if (val[i] == INF) {
+                        ok = false;
+                        break;
+                    }
+                }
+
+                // if everything fits, we found a vertex.
+                if (ok) {
+                    Vertex v(dim);
+                    for (uint32_t k = 0; k < dim; ++k) v[k] = val[k];
+                    vertices.push_back(std::move(v));
+                }
+
+                // then we check next combination
+                if (!nextCombination())
+                    break;
+            }
+        };
+
+
+        // Backtracking : énumère tous les arbres couvrants sur 'candidates'
+        std::function<void(size_t)> backtrack = [&](size_t start) {
+            if (chosen.size() == static_cast<size_t>(dim - 1)) { evaluateTree(chosen); return; }
+            if (candidates.size() - start < (dim - 1 - chosen.size())) return;
+
+            for (size_t k = start; k < candidates.size(); ++k) {
+                auto [i, j] = candidates[k];
+                cindex_t ri = find(i), rj = find(j);
+                if (ri == rj) continue; // cycle
+                parents[ri] = rj;
+                chosen.push_back({i, j});
+                backtrack(k + 1);
+                chosen.pop_back();
+                parents[ri] = ri;
+            }
+        };
+        backtrack(0);
+
+        std::sort(vertices.begin(), vertices.end());
+        vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end());
+        return vertices;
     }
 } // namespace PPBDM
 
