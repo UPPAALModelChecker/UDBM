@@ -145,6 +145,7 @@ namespace PPDBM
         constexpr uint32_t getDim() const { return _dim; }
         constexpr DbmBound& operator()(int i, int j) { return _dbm(i, j); }
         constexpr const DbmBound& operator()(int i, int j) const { return _dbm(i, j); }
+        void setRates(const Matrix<int>& rates) { _rates = rates; }
 
         constexpr bool isEmpty() const { return _emptyZone; }
         constexpr void reset();
