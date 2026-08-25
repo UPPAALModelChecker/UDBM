@@ -17,7 +17,7 @@ namespace PPDBM
      * @param i
      * @param j
      */
-    constexpr void DBMatrix::close(uint32_t i, uint32_t j)
+    void DBMatrix::close(uint32_t i, uint32_t j)
     {
         const auto dim = getDim();
         const auto dij = _matrix(i, j);
@@ -36,7 +36,7 @@ namespace PPDBM
     /**
      * resets a DBM to its unrestrained state.
      */
-    constexpr void Ppdbm::reset()
+    void Ppdbm::reset()
     {
         _dbm.reset();
         std::fill(_offsetCost.begin(), _offsetCost.end(), 0);
@@ -48,7 +48,7 @@ namespace PPDBM
     /**
      *
      */
-    constexpr void Ppdbm::removeCostAtOffset()
+    void Ppdbm::removeCostAtOffset()
     {
         for (uint32_t h = 1; h < _dim; h++) {
             for (uint32_t k = 0; k <= _param; k++) {
@@ -60,7 +60,7 @@ namespace PPDBM
     /**
      *
      */
-    constexpr void Ppdbm::addCostAtOffset()
+    void Ppdbm::addCostAtOffset()
     {
         for (uint32_t h = 1; h < _dim; h++) {
             for (uint32_t k = 0; k <= _param; k++) {
@@ -74,7 +74,7 @@ namespace PPDBM
      * @param i
      * @return
      */
-    constexpr bool Ppdbm::isDiagonalNegative(uint32_t i) const
+    bool Ppdbm::isDiagonalNegative(uint32_t i) const
     {
         const auto& d = _dbm(i, i);
         return d.getValue() < 0 || (d.getValue() == 0 && d.getStrict());
@@ -87,7 +87,7 @@ namespace PPDBM
      * @param constraint
      * @return
      */
-    constexpr bool Ppdbm::constrain_DBM(uint32_t i, uint32_t j, DbmBound constraint)
+    bool Ppdbm::constrain_DBM(uint32_t i, uint32_t j, DbmBound constraint)
     {
         assert(i < _dim && j < _dim);
 
@@ -120,7 +120,7 @@ namespace PPDBM
      * @param constraints
      * @return
      */
-    constexpr bool Ppdbm::constrain_DBM_N(const std::vector<DbmConstraint>& constraints)
+    bool Ppdbm::constrain_DBM_N(const std::vector<DbmConstraint>& constraints)
     {
         assert(!constraints.empty());
 
@@ -156,7 +156,7 @@ namespace PPDBM
      * @param otherDbm
      * @return
      */
-    constexpr std::vector<uint32_t> Ppdbm::costAtOtherOffset(const DBMatrix& otherDbm) const
+    std::vector<uint32_t> Ppdbm::costAtOtherOffset(const DBMatrix& otherDbm) const
     {
         std::vector<uint32_t> cost = _offsetCost;
 
@@ -184,7 +184,7 @@ namespace PPDBM
      * @param other
      * @return
      */
-    constexpr relation_t DBMatrix::relation(const DBMatrix& other) const
+    relation_t DBMatrix::relation(const DBMatrix& other) const
     {
         assert(getDim() == other.getDim());
         const auto dim = getDim();
@@ -210,7 +210,7 @@ namespace PPDBM
      * @param v
      * @return
      */
-    constexpr CostVector Ppdbm::costAtVertex(const Vertex& v) const
+    CostVector Ppdbm::costAtVertex(const Vertex& v) const
     {
         assert(v.size() == _dim);
 
@@ -231,7 +231,7 @@ namespace PPDBM
      * @param b
      * @return
      */
-    constexpr bool Ppdbm::dominatesVector(const CostVector& a, const CostVector& b)
+    bool Ppdbm::dominatesVector(const CostVector& a, const CostVector& b)
     {
         assert(a.size() == b.size());
         for (uint32_t k = 0; k < a.size(); ++k) {
@@ -246,7 +246,7 @@ namespace PPDBM
      * @param b
      * @return
      */
-    constexpr bool Ppdbm::equalVector(const CostVector& a, const CostVector& b)
+    bool Ppdbm::equalVector(const CostVector& a, const CostVector& b)
     {
         return a == b;
     }
@@ -258,7 +258,7 @@ namespace PPDBM
      * @param c2
      * @return
      */
-    constexpr relation_t Ppdbm::compareCostLists(const std::vector<CostVector>& c1, const std::vector<CostVector>& c2)
+    relation_t Ppdbm::compareCostLists(const std::vector<CostVector>& c1, const std::vector<CostVector>& c2)
     {
         assert(c1.size() == c2.size());
 
@@ -284,7 +284,7 @@ namespace PPDBM
      * @param other
      * @return
      */
-    constexpr relation_t Ppdbm::relation(const Ppdbm& other) const
+    relation_t Ppdbm::relation(const Ppdbm& other) const
     {
         assert(_dim == other._dim && _param == other._param);
 
@@ -353,7 +353,7 @@ namespace PPDBM
      * finds the vertices of a dbm! very important function!
      * @return
      */
-    constexpr std::vector<Vertex> DBMatrix::verticesDBM() const
+    std::vector<Vertex> DBMatrix::verticesDBM() const
     {
         const uint32_t dim = getDim();
         std::vector<Vertex> vertices;

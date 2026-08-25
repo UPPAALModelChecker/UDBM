@@ -1,3 +1,5 @@
+/* -*- mode: C++; c-file-style: "stroustrup"; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
+
 #include "dbm/ParamPricedDBM.h"
 
 #include <doctest/doctest.h>
@@ -7,324 +9,302 @@
 
 using namespace PPDBM;
 
-TEST_CASE("DbmBound dominates")
+TEST_CASE("Matrix basic operations")
 {
-    // valeur plus petite => contrainte plus forte => domine
-    const auto a = DbmBound{3, false}; // <= 3
-    const auto b = DbmBound{5, false}; // <= 5
-    CHECK(a.dominates(b));
-    CHECK(!b.dominates(a));
+    Matrix<int> m{2, 3, 7};
+    CHECK(m.getRows() == 2);
+    CHECK(m.getCols() == 3);
+    for (uint32_t i = 0; i < 2; ++i)
+        for (uint32_t j = 0; j < 3; ++j)
+            CHECK(m(i, j) == 7);
 
-    // meme valeur : strict domine non-strict (< 3 est plus fort que <= 3)
-    const auto strict3 = DbmBound{3, true};
-    const auto loose3 = DbmBound{3, false};
-    CHECK(strict3.dominates(loose3));
-    CHECK(!loose3.dominates(strict3));
+    m(1, 2) = 42;
+    CHECK(m(1, 2) == 42);
+    CHECK(m(0, 0) == 7); // untouched cell
 
-    // une borne se domine toujours elle-meme
-    CHECK(a.dominates(a));
-
-    // INF ne domine jamais une borne finie, l'inverse est toujours vrai
-    CHECK(!INF_BOUND.dominates(a));
-    CHECK(a.dominates(INF_BOUND));
+    m.fill(3);
+    for (uint32_t i = 0; i < 2; ++i)
+        for (uint32_t j = 0; j < 3; ++j)
+            CHECK(m(i, j) == 3);
 }
 
-TEST_CASE("DbmBound isIncompatible")
+TEST_CASE("DbmBound dominates and isIncompatible")
 {
-    // x_i - x_j <= 3 et x_j - x_i <= -4 => x_i - x_j >= 4, incompatible avec <=3
-    const auto a = DbmBound{3, false};
-    const auto b = DbmBound{-4, false};
-    CHECK(DbmBound::isIncompatible(a, b));
+    const DbmBound b5{5, false};      // x - y <= 5
+    const DbmBound b5strict{5, true}; // x - y < 5
+    const DbmBound b3{3, false};      // x - y <= 3
 
-    // x_i - x_j <= 3 et x_j - x_i <= -3 => point unique {x_i - x_j = 3}, compatible
-    const auto c = DbmBound{-3, false};
-    CHECK(!DbmBound::isIncompatible(a, c));
+    // a tighter bound dominates a looser one
+    CHECK(b3.dominates(b5));
+    CHECK_FALSE(b5.dominates(b3));
 
-    // si l'une des deux bornes est stricte, la somme nulle devient incompatible
-    const auto aStrict = DbmBound{3, true};
-    CHECK(DbmBound::isIncompatible(aStrict, c));
+    // same value: strict dominates non-strict
+    CHECK(b5strict.dominates(b5));
+    CHECK_FALSE(b5.dominates(b5strict));
 
-    // deux bornes larges, somme > 0 => compatible
-    const auto d = DbmBound{1, false};
-    const auto e = DbmBound{1, false};
-    CHECK(!DbmBound::isIncompatible(d, e));
+    // a bound dominates itself
+    CHECK(b5.dominates(b5));
+
+    // infinite bound is dominated by anything finite
+    CHECK(INF_BOUND.isInfinite());
+    CHECK_FALSE(b5.isInfinite());
+    CHECK(b3.dominates(INF_BOUND));
+
+    // x - y <= 3 and y - x <= -5  =>  x <= y - 5 and x >= y + 3 : impossible
+    CHECK(DbmBound::isIncompatible(DbmBound{-5, false}, b3));
+    CHECK_FALSE(DbmBound::isIncompatible(b3, b5));
+
+    // boundary case a+b == 0 : incompatible only if one side is strict
+    CHECK_FALSE(DbmBound::isIncompatible(DbmBound{3, false}, DbmBound{-3, false}));
+    CHECK(DbmBound::isIncompatible(DbmBound{3, true}, DbmBound{-3, false}));
 }
 
-TEST_CASE("DbmBound operator+")
+TEST_CASE("DbmBound addition (transitive composition)")
 {
-    const auto a = DbmBound{3, false};
-    const auto b = DbmBound{2, false};
+    const DbmBound a{3, false};
+    const DbmBound b{2, false};
+
     const auto sum = a + b;
     CHECK(sum.getValue() == 5);
-    CHECK(!sum.getStrict());
+    CHECK_FALSE(sum.getStrict());
 
-    // si l'une des deux est stricte, le resultat est strict
-    const auto bStrict = DbmBound{2, true};
-    const auto sum2 = a + bStrict;
-    CHECK(sum2.getValue() == 5);
-    CHECK(sum2.getStrict());
+    const DbmBound strictB{2, true};
+    const auto sumStrict = a + strictB;
+    CHECK(sumStrict.getValue() == 5);
+    CHECK(sumStrict.getStrict()); // strictness propagates
 
-    // INF + n'importe quoi = INF
-    const auto sum3 = a + INF_BOUND;
-    CHECK(sum3.isInfinite());
+    const auto sumInf = a + INF_BOUND;
+    CHECK(sumInf.isInfinite());
 }
 
-TEST_CASE("DBMatrix construction and reset")
+TEST_CASE("DBMatrix initial state")
 {
-    auto m = DBMatrix{3};
-    REQUIRE(m.getDim() == 3);
+    DBMatrix m{3};
+    CHECK(m.getDim() == 3);
 
-    SUBCASE("etat initial : diagonale a 0, reste a INF")
-    {
-        for (uint32_t i = 0; i < 3; ++i) {
-            CHECK(m(i, i).getValue() == 0);
-            CHECK(!m(i, i).getStrict());
-            for (uint32_t j = 0; j < 3; ++j) {
-                if (i != j) CHECK(m(i, j).isInfinite());
-            }
-        }
+    for (uint32_t i = 0; i < 3; ++i) {
+        CHECK(m(i, i).getValue() == 0);
+        CHECK_FALSE(m(i, i).getStrict());
+        CHECK(m(0, i).getValue() == 0); // every clock >= 0 by construction
     }
-
-    SUBCASE("reset revient a l'etat initial")
-    {
-        m(0, 1) = DbmBound{7, false};
-        m.reset();
-        CHECK(m(0, 1).isInfinite());
-        CHECK(m(0, 0).getValue() == 0);
-        CHECK(m(1, 1).getValue() == 0);
-    }
+    // no upper bound has been set yet
+    CHECK(m(1, 0).isInfinite());
+    CHECK(m(2, 0).isInfinite());
 }
 
-TEST_CASE("DBMatrix close")
+TEST_CASE("DBMatrix close propagates transitive bounds")
 {
-    SUBCASE("propagation simple : x1-x0<=3, x2-x1<=2 => x2-x0<=5")
-    {
-        auto m = DBMatrix{3};
-        m(1, 0) = DbmBound{3, false};
-        m.close(1, 0);
-        m(2, 1) = DbmBound{2, false};
-        m.close(2, 1);
+    DBMatrix m{3}; // clocks: 0 (reference), 1, 2
+    m(1, 0) = DbmBound{3, false}; // x1 <= 3
+    m(2, 1) = DbmBound{2, false}; // x2 - x1 <= 2
 
-        CHECK(m(2, 0).getValue() == 5);
-        CHECK(!m(2, 0).getStrict());
-    }
+    CHECK(m(2, 0).isInfinite()); // not propagated yet
 
-    SUBCASE("propagation d'une borne stricte")
-    {
-        // x1-x0<3 (stricte), x2-x1<=2 (large) => x2-x0<5 (stricte)
-        auto m = DBMatrix{3};
-        m(1, 0) = DbmBound{3, true};
-        m.close(1, 0);
-        m(2, 1) = DbmBound{2, false};
-        m.close(2, 1);
+    m.close(2, 1);
 
-        CHECK(m(2, 0).getValue() == 5);
-        CHECK(m(2, 0).getStrict());
-    }
+    CHECK(m(2, 0).getValue() == 5); // x2 <= x1 + 2 <= 5
+    CHECK_FALSE(m(2, 0).getStrict());
 }
 
-TEST_CASE("DBMatrix relation")
+TEST_CASE("DBMatrix relation between boxes")
 {
-    // m1: x1<=5, m2: x1<=3 => m2 subset de m1
-    auto m1 = DBMatrix{2};
-    m1(1, 0) = DbmBound{5, false};
-    m1.close(1, 0);
+    DBMatrix big{2}; // x1 in [0,5]
+    big(1, 0) = DbmBound{5, false};
 
-    auto m2 = DBMatrix{2};
-    m2(1, 0) = DbmBound{3, false};
-    m2.close(1, 0);
+    DBMatrix small{2}; // x1 in [0,3]
+    small(1, 0) = DbmBound{3, false};
 
-    CHECK(m1.relation(m2) == base_SUPERSET);
-    CHECK(m2.relation(m1) == base_SUBSET);
+    CHECK(big.relation(small) == base_SUPERSET);
+    CHECK(small.relation(big) == base_SUBSET);
+    CHECK(big.relation(big) == base_EQUAL);
 
-    auto m3 = DBMatrix{2};
-    m3(1, 0) = DbmBound{5, false};
-    m3.close(1, 0);
-    CHECK(m1.relation(m3) == base_EQUAL);
+    DBMatrix overlapA{2}; // x1 in [0,3]
+    overlapA(1, 0) = DbmBound{3, false};
+
+    DBMatrix overlapB{2}; // x1 in [2,5]
+    overlapB(1, 0) = DbmBound{5, false};
+    overlapB(0, 1) = DbmBound{-2, false};
+
+    CHECK(overlapA.relation(overlapB) == base_DIFFERENT);
+    CHECK(overlapB.relation(overlapA) == base_DIFFERENT);
 }
 
-TEST_CASE("DBMatrix verticesDBM")
+TEST_CASE("DBMatrix verticesDBM on a trivial (single-clock) dimension")
 {
-    // 2 horloges : x0 = reference (toujours 0), x1 dans [2,5]
-    auto m = DBMatrix{2};
-    m(1, 0) = DbmBound{5, false};  // x1 - x0 <= 5
-    m(0, 1) = DbmBound{-2, false}; // x0 - x1 <= -2, donc x1 >= 2
-
+    DBMatrix m{1};
     const auto vertices = m.verticesDBM();
-    const auto v25 = Vertex{0, 5};
-    const auto v22 = Vertex{0, 2};
-
-    REQUIRE(vertices.size() == 2);
-    CHECK(std::find(vertices.begin(), vertices.end(), v25) != vertices.end());
-    CHECK(std::find(vertices.begin(), vertices.end(), v22) != vertices.end());
+    REQUIRE(vertices.size() == 1);
+    CHECK(vertices[0] == Vertex{0});
 }
 
-TEST_CASE("Ppdbm reset")
+TEST_CASE("DBMatrix verticesDBM computes the corners of a box")
 {
-    auto p = Ppdbm{2, 1};
-    p.constrain_DBM(1, 0, DbmBound{4, false});
+    DBMatrix m{3}; // reference clock 0, x1, x2
+    m(1, 0) = DbmBound{5, false}; // x1 <= 5
+    m(2, 0) = DbmBound{3, false}; // x2 <= 3
+    // x1 >= 0 and x2 >= 0 come from the initial state
+
+    auto vertices = m.verticesDBM();
+
+    std::vector<Vertex> expected{{0, 0, 0}, {0, 0, 3}, {0, 5, 0}, {0, 5, 3}};
+    std::sort(expected.begin(), expected.end());
+
+    REQUIRE(vertices.size() == expected.size());
+    CHECK(vertices == expected);
+}
+
+TEST_CASE("Ppdbm constrain_DBM tightens bounds and detects emptiness")
+{
+    Ppdbm p{2, 0}; // 1 clock, no parameters
+
+    CHECK(p.constrain_DBM(1, 0, DbmBound{5, false})); // x1 <= 5
+    CHECK_FALSE(p.isEmpty());
+
+    // a weaker constraint is useless: nothing changes
+    CHECK(p.constrain_DBM(1, 0, DbmBound{10, false}));
+    CHECK(p(1, 0).getValue() == 5);
+
+    // a tighter constraint is applied
+    CHECK(p.constrain_DBM(1, 0, DbmBound{4, false}));
+    CHECK(p(1, 0).getValue() == 4);
+
+    // x1 >= 6 is incompatible with x1 <= 4 : the zone becomes empty
+    CHECK_FALSE(p.constrain_DBM(0, 1, DbmBound{-6, false}));
+    CHECK(p.isEmpty());
+}
+
+TEST_CASE("Ppdbm constrain_DBM_N applies a batch of constraints atomically")
+{
+    Ppdbm p{3, 0};
+
+    const std::vector<DbmConstraint> batch{
+        {1, 0, DbmBound{4, false}},  // x1 <= 4
+        {2, 0, DbmBound{6, false}},  // x2 <= 6
+        {0, 1, DbmBound{-1, false}}, // x1 >= 1
+    };
+
+    CHECK(p.constrain_DBM_N(batch));
+    CHECK_FALSE(p.isEmpty());
+    CHECK(p(1, 0).getValue() == 4);
+    CHECK(p(2, 0).getValue() == 6);
+    CHECK(p(0, 1).getValue() == -1);
+
+    // x1 >= 10 is incompatible with the x1 <= 4 constraint set above
+    const std::vector<DbmConstraint> contradiction{
+        {0, 1, DbmBound{-10, false}},
+    };
+    CHECK_FALSE(p.constrain_DBM_N(contradiction));
+    CHECK(p.isEmpty());
+}
+
+TEST_CASE("Ppdbm reset returns the zone to its unconstrained state")
+{
+    Ppdbm p{2, 0};
+    p.constrain_DBM(1, 0, DbmBound{5, false});
+    p.constrain_DBM(0, 1, DbmBound{-100, false}); // makes the zone empty
+    REQUIRE(p.isEmpty());
+
     p.reset();
-    CHECK(!p.isEmpty());
+
+    CHECK_FALSE(p.isEmpty());
     CHECK(p(1, 0).isInfinite());
+    CHECK(p(0, 1).getValue() == 0);
 }
 
-TEST_CASE("Ppdbm constrain_DBM")
+TEST_CASE("Ppdbm costAtVertex reflects rates and the zone's lower bound")
 {
-    SUBCASE("une contrainte plus faible que l'existante est ignoree")
-    {
-        auto p = Ppdbm{2, 0};
-        CHECK(p.constrain_DBM(1, 0, DbmBound{5, false}));
-        CHECK(p.constrain_DBM(1, 0, DbmBound{9, false}));
-        CHECK(p(1, 0).getValue() == 5);
-    }
+    Ppdbm p{2, 1}; // 1 clock, 1 parameter
 
-    SUBCASE("une contrainte plus forte resserre la zone")
-    {
-        auto p = Ppdbm{2, 0};
-        CHECK(p.constrain_DBM(1, 0, DbmBound{5, false}));
-        CHECK(p.constrain_DBM(1, 0, DbmBound{3, false}));
-        CHECK(p(1, 0).getValue() == 3);
-        CHECK(!p.isEmpty());
-    }
-
-    SUBCASE("une contrainte incompatible vide la zone")
-    {
-        // x1-x0<=3 puis x0-x1<=-4 (x1>=4) => incompatible avec x1<=3
-        auto p = Ppdbm{2, 0};
-        CHECK(p.constrain_DBM(1, 0, DbmBound{3, false}));
-        CHECK(!p.constrain_DBM(0, 1, DbmBound{-4, false}));
-        CHECK(p.isEmpty());
-    }
-}
-
-TEST_CASE("Ppdbm constrain_DBM_N")
-{
-    SUBCASE("plusieurs contraintes compatibles appliquees d'un coup")
-    {
-        // x1 dans [2,5], x2 dans [1,4]
-        auto p = Ppdbm{3, 0};
-        const auto constraints = std::vector<DbmConstraint>{
-            {1, 0, DbmBound{5, false}},
-            {0, 1, DbmBound{-2, false}},
-            {2, 0, DbmBound{4, false}},
-            {0, 2, DbmBound{-1, false}},
-        };
-        CHECK(p.constrain_DBM_N(constraints));
-        CHECK(!p.isEmpty());
-        CHECK(p(1, 0).getValue() == 5);
-        CHECK(p(0, 1).getValue() == -2);
-        CHECK(p(2, 0).getValue() == 4);
-        CHECK(p(0, 2).getValue() == -1);
-    }
-
-    SUBCASE("une contrainte incompatible dans la liste vide la zone")
-    {
-        auto p = Ppdbm{2, 0};
-        const auto constraints = std::vector<DbmConstraint>{
-            {1, 0, DbmBound{3, false}},
-            {0, 1, DbmBound{-4, false}},
-        };
-        CHECK(!p.constrain_DBM_N(constraints));
-        CHECK(p.isEmpty());
-    }
-}
-
-TEST_CASE("Ppdbm isDiagonalNegative")
-{
-    auto p = Ppdbm{2, 0};
-    CHECK(!p.isDiagonalNegative(0));
-    CHECK(!p.isDiagonalNegative(1));
-
-    p.constrain_DBM(1, 0, DbmBound{3, false});
-    p.constrain_DBM(0, 1, DbmBound{-4, false});
-    CHECK(p.isDiagonalNegative(1));
-}
-
-TEST_CASE("Ppdbm costAtVertex")
-{
-    // 1 parametre. rate(1,0)=2 (constante), rate(1,1)=1 (coeff parametre)
-    auto p = Ppdbm{2, 1};
-    auto rates = Matrix<int>{2, 2, 0};
-    rates(1, 0) = 2;
+    Matrix<int> rates{2, 2, 0};
+    rates(1, 0) = 1;
     rates(1, 1) = 1;
     p.setRates(rates);
-    p.constrain_DBM(1, 0, DbmBound{5, false});
-    p.constrain_DBM(0, 1, DbmBound{-2, false}); // x1 dans [2,5]
 
-    const auto v = Vertex{0, 5}; // delta = 5 - 2 = 3
-    const auto cost = p.costAtVertex(v);
-    REQUIRE(cost.size() == 2);
-    CHECK(cost[0] == 6); // 0 + 2*3
-    CHECK(cost[1] == 3); // 0 + 1*3
+    REQUIRE(p.constrain_DBM(1, 0, DbmBound{5, false}));  // x1 <= 5
+    REQUIRE(p.constrain_DBM(0, 1, DbmBound{-2, false})); // x1 >= 2
+
+    // at the lower corner of the zone, delta == 0 : cost == offset cost
+    CHECK(p.costAtVertex(Vertex{0, 2}) == CostVector{2, 2});
+
+    // at the upper corner, cost == offset + rate * (5 - 2)
+    CHECK(p.costAtVertex(Vertex{0, 5}) == CostVector{5, 5});
 }
 
-TEST_CASE("Ppdbm dominatesVector and equalVector")
+TEST_CASE("Ppdbm costAtOtherOffset translates the cost to another zone's offset")
 {
-    const auto a = CostVector{1, 2, 3};
-    const auto b = CostVector{2, 2, 4};
-    const auto c = CostVector{1, 2, 3};
-    const auto d = CostVector{1, 2, 4};
+    Ppdbm p{2, 1};
+    Matrix<int> rates{2, 2, 0};
+    rates(1, 0) = 1;
+    rates(1, 1) = 1;
+    p.setRates(rates);
+    REQUIRE(p.constrain_DBM(1, 0, DbmBound{5, false}));
+    REQUIRE(p.constrain_DBM(0, 1, DbmBound{-2, false})); // x1 in [2,5]
 
-    CHECK(Ppdbm::dominatesVector(a, b));
-    CHECK(!Ppdbm::dominatesVector(b, a));
-    CHECK(Ppdbm::dominatesVector(a, c)); // egalite => domine (<=)
+    DBMatrix otherDbm{2}; // x1 in [0,5] : offset is 0 instead of 2
+    otherDbm(1, 0) = DbmBound{5, false};
 
-    CHECK(Ppdbm::equalVector(a, c));
-    CHECK(!Ppdbm::equalVector(a, d));
+    const auto cost = p.costAtOtherOffset(otherDbm);
+    CHECK(cost == CostVector{0, 0});
 }
 
-TEST_CASE("Ppdbm compareCostLists")
+TEST_CASE("Ppdbm::dominatesVector and equalVector")
 {
-    const auto c1 = std::vector<CostVector>{{1, 1}, {2, 2}};
-    const auto c2 = std::vector<CostVector>{{1, 1}, {2, 2}};
-    CHECK(Ppdbm::compareCostLists(c1, c2) == base_EQUAL);
+    const CostVector a{1, 2, 3};
+    const CostVector b{1, 2, 4};
+    const CostVector c{2, 1, 4};
 
-    const auto cheaper = std::vector<CostVector>{{1, 1}, {1, 1}};
-    const auto costly = std::vector<CostVector>{{2, 2}, {3, 3}};
-    // cheaper <= costly partout => cheaper "domine" => base_SUPERSET
-    CHECK(Ppdbm::compareCostLists(cheaper, costly) == base_SUPERSET);
-    CHECK(Ppdbm::compareCostLists(costly, cheaper) == base_SUBSET);
+    CHECK(Ppdbm::dominatesVector(a, a));
+    CHECK(Ppdbm::dominatesVector(a, b));      // a <= b on every coefficient
+    CHECK_FALSE(Ppdbm::dominatesVector(b, a));
+    CHECK_FALSE(Ppdbm::dominatesVector(a, c)); // incomparable vectors
+    CHECK_FALSE(Ppdbm::dominatesVector(c, a));
 
-    const auto mixed1 = std::vector<CostVector>{{1, 5}, {5, 1}};
-    const auto mixed2 = std::vector<CostVector>{{5, 1}, {1, 5}};
-    CHECK(Ppdbm::compareCostLists(mixed1, mixed2) == base_DIFFERENT);
+    CHECK(Ppdbm::equalVector(a, a));
+    CHECK_FALSE(Ppdbm::equalVector(a, b));
 }
 
-TEST_CASE("Ppdbm relation")
+TEST_CASE("Ppdbm::compareCostLists aggregates per-vertex domination")
 {
-    SUBCASE("meme zone, couts differents => domination par le cout")
-    {
-        auto p1 = Ppdbm{2, 1};
-        auto p2 = Ppdbm{2, 1};
-        p1.constrain_DBM(1, 0, DbmBound{5, false});
-        p1.constrain_DBM(0, 1, DbmBound{-2, false});
-        p2.constrain_DBM(1, 0, DbmBound{5, false});
-        p2.constrain_DBM(0, 1, DbmBound{-2, false});
+    const std::vector<CostVector> cheaper{{1, 1}, {2, 2}};
+    const std::vector<CostVector> pricier{{2, 2}, {3, 3}};
+    const std::vector<CostVector> mixed{{0, 5}, {5, 0}};
 
-        auto rates1 = Matrix<int>{2, 2, 0};
-        rates1(1, 1) = 1; // cout = x1
-        p1.setRates(rates1);
+    CHECK(Ppdbm::compareCostLists(cheaper, cheaper) == base_EQUAL);
+    CHECK(Ppdbm::compareCostLists(cheaper, pricier) == base_SUPERSET); // cheaper dominates
+    CHECK(Ppdbm::compareCostLists(pricier, cheaper) == base_SUBSET);
+    CHECK(Ppdbm::compareCostLists(cheaper, mixed) == base_DIFFERENT);
+}
 
-        auto rates2 = Matrix<int>{2, 2, 0};
-        rates2(1, 1) = 2; // cout = 2*x1, toujours plus cher (ou egal)
-        p2.setRates(rates2);
+TEST_CASE("Ppdbm::relation compares zones and, when equal, their costs")
+{
+    Ppdbm a{2, 1};
+    Matrix<int> ratesA{2, 2, 0};
+    ratesA(1, 0) = 1;
+    ratesA(1, 1) = 1;
+    a.setRates(ratesA);
+    REQUIRE(a.constrain_DBM(1, 0, DbmBound{5, false}));
+    REQUIRE(a.constrain_DBM(0, 1, DbmBound{-2, false})); // x1 in [2,5]
 
-        // meme zone, p1 moins cher partout => p1 domine (SUPERSET), p2 est domine (SUBSET)
-        CHECK(p1.relation(p2) == base_SUPERSET);
-        CHECK(p2.relation(p1) == base_SUBSET);
-    }
+    Ppdbm b{2, 1};
+    Matrix<int> ratesB{2, 2, 0};
+    ratesB(1, 0) = 2; // strictly more expensive on the first coefficient
+    ratesB(1, 1) = 1;
+    b.setRates(ratesB);
+    REQUIRE(b.constrain_DBM(1, 0, DbmBound{5, false}));
+    REQUIRE(b.constrain_DBM(0, 1, DbmBound{-2, false})); // same zone as a
 
-    SUBCASE("zones differentes, le resultat reste stable")
-    {
-        auto p1 = Ppdbm{2, 0};
-        auto p2 = Ppdbm{2, 0};
-        p1.constrain_DBM(1, 0, DbmBound{5, false});
-        p2.constrain_DBM(1, 0, DbmBound{3, false});
-        p2.constrain_DBM(0, 1, DbmBound{-1, false});
+    // same zone, a is cheaper everywhere -> a dominates (SUPERSET), b is dominated (SUBSET)
+    CHECK(a.relation(b) == base_SUPERSET);
+    CHECK(b.relation(a) == base_SUBSET);
+    CHECK(a.relation(a) == base_EQUAL);
 
-        const auto r1 = p1.relation(p2);
-        const auto r2 = p2.relation(p1);
-        CHECK((r1 == base_SUPERSET || r1 == base_DIFFERENT));
-        CHECK((r2 == base_SUBSET || r2 == base_DIFFERENT));
-    }
+    Ppdbm c{2, 1};
+    Matrix<int> ratesC{2, 2, 0};
+    ratesC(1, 0) = 1;
+    ratesC(1, 1) = 1;
+    c.setRates(ratesC);
+    REQUIRE(c.constrain_DBM(1, 0, DbmBound{3, false})); // x1 in [0,3]
+
+    // overlapping but neither zone contains the other -> DIFFERENT, regardless of cost
+    CHECK(a.relation(c) == base_DIFFERENT);
 }

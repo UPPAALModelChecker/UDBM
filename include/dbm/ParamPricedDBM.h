@@ -106,7 +106,7 @@ namespace PPDBM
     {
         constexpr DBMatrix(uint32_t dim) : _matrix{dim, dim, INF_BOUND}
         {
-            for (uint32_t i = 0; i < dim; ++i) { _matrix(i, i) = DIAG_BOUND; }
+            for (uint32_t i = 0; i < dim; ++i) { _matrix(i, i) = DIAG_BOUND; _matrix(0,i) = DIAG_BOUND; }
         }
 
         constexpr auto getDim() const { return _matrix.getRows(); }
@@ -115,13 +115,15 @@ namespace PPDBM
         constexpr void reset()
         {
             _matrix.fill(INF_BOUND);
-            for (uint32_t i = 0; i < _matrix.getRows(); ++i) { _matrix(i,i)= DIAG_BOUND; }
+            for (uint32_t i = 0; i < _matrix.getRows(); ++i) {
+                _matrix(i,i)= DIAG_BOUND;
+                _matrix(0,i) = DIAG_BOUND;
+            }
         }
-        constexpr void close(uint32_t i, uint32_t j);
+        void close(uint32_t i, uint32_t j);
 
-        /// pure zone comparison (no cost involved).
-        constexpr relation_t relation(const DBMatrix& other) const;
-        constexpr std::vector<Vertex> verticesDBM() const;
+        relation_t relation(const DBMatrix& other) const; ///< pure zone comparison (no cost involved).
+        std::vector<Vertex> verticesDBM() const;
 
 
     private:
@@ -148,25 +150,25 @@ namespace PPDBM
         void setRates(const Matrix<int>& rates) { _rates = rates; }
 
         constexpr bool isEmpty() const { return _emptyZone; }
-        constexpr void reset();
-        constexpr bool constrain_DBM(uint32_t i, uint32_t j, DbmBound constraint);
-        constexpr void removeCostAtOffset();
-        constexpr void addCostAtOffset();
-        constexpr bool isDiagonalNegative(uint32_t i) const;
-        constexpr bool constrain_DBM_N(const std::vector<DbmConstraint>& constraints);
-        constexpr std::vector<uint32_t> costAtOtherOffset(const DBMatrix& otherDbm) const;
+        void reset();
+        bool constrain_DBM(uint32_t i, uint32_t j, DbmBound constraint);
+        void removeCostAtOffset();
+        void addCostAtOffset();
+        bool isDiagonalNegative(uint32_t i) const;
+        bool constrain_DBM_N(const std::vector<DbmConstraint>& constraints);
+        std::vector<uint32_t> costAtOtherOffset(const DBMatrix& otherDbm) const;
 
         /// Is there a domination relation between the two zones?
-        constexpr relation_t relation(const Ppdbm& other) const;
+        relation_t relation(const Ppdbm& other) const;
         /// Vertices of the zone.
         constexpr std::vector<Vertex> verticesDBM(const DBMatrix& dbm) const{ return _dbm.verticesDBM(); };
         /// Evaluates the cost vector(coeffs on parameters) of *this* at vertex `v`.
-        constexpr CostVector costAtVertex(const Vertex& v) const;
+        CostVector costAtVertex(const Vertex& v) const;
         /// a dominates b coefficient by coefficient?
-        constexpr static bool dominatesVector(const CostVector& a, const CostVector& b);
-        constexpr static bool equalVector(const CostVector& a, const CostVector& b);
+        static bool dominatesVector(const CostVector& a, const CostVector& b);
+        static bool equalVector(const CostVector& a, const CostVector& b);
         /// Compare two lists of cost vectors aligned vertex by vertex.
-        constexpr static relation_t compareCostLists(const std::vector<CostVector>& c1, const std::vector<CostVector>& c2);
+        static relation_t compareCostLists(const std::vector<CostVector>& c1, const std::vector<CostVector>& c2);
 
     private:
         uint32_t _dim, _param = 0; // number of clocks and parameters
