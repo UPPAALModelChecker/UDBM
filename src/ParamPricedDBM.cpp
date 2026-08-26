@@ -9,6 +9,7 @@
 #include <cassert>
 #include <memory>
 #include <tuple>
+#include <optional>
 
 namespace PPDBM
 {
@@ -41,7 +42,7 @@ namespace PPDBM
         _dbm.reset();
         std::fill(_offsetCost.begin(), _offsetCost.end(), 0);
         _rates.fill(0);
-        _PC.constraints.clear();
+        _PC.getConstraints().clear();
         _emptyZone = false;
     }
 
@@ -122,7 +123,7 @@ namespace PPDBM
      */
     bool Ppdbm::constrain_DBM_N(const std::vector<DbmConstraint>& constraints)
     {
-        assert(!constraints.empty());
+        if (constraints.empty()) return true; // nothing to do --> done
 
         // remove the cost at the previous offset
         removeCostAtOffset();
@@ -156,9 +157,9 @@ namespace PPDBM
      * @param otherDbm
      * @return
      */
-    std::vector<uint32_t> Ppdbm::costAtOtherOffset(const DBMatrix& otherDbm) const
+    std::vector<int> Ppdbm::costAtOtherOffset(const DBMatrix& otherDbm) const
     {
-        std::vector<uint32_t> cost = _offsetCost;
+        std::vector<int> cost = _offsetCost;
 
         for (uint32_t x = 1; x < _dim; ++x) {
             // difference in x coordinate of the offset
@@ -173,10 +174,406 @@ namespace PPDBM
         return cost;
     }
 
+    /**
+     *
+     * @param q
+     */
+    void Ppdbm::addConstantCost(const CostVector& q)
+    {
+        for (uint32_t k = 0; k <= _param; ++k) _offsetCost[k] += q[k];
+    }
 
 
 
-    /////////////////////////////////////////////////// relation /////////////////////////////////////////////////////
+
+    /////////////////////////////////////////////// Post operators ////////////////////////////////////////////////////
+    /**
+     * removes the strictness of lower bounds
+     */
+    void DBMatrix::relaxDown()
+    {
+        for (uint32_t i = 1; i < getDim(); ++i) {
+            auto& b = _matrix(0, i);
+            if (!b.isInfinite() && b.getStrict()) b = DbmBound{b.getValue(), false};
+        }
+    }
+
+    /**
+     * removes the strictness of upper bounds
+     */
+    void DBMatrix::relaxUp()
+    {
+        for (uint32_t i = 1; i < getDim(); ++i) {
+            auto& b = _matrix(i, 0);
+            if (!b.isInfinite() && b.getStrict()) b = DbmBound{b.getValue(), false};
+        }
+    }
+
+    /**
+     *
+     * @param clock
+     */
+    void DBMatrix::relaxDownClock(uint32_t clock)
+    {
+        // relax (i, clock) for each i : "x_i - x_clock <= b"
+        for (uint32_t i = 0; i < getDim(); ++i) {
+            if (i == clock) continue;
+            auto& b = _matrix(i, clock);
+            if (!b.isInfinite() && b.getStrict()) b = DbmBound{b.getValue(), false};
+        }
+    }
+
+    /**
+     *
+     * @param clock
+     */
+    void DBMatrix::relaxUpClock(uint32_t clock)
+    {
+        // relax (clock, i) for each i : "x_clock - x_i <= b"
+        for (uint32_t i = 0; i < getDim(); ++i) {
+            if (i == clock) continue;
+            auto& b = _matrix(clock, i);
+            if (!b.isInfinite() && b.getStrict()) b = DbmBound{b.getValue(), false};
+        }
+    }
+
+    /**
+     * finds the clocks that are linked together. ( x_i = x_j + constant)
+     * @return
+     */
+    std::vector<uint32_t> DBMatrix::findLinkedClocks() const
+    {
+        const auto dim = getDim();
+        std::vector<uint32_t> next(dim, 0);
+        for (uint32_t i = 0; i < dim; ++i) {
+            for (uint32_t j = i + 1; j < dim; ++j) {
+                if (!(*this)(i, j).isInfinite() && !(*this)(j, i).isInfinite() &&
+                    (*this)(i, j).getValue() + (*this)(j, i).getValue() == 0) {
+                    // if DBM(i,j) + DBM(j,i) = 0 then clocks i and j are linked together by a constant.
+                    next[i] = j;
+                    break;
+                }
+            }
+        }
+        return next;
+    }
+
+    /**
+     * if DBM(i,j) >= DBM(i,k) + DBM(k,j) then the facet is already covered by another one --> we dont consider it
+     * @param dbm
+     * @param i
+     * @param j
+     * @param next
+     * @return
+     */
+    static bool isRedundant(const DBMatrix& dbm, uint32_t i, uint32_t j, const std::vector<uint32_t>& next)
+    {
+        if (i == j) return true;
+        const auto bij = dbm(i, j);
+        if (bij.isInfinite()) return true;
+
+        for (uint32_t k = 0; k < dbm.getDim(); ++k) {
+            if (k == i || k == j || next[k] != 0) continue;
+            const auto bik = dbm(i, k);
+            const auto bkj = dbm(k, j);
+            if (!bik.isInfinite() && !bkj.isInfinite() &&
+                bij.getValue() >= bik.getValue() + bkj.getValue()) {
+                return true;
+                }
+        }
+        return false;
+    }
+
+    /**
+     * returns the list of lower facets (defined by Z \land (x_0 - x_i <= -L))
+     * @return
+     */
+    std::vector<Facet> Ppdbm::lowerFacets() const
+    {
+        std::vector<Facet> result;
+
+        Ppdbm relaxed = *this;
+        relaxed._dbm.relaxDown();               // closure
+        const auto next = relaxed._dbm.findLinkedClocks();
+
+        for (uint32_t i = 1; i < _dim; ++i) {
+            if (next[i] != 0) continue;
+            if (isRedundant(relaxed._dbm, 0, i, next)) continue; // Facet covered by others
+
+            Ppdbm facetZone = relaxed;
+            const auto lower = relaxed(0, i);          // x0 - xi <= -L_i already set
+            const DbmBound pin{-lower.getValue(), false};
+            const bool ok = facetZone.constrain_DBM(i, 0, pin);    // xi - x0 <= L_i  as well, so now xi = L_i
+            assert(ok); // should never empty the zone
+
+            result.push_back(Facet{std::move(facetZone), DbmConstraint{i, 0, pin}});
+        }
+        return result;
+    }
+
+    /**
+     * returns the list of upper facets (defined by Z \land (x_i - x_0 <= U))
+     * @return
+     */
+    std::vector<Facet> Ppdbm::upperFacets() const
+    {
+        std::vector<Facet> result;
+
+        Ppdbm relaxed = *this;
+        relaxed._dbm.relaxUp();
+        const auto next = relaxed._dbm.findLinkedClocks();
+
+        for (uint32_t i = 1; i < _dim; ++i) {
+            if (next[i] != 0) continue;
+            if (isRedundant(relaxed._dbm, i, 0, next)) continue;
+
+            Ppdbm facetZone = relaxed;
+            const auto upper = relaxed(i, 0);              // xi - x0 <= U_i  already set
+            const DbmBound pin{-upper.getValue(), false};
+            const bool ok = facetZone.constrain_DBM(0, i, pin);    // x0 - xi <= -U_i as well, so now xi = U_i
+            assert(ok);
+
+            result.push_back(Facet{std::move(facetZone), DbmConstraint{i, 0, upper}});
+        }
+        return result;
+    }
+
+    /**
+     *
+     * @param clock
+     * @return
+     */
+    std::vector<Facet> Ppdbm::lowerFacetsRelativeTo(uint32_t clock) const
+    {
+        std::vector<Facet> result;
+
+        Ppdbm relaxed = *this;
+        relaxed._dbm.relaxDownClock(clock);
+        const auto next = relaxed._dbm.findLinkedClocks();
+
+        for (uint32_t i = 0; i < _dim; ++i) {
+            if (next[i] != 0) continue;
+            if (isRedundant(relaxed._dbm, i, clock, next)) continue;
+
+            Ppdbm facetZone = relaxed;
+            const auto bound = relaxed(i, clock);                   // x_i - x_clock <= bound
+            const DbmBound pin{-bound.getValue(), false};       // x_clock - x_i <= -bound
+            const bool ok = facetZone.constrain_DBM(clock, i, pin);
+            assert(ok);
+
+            result.push_back(Facet{std::move(facetZone), DbmConstraint{clock, i, pin}});
+        }
+        return result;
+    }
+
+    /**
+     *
+     * @param clock
+     * @return
+     */
+    std::vector<Facet> Ppdbm::upperFacetsRelativeTo(uint32_t clock) const
+    {
+        std::vector<Facet> result;
+
+        Ppdbm relaxed = *this;
+        relaxed._dbm.relaxUpClock(clock);
+        const auto next = relaxed._dbm.findLinkedClocks();
+
+        for (uint32_t i = 0; i < _dim; ++i) {
+            if (next[i] != 0) continue;
+            if (isRedundant(relaxed._dbm, clock, i, next)) continue;
+
+            Ppdbm facetZone = relaxed;
+            const auto bound = relaxed(clock, i);                  // x_clock - x_i <= bound
+            const DbmBound pin{-bound.getValue(), false};        // x_i - x_clock <= -bound
+            const bool ok = facetZone.constrain_DBM(i, clock, pin);
+            assert(ok);
+
+            result.push_back(Facet{std::move(facetZone), DbmConstraint{clock, i, bound}});
+        }
+        return result;
+    }
+
+    /**
+     * returns sum_{x \in X} r(x)
+     * @return
+     */
+    CostVector Ppdbm::getSlope()
+    {
+        CostVector slope(_param + 1,0);
+        for (uint32_t i = 1; i < _dim; ++i) {
+            for (uint32_t j = 0; j < _param + 1; ++j) {
+                slope[j] += _rates(i,j);
+            }
+        }
+        return slope;
+    }
+
+    /**
+     * suppress the clock constraints of the form x_i <= w. Delay operation on a facet.
+     * @param clock
+     * @param c
+     */
+    void Ppdbm::delay(uint32_t clock, CostVector c)
+    {
+        // modify the zone
+        for (uint32_t i = 1; i < getDim(); ++i)
+            _dbm(i, 0) = INF_BOUND;
+
+        // adapt the price
+        for (uint32_t j = 0; j < _param + 1; ++j) {
+            // for every parameter, add the coeff of c and substract the coeffs of every other rate
+            _rates(clock, j) = c[j];
+            for (uint32_t k = 1; k < _dim; ++k)
+                if (k != clock)
+                    _rates(clock,j) -= _rates(k,j);
+        }
+    }
+
+    /**
+     * suppress the clock constraints of the form x_i <= w. Delay operation on a facet.
+     */
+    void Ppdbm::delay()
+    {
+        // modify the zone
+        for (uint32_t i = 1; i < getDim(); ++i)
+            _dbm(i, 0) = INF_BOUND;
+    }
+
+    /**
+     * clock reset operation on a facet.
+     * assumes that clockToReset is the clock to reset and facetConstraint is the active constraint defining the facet
+     * on which we apply the reset, put in the form (clockToReset - anotherClock = value).
+     * @param clockToReset
+     * @param facetConstraint
+     */
+    void Ppdbm::clockReset(uint32_t clockToReset, DbmConstraint facetConstraint)
+    {
+        assert(clockToReset < _dim);
+
+        // modify the zone
+        _dbm(clockToReset, 0) = DIAG_BOUND;
+        _dbm(0, clockToReset) = DIAG_BOUND;
+        for (uint32_t i = 1; i < getDim(); ++i) {
+            _dbm(clockToReset, i) = _dbm(0,i);
+            _dbm(i,clockToReset) = _dbm(i,0);
+        }
+
+        // adapt the price
+        for (uint32_t k = 0; k < _param + 1; ++k) {
+            _rates(facetConstraint.j,k) += _rates(facetConstraint.i,k);
+            _rates(facetConstraint.i,k) = 0;
+        }
+    }
+
+    /**
+     * returns every successor by delay
+     * @param p
+     * @param J
+     * @return
+     */
+    std::vector<Ppdbm> Ppdbm::post_delta(CostVector p, const std::vector<DbmConstraint>& J)
+    {
+        std::vector<Ppdbm> result;
+
+        {
+            // case 1 : { (l, F↑p ∧ J) | F ∈ LF(Z) } and the constraint is p <= ∑r(x) thus p - ∑r(x) <= 0
+            CostVector temp = getSlope();
+            for (uint32_t i = 0; i < _param + 1; ++i) {
+                temp[i] = p[i] - temp[i];
+            }
+            ParametricConstraint pconstraint{temp,false};
+
+            std::vector<Facet> LF = lowerFacets();
+            for (Facet f : LF ) {
+                auto [ppdbm, constraint] = f;
+                ppdbm.delay(constraint.i, p);
+                ppdbm.constrain_DBM_N(J);
+                ppdbm.getPC().addParametricConstraint(pconstraint);
+                result.push_back(std::move(ppdbm));
+            }
+        }
+        {
+            // case 2 : { (l, Z) } ∪ { (l, F↑p ∧ J) | F ∈ UF(Z) } and the constraint is p > ∑r(x) thus ∑r(x) - p < 0
+            CostVector temp = getSlope();
+            for (uint32_t i = 0; i < _param + 1; ++i) {
+                temp[i] -= p[i];
+            }
+            ParametricConstraint pconstraint{temp,true};
+
+            Ppdbm copy = *this;
+            copy.getPC().addParametricConstraint(pconstraint);
+            result.push_back(std::move(copy));
+
+            std::vector<Facet> UF = upperFacets();
+            for (Facet f : UF ) {
+                auto [ppdbm, constraint] = f;
+                ppdbm.delay(constraint.i, p);
+                ppdbm.constrain_DBM_N(J);
+                ppdbm.getPC().addParametricConstraint(pconstraint);
+                result.push_back(std::move(ppdbm));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * returns every successor by transition e = (l, g, {x}, l'), with edge cost q.
+     * resetClock = std::nullopt si e ne reset aucune horloge.
+     */
+    std::vector<Ppdbm> Ppdbm::post_e(const std::vector<DbmConstraint>& g, std::optional<uint32_t> resetClock, const CostVector& q) const
+    {
+        std::vector<Ppdbm> result;
+
+        // Z ∧ g
+        Ppdbm guarded = *this;
+        if (!g.empty() && !guarded.constrain_DBM_N(g)) return result; // g empties the zone
+        if (guarded.isEmpty()) return result;
+
+        if (!resetClock) {
+            // if no reset : { (l', Z ∧ g + q) }
+            guarded.addConstantCost(q);
+            result.push_back(std::move(guarded));
+            return result;
+        }
+
+        const uint32_t x = *resetClock;
+        CostVector rx(_param + 1);
+        for (uint32_t k = 0; k <= _param; ++k) rx[k] = guarded._rates(x,k);
+
+        {
+            // cas r(x) >= 0  <=>  -r(x) <= 0
+            CostVector temp(_param + 1);
+            for (uint32_t k = 0; k <= _param; ++k) temp[k] = -rx[k];
+            ParametricConstraint pconstraint{temp, false};
+
+            for (Facet f : guarded.lowerFacetsRelativeTo(x)) {
+                auto [ppdbm, constraint] = f;
+                ppdbm.clockReset(x, constraint);
+                ppdbm.addConstantCost(q);
+                ppdbm.getPC().addParametricConstraint(pconstraint);
+                result.push_back(std::move(ppdbm));
+            }
+        }
+        {
+            // cas r(x) < 0
+            ParametricConstraint pconstraint{rx, true};
+
+            for (Facet f : guarded.upperFacetsRelativeTo(x)) {
+                auto [ppdbm, constraint] = f;
+                ppdbm.clockReset(x, constraint);
+                ppdbm.addConstantCost(q);
+                ppdbm.getPC().addParametricConstraint(pconstraint);
+                result.push_back(std::move(ppdbm));
+            }
+        }
+
+        return result;
+    }
+
+
+
+    ////////////////////////////////////////////// WQO relation ////////////////////////////////////////////////////////
 
 
     /**
@@ -343,10 +740,7 @@ namespace PPDBM
 
 
 
-
-
-
-//////////////////////////////////////////////// sommetsDBM() with claude's help /////////////////////////////////////
+    //////////////////////////////////////////////// sommetsDBM() with claude's help /////////////////////////////////////
 
 
     /**
@@ -486,7 +880,7 @@ namespace PPDBM
         };
 
 
-        // Backtracking : énumère tous les arbres couvrants sur 'candidates'
+        // Backtracking : find all spanning trees on 'candidates'
         std::function<void(size_t)> backtrack = [&](size_t start) {
             if (chosen.size() == static_cast<size_t>(dim - 1)) { evaluateTree(chosen); return; }
             if (candidates.size() - start < (dim - 1 - chosen.size())) return;

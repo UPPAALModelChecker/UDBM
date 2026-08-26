@@ -13,8 +13,12 @@
 
 namespace PPDBM
 {
+    ///to facilitate notations
+    using Vertex     = std::vector<uint32_t>; // size _dim, clock valuations
+    using CostVector = std::vector<int>; // size _param + 1, coeffs on parameters
     constexpr auto INF = std::numeric_limits<int>::max() >> 1u;
 
+    /// generic matrix type (used everywhere)
     template <typename T>
     struct Matrix
     {
@@ -39,9 +43,26 @@ namespace PPDBM
     /**
      * A parameter constraint is of the form (a_0 + sum^n_{i=1} a_i p_i) <= 0
      */
-    struct ParameterConstraint { std::vector<int> coeffs; };
+    struct ParametricConstraint
+    {
+        constexpr ParametricConstraint(std::vector<int> coeffs, bool strict):
+            _coeffs{std::move(coeffs)},
+            _strict{strict} {}
+        constexpr const bool& getStrict() const { return _strict; }
+    private:
+        std::vector<int> _coeffs;
+        bool _strict;
+    };
 
-    struct Polyhedron { std::vector<ParameterConstraint> constraints; };
+    struct Polyhedron
+    {
+        constexpr std::vector<ParametricConstraint>& getConstraints(){ return _constraints; }
+        constexpr const std::vector<ParametricConstraint>& getConstraints() const { return _constraints; }
+        constexpr void addParametricConstraint(const ParametricConstraint& constraint)
+        { _constraints.push_back(constraint); }
+    private:
+        std::vector<ParametricConstraint> _constraints;
+    };
 
 
 
@@ -97,7 +118,6 @@ namespace PPDBM
 
 
 
-    using Vertex = std::vector<int32_t>;
 
     /**
      *
@@ -121,6 +141,13 @@ namespace PPDBM
             }
         }
         void close(uint32_t i, uint32_t j);
+        void relaxDown();
+        void relaxUp();
+        void relaxDownClock(uint32_t clock);
+        void relaxUpClock(uint32_t clock);
+        std::vector<uint32_t> findLinkedClocks() const;
+
+
 
         relation_t relation(const DBMatrix& other) const; ///< pure zone comparison (no cost involved).
         std::vector<Vertex> verticesDBM() const;
@@ -132,9 +159,15 @@ namespace PPDBM
 
 
 
-    using Vertex     = std::vector<int32_t>; // size _dim, clock valuations
-    using CostVector = std::vector<uint32_t>; // size _param + 1, coeffs on parameters
 
+
+    struct Facet;
+
+
+
+
+
+    //////////////////////////// The PPDBM class that represents Parametric priced zones //////////////////////////////
     /**
      * Parametric priced timed difference bound matrix
      */
@@ -145,9 +178,15 @@ namespace PPDBM
         _rates(dim, param + 1, 0) {}
 
         constexpr uint32_t getDim() const { return _dim; }
+        constexpr uint32_t getParam() const { return _param; }
+        constexpr Polyhedron& getPC() {return _PC;}
+        constexpr const Polyhedron& getPC() const {return _PC;}
+        constexpr Matrix<int>& getRates() { return _rates; }
+        constexpr const Matrix<int>& getRates() const { return _rates; }
+        constexpr std::vector<int>& getOffsetCost() { return _offsetCost; }
+        constexpr const std::vector<int>& getOffsetCost() const { return _offsetCost; }
         constexpr DbmBound& operator()(int i, int j) { return _dbm(i, j); }
         constexpr const DbmBound& operator()(int i, int j) const { return _dbm(i, j); }
-        void setRates(const Matrix<int>& rates) { _rates = rates; }
 
         constexpr bool isEmpty() const { return _emptyZone; }
         void reset();
@@ -156,7 +195,26 @@ namespace PPDBM
         void addCostAtOffset();
         bool isDiagonalNegative(uint32_t i) const;
         bool constrain_DBM_N(const std::vector<DbmConstraint>& constraints);
-        std::vector<uint32_t> costAtOtherOffset(const DBMatrix& otherDbm) const;
+        std::vector<int> costAtOtherOffset(const DBMatrix& otherDbm) const;
+        CostVector getSlope();
+        void addConstantCost(const CostVector& q);
+
+        /// Delay operation on a facet put in the form Z \land (clock - otherClock = value).
+        void delay(uint32_t clock, CostVector c);
+        void delay();
+        /// clock reset operation on a facet put in the form Z \land (clockToReset - otherClock = value).
+        void clockReset(uint32_t clockToReset, DbmConstraint facetConstraint);
+        /// lower & upper facets functions for the operators
+        std::vector<Facet> lowerFacets() const;
+        std::vector<Facet> upperFacets() const;
+        std::vector<Facet> lowerFacetsRelativeTo(uint32_t clock) const;
+        std::vector<Facet> upperFacetsRelativeTo(uint32_t clock) const;
+
+        /// operator post, computes the succesors of the ppdbm by delay.
+        std::vector<Ppdbm> post_delta(CostVector p, const std::vector<DbmConstraint>& J);
+        /// operator post, computes the succesors of the ppdbm by transition e.
+        std::vector<Ppdbm> post_e(const std::vector<DbmConstraint>& g, std::optional<uint32_t> resetClock, const CostVector& q) const;
+
 
         /// Is there a domination relation between the two zones?
         relation_t relation(const Ppdbm& other) const;
@@ -174,9 +232,16 @@ namespace PPDBM
         uint32_t _dim, _param = 0; // number of clocks and parameters
         DBMatrix _dbm; // the classic zone
         bool _emptyZone = false; // is the zone represented by the dbm empty?
-        std::vector<uint32_t> _offsetCost; // the cost of the offset (affine function of parameters with int coeffs)
+        std::vector<int> _offsetCost; // the cost of the offset (affine function of parameters with int coeffs)
         Matrix<int> _rates; // the cost rates of clocks (affine functions of parameters with int coeffs)
         Polyhedron _PC; // parametric constraints set
+    };
+
+
+    struct Facet
+    {
+        Ppdbm _ppdbm;
+        DbmConstraint _constraint;
     };
 } // namespace PPDBM
 
