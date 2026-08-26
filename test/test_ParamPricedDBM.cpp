@@ -218,7 +218,7 @@ TEST_CASE("Ppdbm costAtVertex reflects rates and the zone's lower bound")
     Matrix<int> rates{2, 2, 0};
     rates(1, 0) = 1;
     rates(1, 1) = 1;
-    p.setRates(rates);
+    p.getRates() = rates;
 
     REQUIRE(p.constrain_DBM(1, 0, DbmBound{5, false}));  // x1 <= 5
     REQUIRE(p.constrain_DBM(0, 1, DbmBound{-2, false})); // x1 >= 2
@@ -236,7 +236,7 @@ TEST_CASE("Ppdbm costAtOtherOffset translates the cost to another zone's offset"
     Matrix<int> rates{2, 2, 0};
     rates(1, 0) = 1;
     rates(1, 1) = 1;
-    p.setRates(rates);
+    p.getRates() = rates;
     REQUIRE(p.constrain_DBM(1, 0, DbmBound{5, false}));
     REQUIRE(p.constrain_DBM(0, 1, DbmBound{-2, false})); // x1 in [2,5]
 
@@ -281,7 +281,7 @@ TEST_CASE("Ppdbm::relation compares zones and, when equal, their costs")
     Matrix<int> ratesA{2, 2, 0};
     ratesA(1, 0) = 1;
     ratesA(1, 1) = 1;
-    a.setRates(ratesA);
+    a.getRates() = ratesA;
     REQUIRE(a.constrain_DBM(1, 0, DbmBound{5, false}));
     REQUIRE(a.constrain_DBM(0, 1, DbmBound{-2, false})); // x1 in [2,5]
 
@@ -289,7 +289,7 @@ TEST_CASE("Ppdbm::relation compares zones and, when equal, their costs")
     Matrix<int> ratesB{2, 2, 0};
     ratesB(1, 0) = 2; // strictly more expensive on the first coefficient
     ratesB(1, 1) = 1;
-    b.setRates(ratesB);
+    b.getRates() = ratesB;
     REQUIRE(b.constrain_DBM(1, 0, DbmBound{5, false}));
     REQUIRE(b.constrain_DBM(0, 1, DbmBound{-2, false})); // same zone as a
 
@@ -302,7 +302,7 @@ TEST_CASE("Ppdbm::relation compares zones and, when equal, their costs")
     Matrix<int> ratesC{2, 2, 0};
     ratesC(1, 0) = 1;
     ratesC(1, 1) = 1;
-    c.setRates(ratesC);
+    c.getRates() = ratesC;
     REQUIRE(c.constrain_DBM(1, 0, DbmBound{3, false})); // x1 in [0,3]
 
     // overlapping but neither zone contains the other -> DIFFERENT, regardless of cost
