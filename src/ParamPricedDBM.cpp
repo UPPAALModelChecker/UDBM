@@ -398,7 +398,7 @@ namespace PPDBM
      * returns sum_{x \in X} r(x)
      * @return
      */
-    CostVector Ppdbm::getSlope()
+    CostVector Ppdbm::getSlope() const
     {
         CostVector slope(_param + 1,0);
         for (uint32_t i = 1; i < _dim; ++i) {

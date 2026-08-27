@@ -8,6 +8,7 @@
 #include <limits>
 #include <vector>
 #include <algorithm>
+#include <optional>
 
 
 
@@ -196,7 +197,7 @@ namespace PPDBM
         bool isDiagonalNegative(uint32_t i) const;
         bool constrain_DBM_N(const std::vector<DbmConstraint>& constraints);
         std::vector<int> costAtOtherOffset(const DBMatrix& otherDbm) const;
-        CostVector getSlope();
+        CostVector getSlope() const;
         void addConstantCost(const CostVector& q);
 
         /// Delay operation on a facet put in the form Z \land (clock - otherClock = value).
