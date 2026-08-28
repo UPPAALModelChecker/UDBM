@@ -20,7 +20,7 @@ TEST_CASE("Matrix basic operations")
 
     m(1, 2) = 42;
     CHECK(m(1, 2) == 42);
-    CHECK(m(0, 0) == 7); // untouched cell
+    CHECK(m(0, 0) == 7); // unchanged cell
 
     m.fill(3);
     for (uint32_t i = 0; i < 2; ++i)
@@ -54,7 +54,7 @@ TEST_CASE("DbmBound dominates and isIncompatible")
     CHECK(DbmBound::isIncompatible(DbmBound{-5, false}, b3));
     CHECK_FALSE(DbmBound::isIncompatible(b3, b5));
 
-    // boundary case a+b == 0 : incompatible only if one side is strict
+    // boundary case a+b == 0: incompatible only if one side is strict
     CHECK_FALSE(DbmBound::isIncompatible(DbmBound{3, false}, DbmBound{-3, false}));
     CHECK(DbmBound::isIncompatible(DbmBound{3, true}, DbmBound{-3, false}));
 }
@@ -168,7 +168,7 @@ TEST_CASE("Ppdbm constrain_DBM tightens bounds and detects emptiness")
     CHECK(p.constrain_DBM(1, 0, DbmBound{4, false}));
     CHECK(p(1, 0).getValue() == 4);
 
-    // x1 >= 6 is incompatible with x1 <= 4 : the zone becomes empty
+    // x1 >= 6 is incompatible with x1 <= 4: the zone becomes empty
     CHECK_FALSE(p.constrain_DBM(0, 1, DbmBound{-6, false}));
     CHECK(p.isEmpty());
 }
@@ -223,7 +223,7 @@ TEST_CASE("Ppdbm costAtVertex reflects rates and the zone's lower bound")
     REQUIRE(p.constrain_DBM(1, 0, DbmBound{5, false}));  // x1 <= 5
     REQUIRE(p.constrain_DBM(0, 1, DbmBound{-2, false})); // x1 >= 2
 
-    // at the lower corner of the zone, delta == 0 : cost == offset cost
+    // at the lower corner of the zone, delta == 0: cost == offset cost
     CHECK(p.costAtVertex(Vertex{0, 2}) == CostVector{2, 2});
 
     // at the upper corner, cost == offset + rate * (5 - 2)
@@ -309,28 +309,28 @@ TEST_CASE("Ppdbm::relation compares zones and, when equal, their costs")
     CHECK(a.relation(c) == base_DIFFERENT);
 }
 
-//////////////////////////////////// Nouvelles fonctions : relax / findLinkedClocks //////////////////////////////////
+//////////////////////////////////// New functions: relax / findLinkedClocks //////////////////////////////////
 
 TEST_CASE("DBMatrix relaxDown and relaxUp remove strictness only")
 {
     DBMatrix m{3};
-    m(0, 1) = DbmBound{-2, true};  // x1 > 2 (borne basse stricte)
-    m(0, 2) = DbmBound{0, false};  // x2 >= 0 (deja faible)
-    m(1, 0) = DbmBound{5, true};   // x1 < 5 (borne haute stricte)
-    m(2, 0) = DbmBound{3, false};  // x2 <= 3 (deja faible)
+    m(0, 1) = DbmBound{-2, true};  // x1 > 2 (strict lower bound)
+    m(0, 2) = DbmBound{0, false};  // x2 >= 0 (already weak)
+    m(1, 0) = DbmBound{5, true};   // x1 < 5 (strict upper bound)
+    m(2, 0) = DbmBound{3, false};  // x2 <= 3 (already weak)
 
     m.relaxDown();
     CHECK_FALSE(m(0, 1).getStrict());
-    CHECK(m(0, 1).getValue() == -2);       // la valeur ne change pas, seule la stricture saute
-    CHECK_FALSE(m(0, 2).getStrict());      // deja faible : inchange
-    CHECK(m(1, 0).getStrict());            // relaxDown ne touche pas les bornes hautes
+    CHECK(m(0, 1).getValue() == -2);       // the value does not change, only the strictness is removed
+    CHECK_FALSE(m(0, 2).getStrict());      // already weak: unchanged
+    CHECK(m(1, 0).getStrict());            // relaxDown does not touch upper bounds
 
     m.relaxUp();
     CHECK_FALSE(m(1, 0).getStrict());
     CHECK(m(1, 0).getValue() == 5);
     CHECK_FALSE(m(2, 0).getStrict());
 
-    // une borne infinie reste infinie et n'est jamais "relachee"
+    // an infinite bound remains infinite and is never "relaxed"
     DBMatrix m2{2};
     CHECK(m2(1, 0).isInfinite());
     m2.relaxUp();
@@ -345,13 +345,13 @@ TEST_CASE("DBMatrix relaxDownClock and relaxUpClock only touch the given clock's
     m(1, 0) = DbmBound{5, true};   // x1 < 5
     m(1, 2) = DbmBound{1, true};   // x1 - x2 < 1
 
-    m.relaxDownClock(1); // relache (i,1) pour tout i != 1
+    m.relaxDownClock(1); // relax (i,1) for every i != 1
     CHECK_FALSE(m(0, 1).getStrict());
     CHECK_FALSE(m(2, 1).getStrict());
-    CHECK(m(1, 0).getStrict());   // pas touche : ce n'est pas une entree (*, 1)
-    CHECK(m(1, 2).getStrict());   // idem
+    CHECK(m(1, 0).getStrict());   // untouched: this is not an entry (*, 1)
+    CHECK(m(1, 2).getStrict());   // same
 
-    m.relaxUpClock(1); // relache (1,i) pour tout i != 1
+    m.relaxUpClock(1); // relax (1,i) for every i != 1
     CHECK_FALSE(m(1, 0).getStrict());
     CHECK_FALSE(m(1, 2).getStrict());
 }
@@ -359,20 +359,20 @@ TEST_CASE("DBMatrix relaxDownClock and relaxUpClock only touch the given clock's
 TEST_CASE("DBMatrix findLinkedClocks detects zero cycles")
 {
     DBMatrix m{3};
-    // x1 - x2 = 3 exactement : x1-x2<=3 et x2-x1<=-3
+    // x1 - x2 = 3 exactly: x1-x2<=3 and x2-x1<=-3
     m(1, 2) = DbmBound{3, false};
     m(2, 1) = DbmBound{-3, false};
 
     const auto next = m.findLinkedClocks();
     REQUIRE(next.size() == 3);
-    CHECK(next[1] == 2);   // 1 est lie a 2
-    CHECK(next[0] == 0);   // la reference n'est liee a personne ici
-    CHECK(next[2] == 0);   // 2 est un representant (aucun j>2 a verifier)
+    CHECK(next[1] == 2);   // 1 is linked to 2
+    CHECK(next[0] == 0);   // the reference is not linked to anything here
+    CHECK(next[2] == 0);   // 2 is a representative (no j>2 to check)
 
-    // si la difference n'est pas exactement nulle, pas de lien
+    // if the difference is not exactly zero, there is no link
     DBMatrix m2{3};
     m2(1, 2) = DbmBound{3, false};
-    m2(2, 1) = DbmBound{-2, false}; // x1-x2 dans [2,3], pas fixe
+    m2(2, 1) = DbmBound{-2, false}; // x1-x2 in [2,3], not fixed
     CHECK(m2.findLinkedClocks() == std::vector<uint32_t>{0, 0, 0});
 }
 
@@ -383,12 +383,12 @@ TEST_CASE("Ppdbm lowerFacets and upperFacets on an independent box")
     Ppdbm p{3, 0};
     REQUIRE(p.constrain_DBM(1, 0, DbmBound{5, false})); // x1 <= 5
     REQUIRE(p.constrain_DBM(2, 0, DbmBound{3, false})); // x2 <= 3
-    // x1, x2 >= 0 par defaut, aucun lien entre x1 et x2
+    // x1, x2 >= 0 by default, no link between x1 and x2
 
     const auto lower = p.lowerFacets();
-    REQUIRE(lower.size() == 2); // une facette par horloge, aucune redondance
+    REQUIRE(lower.size() == 2); // one facet per clock, no redundancy
     for (const auto& f : lower) {
-        CHECK(f._ppdbm(f._constraint.i, 0).getValue() == 0); // chaque facette fixe l'horloge a 0
+        CHECK(f._ppdbm(f._constraint.i, 0).getValue() == 0); // each facet fixes the clock to 0
     }
 
     const auto upper = p.upperFacets();
@@ -404,14 +404,14 @@ TEST_CASE("Ppdbm lowerFacets and upperFacets on an independent box")
 
 TEST_CASE("Ppdbm upperFacets discards a redundant facet")
 {
-    // x1 <= 5, x2 <= 5, x1 - x2 <= 0  =>  x1 <= 5 est implique par x2<=5 et x1<=x2
+    // x1 <= 5, x2 <= 5, x1 - x2 <= 0  =>  x1 <= 5 is implied by x2<=5 and x1<=x2
     Ppdbm p{3, 0};
     REQUIRE(p.constrain_DBM(1, 0, DbmBound{5, false}));
     REQUIRE(p.constrain_DBM(2, 0, DbmBound{5, false}));
     REQUIRE(p.constrain_DBM(1, 2, DbmBound{0, false}));
 
     const auto upper = p.upperFacets();
-    REQUIRE(upper.size() == 1); // seule x2 <= 5 est une vraie facette
+    REQUIRE(upper.size() == 1); // only x2 <= 5 is a true facet
     CHECK(upper[0]._constraint.i == 2);
     CHECK(upper[0]._ppdbm(2, 0).getValue() == 5);
 }
@@ -423,19 +423,19 @@ TEST_CASE("Ppdbm lowerFacetsRelativeTo and upperFacetsRelativeTo isolate the res
     Ppdbm p{3, 0};
     REQUIRE(p.constrain_DBM(1, 0, DbmBound{5, false}));  // x1 <= 5
     REQUIRE(p.constrain_DBM(0, 1, DbmBound{-2, false})); // x1 >= 2
-    REQUIRE(p.constrain_DBM(2, 0, DbmBound{3, false}));  // x2 <= 3, x2 >= 0, pas de lien x1/x2
+    REQUIRE(p.constrain_DBM(2, 0, DbmBound{3, false}));  // x2 <= 3, x2 >= 0, no link between x1 and x2
 
     const auto lower = p.lowerFacetsRelativeTo(1);
-    REQUIRE(lower.size() == 1);                 // seule la reference (0) donne une facette non redondante
+    REQUIRE(lower.size() == 1);                 // only the reference (0) gives a non-redundant facet
     CHECK(lower[0]._constraint.i == 1);
     CHECK(lower[0]._constraint.j == 0);
-    CHECK(lower[0]._ppdbm(1, 0).getValue() == 2); // x1 fixe a sa borne basse
+    CHECK(lower[0]._ppdbm(1, 0).getValue() == 2); // x1 fixed to its lower bound
 
     const auto upper = p.upperFacetsRelativeTo(1);
     REQUIRE(upper.size() == 1);
     CHECK(upper[0]._constraint.i == 1);
     CHECK(upper[0]._constraint.j == 0);
-    CHECK(upper[0]._ppdbm(1, 0).getValue() == 5); // x1 fixe a sa borne haute
+    CHECK(upper[0]._ppdbm(1, 0).getValue() == 5); // x1 fixed to its upper bound
 }
 
 ////////////////////////////////////////////////////// getSlope /////////////////////////////////////////////////////
@@ -469,7 +469,7 @@ TEST_CASE("Ppdbm delay(clock, c) removes upper bounds and rebalances the rate so
 
     CHECK(p(1, 0).isInfinite());
     CHECK(p(2, 0).isInfinite());
-    // le taux de clock1 absorbe la difference : la pente totale devient exactement c
+    // the rate of clock1 absorbs the difference: the total slope becomes exactly c
     CHECK(p.getSlope() == CostVector{5, 7});
 }
 
@@ -481,9 +481,9 @@ TEST_CASE("Ppdbm delay() only removes upper bounds")
     p.delay();
 
     CHECK(p(1, 0).isInfinite());
-    CHECK(p(0, 0).getValue() == 0);        // la diagonale de reference n'est pas touchee
+    CHECK(p(0, 0).getValue() == 0);        // the reference diagonal is not touched
     CHECK_FALSE(p(0, 0).getStrict());
-    CHECK(p(0, 1).getValue() == 0);        // x1 >= 0 toujours vrai
+    CHECK(p(0, 1).getValue() == 0);        // x1 >= 0 is still true
 }
 
 //////////////////////////////////////////////////// clockReset /////////////////////////////////////////////////////
@@ -503,12 +503,12 @@ TEST_CASE("Ppdbm clockReset applied on a facet from lowerFacetsRelativeTo")
 
     const auto facets = p.lowerFacetsRelativeTo(1);
     REQUIRE(facets.size() == 1);
-    Facet f = facets[0]; // copie : x1 est deja fixe a 2 sur cette facette
+    Facet f = facets[0]; // copy: x1 is already fixed to 2 on this facet
     CHECK(f._ppdbm(1, 0).getValue() == 2);
 
     f._ppdbm.clockReset(1, f._constraint);
 
-    // la zone : x1 est reinitialise a 0, et sa relation a x2 recopie celle de la reference
+    // the zone: x1 is reset to 0, and its relation to x2 is copied from the reference
     CHECK(f._ppdbm(1, 0).getValue() == 0);
     CHECK_FALSE(f._ppdbm(1, 0).getStrict());
     CHECK(f._ppdbm(0, 1).getValue() == 0);
@@ -517,37 +517,37 @@ TEST_CASE("Ppdbm clockReset applied on a facet from lowerFacetsRelativeTo")
     CHECK(f._ppdbm(2, 1).getValue() == f._ppdbm(2, 0).getValue());
     CHECK(f._ppdbm(2, 1).getStrict() == f._ppdbm(2, 0).getStrict());
 
-    // le taux de x1 est transfere (ici vers la reference, donc "perdu" pour le calcul du cout futur)
-    CHECK(f._ppdbm.getSlope() == CostVector{3}); // 5 - 2 : seul rates(x2) reste observable
+    // the rate of x1 is transferred (here to the reference, so it is "lost" for future cost calculations)
+    CHECK(f._ppdbm.getSlope() == CostVector{3}); // 5 - 2: only rates(x2) remains observable
 }
 
 /////////////////////////////////////////////////////// post_delta //////////////////////////////////////////////////
 
 TEST_CASE("Ppdbm post_delta produces the three symbolic successors of the formula")
 {
-    Ppdbm p{2, 0}; // une seule horloge, pas de parametre (constantes)
+    Ppdbm p{2, 0}; // one clock, no parameter (constants)
     Matrix<int> rates{2, 1, 0};
     rates(1, 0) = 2;
     p.getRates() = rates;
     REQUIRE(p.constrain_DBM(1, 0, DbmBound{5, false})); // x1 in [0,5]
 
-    const auto result = p.post_delta(CostVector{3}, {}); // J vide : teste le chemin constrain_DBM_N(vide)
+    const auto result = p.post_delta(CostVector{3}, {}); // empty J: tests the constrain_DBM_N(empty) path
     REQUIRE(result.size() == 3);
 
-    // successeur issu de LF(Z) (cas p <= slope) : x1 devient non borne, la pente devient p
+    // successor from LF(Z) (case p <= slope): x1 becomes unbounded, the slope becomes p
     const auto& fromLower = result[0];
     CHECK(fromLower(1, 0).isInfinite());
     CHECK(fromLower(0, 1).getValue() == 0);
     CHECK(fromLower.getPC().getConstraints().size() == 1);
     CHECK_FALSE(fromLower.getPC().getConstraints()[0].getStrict()); // p - slope <= 0
 
-    // successeur { (l, Z) } du cas p > slope : zone et pente inchangees
+    // successor { (l, Z) } for the case p > slope: zone and slope unchanged
     const auto& untouched = result[1];
     CHECK(untouched(1, 0).getValue() == 5);
     CHECK(untouched.getPC().getConstraints().size() == 1);
     CHECK(untouched.getPC().getConstraints()[0].getStrict()); // slope - p < 0
 
-    // successeur issu de UF(Z) (cas p > slope) : x1 partait de 5, devient non borne, meme pente p
+    // successor from UF(Z) (case p > slope): x1 started at 5, becomes unbounded, same slope p
     const auto& fromUpper = result[2];
     CHECK(fromUpper(1, 0).isInfinite());
     CHECK(fromUpper(0, 1).getValue() == -5);
@@ -577,7 +577,7 @@ TEST_CASE("Ppdbm post_e returns nothing when the guard empties the zone")
     REQUIRE(p.constrain_DBM(1, 0, DbmBound{3, false}));  // x1 <= 3
     REQUIRE(p.constrain_DBM(0, 1, DbmBound{-1, false})); // x1 >= 1
 
-    const std::vector<DbmConstraint> g{{0, 1, DbmBound{-10, false}}}; // x1 >= 10 : incompatible
+    const std::vector<DbmConstraint> g{{0, 1, DbmBound{-10, false}}}; // x1 >= 10: incompatible
     const auto result = p.post_e(g, std::nullopt, CostVector{0});
 
     CHECK(result.empty());
@@ -596,12 +596,12 @@ TEST_CASE("Ppdbm post_e with a reset generates the lower- and upper-facet branch
 
     CHECK(p.getOffsetCost() == CostVector{4}); // rates(x1)=2 * lowerbound(x1)=2
 
-    const auto result = p.post_e({}, 1u, CostVector{10}); // pas de garde, reset de x1, cout d'arc 10
+    const auto result = p.post_e({}, 1u, CostVector{10}); // no guard, reset x1, edge cost 10
 
-    REQUIRE(result.size() == 2); // une branche par facette relative a x1 (basse puis haute)
+    REQUIRE(result.size() == 2); // one branch per facet relative to x1 (lower then upper)
 
     for (const auto& r : result) {
-        // dans les deux cas x1 est reinitialise a 0, et la zone ne depend plus que de x2
+        // in both cases x1 is reset to 0, and the zone only depends on x2
         CHECK(r(1, 0).getValue() == 0);
         CHECK_FALSE(r(1, 0).getStrict());
         CHECK(r(0, 1).getValue() == 0);
@@ -609,16 +609,15 @@ TEST_CASE("Ppdbm post_e with a reset generates the lower- and upper-facet branch
         CHECK(r(1, 2).getStrict() == r(0, 2).getStrict());
         CHECK(r(2, 1).getValue() == r(2, 0).getValue());
         CHECK(r(2, 1).getStrict() == r(2, 0).getStrict());
-        CHECK(r.getSlope() == CostVector{3}); // le taux de x1 (2) est retire de la pente observable
+        CHECK(r.getSlope() == CostVector{3}); // the rate of x1 (2) is removed from the observable slope
         CHECK(r.getPC().getConstraints().size() == 1);
     }
 
-    // branche issue de lowerFacetsRelativeTo (x1 valait 2 avant reset) : cout = 4 (deja accumule) + 10
+    // branch from lowerFacetsRelativeTo (x1 was 2 before reset): cost = 4 (already accumulated) + 10
     CHECK(result[0].getOffsetCost() == CostVector{14});
     CHECK_FALSE(result[0].getPC().getConstraints()[0].getStrict());
 
-    // branche issue de upperFacetsRelativeTo (x1 valait 5 avant reset) : cout = 10 (deja accumule) + 10
+    // branch from upperFacetsRelativeTo (x1 was 5 before reset): cost = 10 (already accumulated) + 10
     CHECK(result[1].getOffsetCost() == CostVector{20});
     CHECK(result[1].getPC().getConstraints()[0].getStrict());
 }
-
