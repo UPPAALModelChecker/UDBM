@@ -12,8 +12,8 @@ using namespace PPDBM;
 TEST_CASE("Matrix basic operations")
 {
     Matrix<int> m{2, 3, 7};
-    CHECK(m.getRows() == 2);
-    CHECK(m.getCols() == 3);
+    CHECK(m.rows() == 2);
+    CHECK(m.cols() == 3);
     for (uint32_t i = 0; i < 2; ++i)
         for (uint32_t j = 0; j < 3; ++j)
             CHECK(m(i, j) == 7);
@@ -199,7 +199,7 @@ TEST_CASE("Ppdbm constrain_DBM_N applies a batch of constraints atomically")
 
 TEST_CASE("Ppdbm reset returns the zone to its unconstrained state")
 {
-    Ppdbm p{2, 0};
+    auto p = Ppdbm{2, 0};
     p.constrain_DBM(1, 0, DbmBound{5, false});
     p.constrain_DBM(0, 1, DbmBound{-100, false}); // makes the zone empty
     REQUIRE(p.isEmpty());

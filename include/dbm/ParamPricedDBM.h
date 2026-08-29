@@ -16,21 +16,21 @@ namespace PPDBM
 {
     ///to facilitate notations
     using Vertex     = std::vector<uint32_t>; // size _dim, clock valuations
-    using CostVector = std::vector<int>; // size _param + 1, coeffs on parameters
-    constexpr auto INF = std::numeric_limits<int>::max() >> 1u;
+    using CostVector = std::vector<int32_t>; // size _param + 1, coeffs on parameters
+    constexpr auto INF = std::numeric_limits<int32_t>::max() >> 1u;
 
     /// generic matrix type (used everywhere)
     template <typename T>
     struct Matrix
     {
-        constexpr Matrix(uint32_t rows, uint32_t cols, const T x): _rows{rows}, _cols{cols}, _data(rows * cols, x){}
-        constexpr auto getRows() const { return _rows; }
-        constexpr auto getCols() const { return _cols; }
-        constexpr auto& getData() const { return _data; }
-        constexpr auto& getData() { return _data; }
-        constexpr T& operator()(int i, int j) { return _data[i * _cols + j]; }
-        constexpr const T& operator()(int i, int j) const { return _data[i * _cols + j]; }
-        constexpr auto fill(T x){ std::fill(_data.begin(), _data.end(), x); }
+        Matrix(uint32_t rows, uint32_t cols, const T x): _rows{rows}, _cols{cols}, _data(rows * cols, x){}
+        auto rows() const { return _rows; }
+        auto cols() const { return _cols; }
+        const std::vector<T>& getData() const { return _data; }
+        std::vector<T>& getData() { return _data; }
+        T& operator()(int i, int j) { return _data[i * _cols + j]; }
+        const T& operator()(int i, int j) const { return _data[i * _cols + j]; }
+        auto fill(T x){ std::fill(_data.begin(), _data.end(), x); }
 
     private:
         uint32_t _rows;
@@ -50,6 +50,7 @@ namespace PPDBM
             _coeffs{std::move(coeffs)},
             _strict{strict} {}
         constexpr const bool& getStrict() const { return _strict; }
+        constexpr const std::vector<int>& getCoeffs() const { return _coeffs; }
     private:
         std::vector<int> _coeffs;
         bool _strict;
@@ -61,6 +62,8 @@ namespace PPDBM
         constexpr const std::vector<ParametricConstraint>& getConstraints() const { return _constraints; }
         constexpr void addParametricConstraint(const ParametricConstraint& constraint)
         { _constraints.push_back(constraint); }
+
+        bool isEmpty();
     private:
         std::vector<ParametricConstraint> _constraints;
     };
@@ -97,7 +100,7 @@ namespace PPDBM
     };
 
     constexpr auto INF_BOUND = DbmBound{INF,true};
-    constexpr auto DIAG_BOUND = DbmBound{0,false};
+    constexpr auto ZERO_BOUND = DbmBound{0,false};
 
     /// x_i - x_j <= a and x_j - x_k < b gives x_i - x_k < a + b
     constexpr DbmBound operator+(const DbmBound& a, const DbmBound& b)
@@ -127,18 +130,18 @@ namespace PPDBM
     {
         constexpr DBMatrix(uint32_t dim) : _matrix{dim, dim, INF_BOUND}
         {
-            for (uint32_t i = 0; i < dim; ++i) { _matrix(i, i) = DIAG_BOUND; _matrix(0,i) = DIAG_BOUND; }
+            for (uint32_t i = 0; i < dim; ++i) { _matrix(i, i) = ZERO_BOUND; _matrix(0,i) = ZERO_BOUND; }
         }
 
-        constexpr auto getDim() const { return _matrix.getRows(); }
+        constexpr auto getDim() const { return _matrix.rows(); }
         constexpr DbmBound& operator()(int i, int j) { return _matrix(i, j); }
         constexpr const DbmBound& operator()(int i, int j) const { return _matrix(i, j); }
         constexpr void reset()
         {
             _matrix.fill(INF_BOUND);
-            for (uint32_t i = 0; i < _matrix.getRows(); ++i) {
-                _matrix(i,i)= DIAG_BOUND;
-                _matrix(0,i) = DIAG_BOUND;
+            for (uint32_t i = 0; i < _matrix.rows(); ++i) {
+                _matrix(i,i)= ZERO_BOUND;
+                _matrix(0,i) = ZERO_BOUND;
             }
         }
         void close(uint32_t i, uint32_t j);
@@ -163,7 +166,8 @@ namespace PPDBM
 
 
     struct Facet;
-
+    struct Edge;
+    struct ParamPricedTimedAutomata;
 
 
 
@@ -174,9 +178,16 @@ namespace PPDBM
      */
     struct Ppdbm
     {
-        constexpr Ppdbm(uint32_t dim, uint32_t param): _dim{dim}, _param{param}, _dbm{dim},
+        Ppdbm(uint32_t dim, uint32_t param, bool init = false):
+        _dim{dim},
+        _param{param},
+        _dbm{dim},
         _offsetCost(param + 1),
-        _rates(dim, param + 1, 0) {}
+        _rates(dim, param + 1, INF)
+        {
+            if (init)
+                for (uint32_t i = 0; i < _dim; ++i) {_dbm(i,0) = ZERO_BOUND;}
+        }
 
         constexpr uint32_t getDim() const { return _dim; }
         constexpr uint32_t getParam() const { return _param; }
@@ -188,6 +199,7 @@ namespace PPDBM
         constexpr const std::vector<int>& getOffsetCost() const { return _offsetCost; }
         constexpr DbmBound& operator()(int i, int j) { return _dbm(i, j); }
         constexpr const DbmBound& operator()(int i, int j) const { return _dbm(i, j); }
+        void display() const;
 
         constexpr bool isEmpty() const { return _emptyZone; }
         void reset();
@@ -198,10 +210,12 @@ namespace PPDBM
         bool constrain_DBM_N(const std::vector<DbmConstraint>& constraints);
         std::vector<int> costAtOtherOffset(const DBMatrix& otherDbm) const;
         CostVector getSlope() const;
-        void addConstantCost(const CostVector& q);
+        void addConstantCost(const std::vector<uint32_t>& q);
+        static bool alreadyCoveredBy(std::pair<uint32_t, Ppdbm> symbolicState,
+        const std::vector<std::pair<uint32_t, Ppdbm>>& symbolicStateListe);
 
         /// Delay operation on a facet put in the form Z \land (clock - otherClock = value).
-        void delay(uint32_t clock, CostVector c);
+        void delay(uint32_t clock, const CostVector& c);
         void delay();
         /// clock reset operation on a facet put in the form Z \land (clockToReset - otherClock = value).
         void clockReset(uint32_t clockToReset, DbmConstraint facetConstraint);
@@ -211,16 +225,17 @@ namespace PPDBM
         std::vector<Facet> lowerFacetsRelativeTo(uint32_t clock) const;
         std::vector<Facet> upperFacetsRelativeTo(uint32_t clock) const;
 
-        /// operator post, computes the succesors of the ppdbm by delay.
-        std::vector<Ppdbm> post_delta(CostVector p, const std::vector<DbmConstraint>& J);
+        /// operator post, computes the successors of the ppdbm by delay.
+        std::vector<Ppdbm> post_delta(CostVector p, const std::vector<DbmConstraint>& J) const;
         /// operator post, computes the succesors of the ppdbm by transition e.
-        std::vector<Ppdbm> post_e(const std::vector<DbmConstraint>& g, std::optional<uint32_t> resetClock, const CostVector& q) const;
-
+        std::vector<Ppdbm> post_e(const std::vector<DbmConstraint>& g, uint32_t resetClock, const std::vector<uint32_t>& q) const;
+        ///
+        static std::vector<std::pair<uint32_t,Ppdbm>> post(const std::pair<uint32_t,Ppdbm>& symbolicState, ParamPricedTimedAutomata automaton);
 
         /// Is there a domination relation between the two zones?
         relation_t relation(const Ppdbm& other) const;
         /// Vertices of the zone.
-        constexpr std::vector<Vertex> verticesDBM(const DBMatrix& dbm) const{ return _dbm.verticesDBM(); };
+        constexpr std::vector<Vertex> verticesDBM() const{ return _dbm.verticesDBM(); };
         /// Evaluates the cost vector(coeffs on parameters) of *this* at vertex `v`.
         CostVector costAtVertex(const Vertex& v) const;
         /// a dominates b coefficient by coefficient?
@@ -243,6 +258,65 @@ namespace PPDBM
     {
         Ppdbm _ppdbm;
         DbmConstraint _constraint;
+    };
+
+
+    //////////////////////////////////////////////// automata model ///////////////////////////////////////////////////
+
+    struct Edge
+    {
+        Edge(uint32_t from, uint32_t to, uint32_t clockToReset, const std::vector<PPDBM::DbmConstraint>& guards,
+            std::vector<uint32_t> costFunction = std::vector<uint32_t>{}):
+        _from{from},
+        _to{to},
+        _clockToReset{clockToReset},
+        _guards{guards},
+        _costFunction{std::move(costFunction)} {}
+
+        uint32_t _from;
+        uint32_t _to;
+        uint32_t _clockToReset;
+        std::vector<PPDBM::DbmConstraint> _guards;
+        std::vector<uint32_t> _costFunction;
+    };
+
+    struct ParamPricedTimedAutomata
+    {
+        ParamPricedTimedAutomata(uint32_t nbLocations, uint32_t initLocation, uint32_t nbClocks, uint32_t nbParam,
+            std::vector<Edge> edges, PPDBM::Matrix<PPDBM::DbmBound> inv, PPDBM::Matrix<uint32_t> costs):
+        _nbLocations{nbLocations},
+        _initialLocation{initLocation},
+        _nbClocks{nbClocks},
+        _nbParam{nbParam},
+        _edges{std::move(edges)},
+        _invariants{std::move(inv)},
+        _locationCosts{std::move(costs)} {}
+
+        std::vector<int32_t> getCostFunction(uint32_t location)
+        {
+            std::vector<int32_t> costVector{};
+            for (uint32_t j = 0; j <= _nbParam; ++j) {
+                costVector.push_back(_locationCosts(location,j));
+            }
+            return costVector;
+        };
+
+        std::vector<PPDBM::DbmConstraint> getInvariants(uint32_t location)
+        {
+            std::vector<PPDBM::DbmConstraint> invariantsVector{};
+            for (uint32_t j = 0; j <= _nbClocks; ++j) {
+                if (_invariants(location,j).getValue() != PPDBM::INF) invariantsVector.push_back(PPDBM::DbmConstraint{j,0, _invariants(location,j)});
+            }
+            return invariantsVector;
+        }
+
+        uint32_t _nbLocations;
+        uint32_t _initialLocation;
+        uint32_t _nbClocks;
+        uint32_t _nbParam;
+        std::vector<Edge> _edges;
+        PPDBM::Matrix<PPDBM::DbmBound> _invariants;
+        PPDBM::Matrix<uint32_t> _locationCosts;
     };
 } // namespace PPDBM
 
