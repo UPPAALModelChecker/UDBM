@@ -18,3 +18,6 @@ target_include_directories(UDBM
         # where external projects will look for the library's public headers
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+
+add_executable(param_reachability ParametricOptimalReachability.cpp)
+target_link_libraries(param_reachability PRIVATE UDBM glpk)

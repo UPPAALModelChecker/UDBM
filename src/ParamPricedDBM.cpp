@@ -14,7 +14,6 @@
 
 namespace PPDBM
 {
-
     /**
      *
      */
@@ -161,6 +160,49 @@ namespace PPDBM
 
         glp_delete_prob(lp);
         return empty;
+    }
+
+    /**
+     * negation of a constraint: a0 + sum a_i p_i <= 0  (resp. < 0)
+     *                becomes    a0 + sum a_i p_i >  0  (resp. >= 0)
+     *                     i.e. -a0 - sum a_i p_i < 0   (resp. <= 0)
+     */
+    static ParametricConstraint negate(const ParametricConstraint& c)
+    {
+        std::vector<int> negCoeffs(c.getCoeffs().size());
+        for (size_t k = 0; k < negCoeffs.size(); ++k)
+            negCoeffs[k] = -c.getCoeffs()[k];
+        return ParametricConstraint{negCoeffs, !c.getStrict()};
+    }
+
+    /**
+     * removes redundant constraints: a constraint is redundant if the rest of the
+     * polyhedron already forbids violating it (i.e. rest ∧ ¬c is empty).
+     * checked against the progressively-reduced set so mutually-redundant pairs
+     * don't both get removed.
+     */
+    void Polyhedron::minimize()
+    {
+        std::vector<ParametricConstraint> kept;
+        kept.reserve(_constraints.size());
+
+        for (size_t i = 0; i < _constraints.size(); ++i) {
+            Polyhedron test;
+            for (const auto& c : kept) test.addParametricConstraint(c);
+            for (size_t j = i + 1; j < _constraints.size(); ++j)
+                test.addParametricConstraint(_constraints[j]);
+            test.addParametricConstraint(negate(_constraints[i]));
+
+            if (!test.isEmpty()) {
+                // there's a point satisfying everything else but violating c_i
+                // => c_i is NOT implied, we must keep it
+                kept.push_back(_constraints[i]);
+            }
+            // else: test is empty => impossible to violate c_i without violating
+            // something already kept/remaining => c_i is redundant, drop it
+        }
+
+        _constraints = std::move(kept);
     }
 
 
@@ -558,11 +600,7 @@ namespace PPDBM
         CostVector slope(_param + 1,0);
         for (uint32_t i = 1; i < _dim; ++i) {
             for (uint32_t j = 0; j < _param + 1; ++j) {
-                if (_rates(i,j) == INF) {
-                    slope[j] = INF;
-                } else {
-                    slope[j] += _rates(i,j);
-                }
+                slope[j] += _rates(i,j);
             }
         }
         return slope;
@@ -1101,6 +1139,205 @@ namespace PPDBM
         std::sort(vertices.begin(), vertices.end());
         vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end());
         return vertices;
+    }
+
+
+
+    /////////////////////////////////////////////////// result manipulation ///////////////////////////////////////////
+
+
+    /**
+     * is the feasible set of A included in that of B?
+     * true iff, for every constraint c of B, no point of A can violate c.
+     */
+    static bool polyhedronIncludedIn(const std::vector<ParametricConstraint>& A,
+                                      const std::vector<ParametricConstraint>& B)
+    {
+        for (const auto& cb : B) {
+            Polyhedron test;
+            for (const auto& ca : A) test.addParametricConstraint(ca);
+            test.addParametricConstraint(negate(cb));
+            if (!test.isEmpty()) return false; // found a point of A violating cb
+        }
+        return true;
+    }
+
+    /**
+     * do two Ppdbm have the exact same cost function (offset + rates)?
+     */
+    static bool sameCost(const Ppdbm& a, const Ppdbm& b)
+    {
+        return a.getOffsetCost() == b.getOffsetCost() &&
+               a.getRates().getData() == b.getRates().getData();
+    }
+
+    /**
+     * removes results that are redundant: same cost function AND region included
+     * in another kept result's region. Keeps the more general one.
+     */
+    std::vector<Ppdbm> Ppdbm::pruneRedundant(std::vector<Ppdbm> results)
+    {
+        std::vector<bool> removed(results.size(), false);
+
+        for (size_t i = 0; i < results.size(); ++i) {
+            if (removed[i]) continue;
+            for (size_t j = i + 1; j < results.size(); ++j) {
+                if (removed[j]) continue;
+                if (!sameCost(results[i], results[j])) continue;
+
+                const auto& pcI = results[i].getPC().getConstraints();
+                const auto& pcJ = results[j].getPC().getConstraints();
+
+                const bool iInJ = polyhedronIncludedIn(pcI, pcJ);
+                const bool jInI = polyhedronIncludedIn(pcJ, pcI);
+
+                if (iInJ && jInI) {
+                    removed[j] = true;      // identical regions, drop the duplicate
+                } else if (iInJ) {
+                    removed[i] = true;      // i is a special case of j, same cost -> drop i
+                    break;                  // i is gone, stop comparing it further
+                } else if (jInI) {
+                    removed[j] = true;      // j is a special case of i, same cost -> drop j
+                }
+                // else: neither included in the other -> keep both
+            }
+        }
+
+        std::vector<Ppdbm> kept;
+        for (size_t i = 0; i < results.size(); ++i)
+            if (!removed[i]) kept.push_back(std::move(results[i]));
+        return kept;
+    }
+
+    using PCList = std::vector<ParametricConstraint>;
+
+    static bool pcEmpty(const PCList& pc)
+    {
+        Polyhedron p;
+        for (const auto& c : pc) p.addParametricConstraint(c);
+        return p.isEmpty();
+    }
+
+    static PCList pcAnd(const PCList& a, const PCList& b)
+    {
+        PCList out = a;
+        out.insert(out.end(), b.begin(), b.end());
+        return out;
+    }
+
+    static CostVector costDiff(const CostVector& a, const CostVector& b)
+    {
+        CostVector r(a.size());
+        for (size_t k = 0; k < a.size(); ++k) r[k] = a[k] - b[k];
+        return r;
+    }
+
+    /// A \ B : classic complement-of-convex decomposition into disjoint convex fragments.
+    static std::vector<PCList> subtractRegion(const PCList& A, const PCList& B)
+    {
+        std::vector<PCList> result;
+        PCList satisfiedSoFar; // constraints of B already forced true in previous branches
+        for (const auto& bc : B) {
+            PCList fragment = pcAnd(A, satisfiedSoFar);
+            fragment.push_back(negate(bc)); // this branch violates bc
+            if (!pcEmpty(fragment)) result.push_back(std::move(fragment));
+            satisfiedSoFar.push_back(bc);
+        }
+        return result;
+    }
+
+    std::vector<OptimalRegion> resolveOptimalPartition(const std::vector<Ppdbm>& results)
+    {
+        struct Group { CostVector cost; std::vector<PCList> fragments; };
+        std::vector<Group> groups;
+
+        for (const auto& r : results) {
+            const auto& cost = r.getOffsetCost();
+            auto it = std::find_if(groups.begin(), groups.end(),
+                                    [&](const Group& g) { return g.cost == cost; });
+            if (it == groups.end()) groups.push_back({cost, {r.getPC().getConstraints()}});
+            else it->fragments.push_back(r.getPC().getConstraints());
+        }
+
+        // snapshot of each group's ORIGINAL region, used as the fixed conflict source
+        std::vector<std::vector<PCList>> original;
+        for (const auto& g : groups) original.push_back(g.fragments);
+
+        auto refine = [&](std::vector<PCList>& fragments, const std::vector<PCList>& otherOriginal,
+                           const ParametricConstraint& winCondition) {
+            for (const auto& otherFragment : otherOriginal) {
+                std::vector<PCList> nextGen;
+                for (const auto& piece : fragments) {
+                    PCList overlap = pcAnd(piece, otherFragment);
+                    if (pcEmpty(overlap)) { nextGen.push_back(piece); continue; }
+
+                    for (auto& outside : subtractRegion(piece, otherFragment))
+                        nextGen.push_back(std::move(outside));
+
+                    PCList winningPart = overlap;
+                    winningPart.push_back(winCondition);
+                    if (!pcEmpty(winningPart)) nextGen.push_back(std::move(winningPart));
+                }
+                fragments = std::move(nextGen);
+            }
+        };
+
+        for (size_t i = 0; i < groups.size(); ++i) {
+            for (size_t j = i + 1; j < groups.size(); ++j) {
+                const CostVector diff = costDiff(groups[i].cost, groups[j].cost);
+                const ParametricConstraint iWinsOrTie{diff, false};      // cost_i <= cost_j
+                const ParametricConstraint jWinsStrict = negate(iWinsOrTie); // cost_i >  cost_j
+
+                refine(groups[i].fragments, original[j], iWinsOrTie);
+                refine(groups[j].fragments, original[i], jWinsStrict);
+            }
+        }
+
+        std::vector<OptimalRegion> out;
+        for (const auto& g : groups)
+            for (const auto& f : g.fragments)
+                if (!pcEmpty(f)) out.push_back({g.cost, f});
+        return out;
+    }
+
+
+    void Polyhedron::printPolyhedron(const std::vector<ParametricConstraint>& constraints)
+    {
+        for (const auto& c : constraints) {
+            const auto& coeffs = c.getCoeffs();
+            std::cout << "  ";
+            bool first = true;
+            for (size_t k = 0; k < coeffs.size(); ++k) {
+                if (coeffs[k] == 0) continue;
+                if (!first) std::cout << " + ";
+                if (k == 0) std::cout << coeffs[k];
+                else std::cout << coeffs[k] << "*p" << k;
+                first = false;
+            }
+            if (first) std::cout << "0";
+            std::cout << (c.getStrict() ? " < 0" : " <= 0") << "\n";
+        }
+    }
+
+    std::vector<OptimalRegion> OptimalRegion::pruneRedundantRegions(std::vector<OptimalRegion> regions)
+    {
+        std::vector<bool> removed(regions.size(), false);
+        for (size_t i = 0; i < regions.size(); ++i) {
+            if (removed[i]) continue;
+            for (size_t j = i + 1; j < regions.size(); ++j) {
+                if (removed[j] || regions[i].cost != regions[j].cost) continue;
+                if (polyhedronIncludedIn(regions[i].constraints, regions[j].constraints)) {
+                    removed[i] = true; break;
+                }
+                if (polyhedronIncludedIn(regions[j].constraints, regions[i].constraints)) {
+                    removed[j] = true;
+                }
+            }
+        }
+        std::vector<OptimalRegion> kept;
+        for (size_t i = 0; i < regions.size(); ++i)
+            if (!removed[i]) kept.push_back(std::move(regions[i]));
+        return kept;
     }
 }// namespace PPBDM
 

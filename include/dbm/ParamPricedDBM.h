@@ -17,7 +17,19 @@ namespace PPDBM
     ///to facilitate notations
     using Vertex     = std::vector<uint32_t>; // size _dim, clock valuations
     using CostVector = std::vector<int32_t>; // size _param + 1, coeffs on parameters
+    ///copied from relation.h because include problems otherwise
+    using relation_t = enum {                     /*   EXACT relation   | NON EXACT relation */
+        /*--------------------|--------------------*/
+        base_DIFFERENT = 0, /**< incomparable     | not (set1 <= set2) */
+        base_SUPERSET = 1,  /**< set1 > set2      | not used           */
+        base_GREATER = 1,   /**< same as superset |                    */
+        base_SUBSET = 2,    /**< set1 < set2      | set1 <= set2       */
+        base_LESS = 2,      /**< same as subset   |                    */
+        base_EQUAL = 3      /**< set1 == set2     | not used           */
+    };
+    ///to represent infinity
     constexpr auto INF = std::numeric_limits<int32_t>::max() >> 1u;
+
 
     /// generic matrix type (used everywhere)
     template <typename T>
@@ -64,6 +76,9 @@ namespace PPDBM
         { _constraints.push_back(constraint); }
 
         bool isEmpty();
+        /// removes every constraint implied by the others (does not change the represented set)
+        void minimize();
+        static void printPolyhedron(const std::vector<ParametricConstraint>& constraints);
     private:
         std::vector<ParametricConstraint> _constraints;
     };
@@ -151,8 +166,6 @@ namespace PPDBM
         void relaxUpClock(uint32_t clock);
         std::vector<uint32_t> findLinkedClocks() const;
 
-
-
         relation_t relation(const DBMatrix& other) const; ///< pure zone comparison (no cost involved).
         std::vector<Vertex> verticesDBM() const;
 
@@ -183,7 +196,7 @@ namespace PPDBM
         _param{param},
         _dbm{dim},
         _offsetCost(param + 1),
-        _rates(dim, param + 1, INF)
+        _rates(dim, param + 1, 0)
         {
             if (init)
                 for (uint32_t i = 0; i < _dim; ++i) {_dbm(i,0) = ZERO_BOUND;}
@@ -244,6 +257,9 @@ namespace PPDBM
         /// Compare two lists of cost vectors aligned vertex by vertex.
         static relation_t compareCostLists(const std::vector<CostVector>& c1, const std::vector<CostVector>& c2);
 
+        /// removes every result whose (cost, region) is subsumed by another result with the SAME cost function
+        static std::vector<Ppdbm> pruneRedundant(std::vector<Ppdbm> results);
+
     private:
         uint32_t _dim, _param = 0; // number of clocks and parameters
         DBMatrix _dbm; // the classic zone
@@ -260,13 +276,27 @@ namespace PPDBM
         DbmConstraint _constraint;
     };
 
+    struct OptimalRegion
+    {
+        static std::vector<OptimalRegion> pruneRedundantRegions(std::vector<OptimalRegion> regions);
+
+        CostVector cost;
+        std::vector<ParametricConstraint> constraints;
+    };
+
+    /// splits a set of (cost, region) results into the regions where each cost is
+    /// actually the minimum among all of them (the "lower envelope").
+    std::vector<OptimalRegion> resolveOptimalPartition(const std::vector<Ppdbm>& results);
+
+
+
 
     //////////////////////////////////////////////// automata model ///////////////////////////////////////////////////
 
     struct Edge
     {
         Edge(uint32_t from, uint32_t to, uint32_t clockToReset, const std::vector<PPDBM::DbmConstraint>& guards,
-            std::vector<uint32_t> costFunction = std::vector<uint32_t>{}):
+            std::vector<uint32_t> costFunction):
         _from{from},
         _to{to},
         _clockToReset{clockToReset},
@@ -318,6 +348,8 @@ namespace PPDBM
         PPDBM::Matrix<PPDBM::DbmBound> _invariants;
         PPDBM::Matrix<uint32_t> _locationCosts;
     };
+
+
 } // namespace PPDBM
 
 #endif

@@ -2,13 +2,14 @@
 
 #include <cstdint>
 #include <vector>
+#include <iostream>
 
 
 int main()
 {
     // the goal of what follows is to modelize the following automaton:  --> (0, +p1) ------> (1,+p2)
     //                                                                           \              /
-    //                                                                      x<=3  \            /  x<=3
+    //                                                                      x>=3  \            /  x>=3
     //                                                                             \          /
     //                                                                              \        /
     //                                                                               \/    \/
@@ -19,7 +20,7 @@ int main()
     uint32_t nbParam = 2;
 
     // x - x0 <= 3
-    auto guard = PPDBM::DbmConstraint{1,0,PPDBM::DbmBound{3,false}};
+    auto guard = PPDBM::DbmConstraint{0,1,PPDBM::DbmBound{-3,false}};
     auto guards = std::vector<PPDBM::DbmConstraint>{};
     guards.emplace_back(guard);
 
@@ -27,9 +28,10 @@ int main()
     uint32_t clockToReset = 0;
 
     // edges
-    auto edge01 = PPDBM::Edge{0,1,clockToReset,std::vector<PPDBM::DbmConstraint>{}};
-    auto edge02 = PPDBM::Edge{0,2,clockToReset,guards};
-    auto edge12 = PPDBM::Edge{1,2,clockToReset,guards};
+    auto defaultCost = std::vector<uint32_t>(nbParam + 1,0);
+    auto edge01 = PPDBM::Edge{0,1,clockToReset,std::vector<PPDBM::DbmConstraint>{},defaultCost};
+    auto edge02 = PPDBM::Edge{0,2,clockToReset,guards,defaultCost};
+    auto edge12 = PPDBM::Edge{1,2,clockToReset,guards,defaultCost};
     auto edges = std::vector<PPDBM::Edge>{edge01,edge02, edge12};
 
     // invariants (none for the example)
@@ -46,8 +48,11 @@ int main()
     // algo:
     auto RES = std::vector<PPDBM::Ppdbm>{};
     auto PASSED = std::vector<std::pair<uint32_t,PPDBM::Ppdbm>>{};
-    auto WAITING = std::vector<std::pair<uint32_t,PPDBM::Ppdbm>>{std::make_pair(0,PPDBM::Ppdbm{nbClocks + 1,nbParam,true})};
-    WAITING[0].second = WAITING[0].second.post_delta(automaton.getCostFunction(0), automaton.getInvariants(0))[0];
+    auto WAITING = std::vector<std::pair<uint32_t,PPDBM::Ppdbm>>{std::make_pair(initLocation,PPDBM::Ppdbm{nbClocks + 1,nbParam,true})};
+    auto [location, initPpdbm] = WAITING[0];
+    for (auto ppdbm : initPpdbm.post_delta(automaton.getCostFunction(location), automaton.getInvariants(location))) {
+        WAITING.emplace_back(location,ppdbm);
+    }
 
     while (WAITING.size()>0) {
         auto symbolicState = WAITING.back();
@@ -65,8 +70,33 @@ int main()
         }
     }
 
+
+    // results displaying
+    /*
+    // RES = PPDBM::Ppdbm::pruneRedundant(std::move(RES));
     for (auto res : RES) {
+        // res.getPC().minimize();
         res.display();
+    }
+    */
+
+    RES = PPDBM::Ppdbm::pruneRedundant(std::move(RES));
+    for (auto& res : RES) res.getPC().minimize();
+
+    auto optimal = PPDBM::resolveOptimalPartition(RES);
+    optimal = PPDBM::OptimalRegion::pruneRedundantRegions(std::move(optimal));
+
+    std::cout << "\n\n========== OPTIMAL PARTITION ==========\n";
+    for (auto& region : optimal) {
+        PPDBM::Polyhedron p;
+        for (auto& c : region.constraints) p.addParametricConstraint(c);
+        p.minimize();
+
+        std::cout << "cost = [ ";
+        for (auto v : region.cost) std::cout << v << " ";
+        std::cout << "]\nregion:\n";
+        PPDBM::Polyhedron::printPolyhedron(p.getConstraints());
+        std::cout << "---------------------------------------\n";
     }
 
     return 0;
