@@ -1,4 +1,4 @@
-find_package(doctest 2.4.11 QUIET)
+find_package(doctest 2.5.2 QUIET)
 
 if (doctest_FOUND)
   if (TARGET doctest::doctest_with_main)
@@ -25,7 +25,7 @@ else(doctest_FOUND)
     FetchContent_Declare(
             doctest
             GIT_REPOSITORY https://github.com/doctest/doctest
-            GIT_TAG v2.4.11
+            GIT_TAG v2.5.2
             GIT_SHALLOW TRUE # get only the last commit version
             GIT_PROGRESS TRUE # show progress of download
             # FIND_PACKAGE_ARGS NAMES doctest

@@ -1,6 +1,6 @@
 add_library(UDBM STATIC DBMAllocator.cpp dbm.c fed_dbm.cpp mingraph.c mingraph_read.c partition.cpp print.cpp gen.c
         mingraph_cache.cpp mingraph_relation.c pfed.cpp fed.cpp infimum.cpp mingraph_equal.c mingraph_write.c
-        priced.cpp valuation.cpp)
+        priced.cpp valuation.cpp ParamPricedDBM.cpp)
 set_property(TARGET UDBM PROPERTY C_VISIBILITY_PRESET hidden)
 set_property(TARGET UDBM PROPERTY VISIBILITY_INLINES_HIDDEN ON)
 if (NOT CMAKE_SYSTEM_NAME STREQUAL Windows) # unknown argument: '-fno-keep-inline-dllexport'
@@ -18,3 +18,6 @@ target_include_directories(UDBM
         # where external projects will look for the library's public headers
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+
+add_executable(param_reachability ParametricOptimalReachability.cpp)
+target_link_libraries(param_reachability PRIVATE UDBM glpk)
