@@ -563,7 +563,7 @@ TEST_CASE("Ppdbm post_e without reset applies the guard and adds the constant co
     REQUIRE(p.constrain_DBM(1, 0, DbmBound{5, false})); // x1 <= 5
 
     const std::vector<DbmConstraint> g{{1, 0, DbmBound{3, false}}}; // x1 <= 3
-    const auto result = p.post_e(g, std::nullopt, CostVector{7});
+    const auto result = p.post_e(g, 0, std::vector<uint32_t>{7});
 
     REQUIRE(result.size() == 1);
     CHECK_FALSE(result[0].isEmpty());
@@ -578,7 +578,7 @@ TEST_CASE("Ppdbm post_e returns nothing when the guard empties the zone")
     REQUIRE(p.constrain_DBM(0, 1, DbmBound{-1, false})); // x1 >= 1
 
     const std::vector<DbmConstraint> g{{0, 1, DbmBound{-10, false}}}; // x1 >= 10: incompatible
-    const auto result = p.post_e(g, std::nullopt, CostVector{0});
+    const auto result = p.post_e(g, 0, std::vector<uint32_t>{0});
 
     CHECK(result.empty());
 }
@@ -596,7 +596,7 @@ TEST_CASE("Ppdbm post_e with a reset generates the lower- and upper-facet branch
 
     CHECK(p.getOffsetCost() == CostVector{4}); // rates(x1)=2 * lowerbound(x1)=2
 
-    const auto result = p.post_e({}, 1u, CostVector{10}); // no guard, reset x1, edge cost 10
+    const auto result = p.post_e({}, 1u, std::vector<uint32_t>{10}); // no guard, reset x1, edge cost 10
 
     REQUIRE(result.size() == 2); // one branch per facet relative to x1 (lower then upper)
 

@@ -1,6 +1,6 @@
 # dbm tests...
 
-set(libs UDBM UUtils::base)
+set(libs UDBM UUtils::base glpk)
 
 file(GLOB test_c_sources "test_*.c" "test_allocation.cpp")
 foreach(source ${test_c_sources})

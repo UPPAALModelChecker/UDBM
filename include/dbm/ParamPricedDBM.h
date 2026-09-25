@@ -18,15 +18,7 @@ namespace PPDBM
     using Vertex     = std::vector<uint32_t>; // size _dim, clock valuations
     using CostVector = std::vector<int32_t>; // size _param + 1, coeffs on parameters
     ///copied from relation.h because include problems otherwise
-    using relation_t = enum {                     /*   EXACT relation   | NON EXACT relation */
-        /*--------------------|--------------------*/
-        base_DIFFERENT = 0, /**< incomparable     | not (set1 <= set2) */
-        base_SUPERSET = 1,  /**< set1 > set2      | not used           */
-        base_GREATER = 1,   /**< same as superset |                    */
-        base_SUBSET = 2,    /**< set1 < set2      | set1 <= set2       */
-        base_LESS = 2,      /**< same as subset   |                    */
-        base_EQUAL = 3      /**< set1 == set2     | not used           */
-    };
+
     ///to represent infinity
     constexpr auto INF = std::numeric_limits<int32_t>::max() >> 1u;
 
@@ -126,7 +118,7 @@ namespace PPDBM
 
 
     /**
-     *
+     * xi - xj <= value
      */
     struct DbmConstraint
     {
@@ -143,7 +135,7 @@ namespace PPDBM
      */
     struct DBMatrix
     {
-        constexpr DBMatrix(uint32_t dim) : _matrix{dim, dim, INF_BOUND}
+        DBMatrix(uint32_t dim) : _matrix{dim, dim, INF_BOUND}
         {
             for (uint32_t i = 0; i < dim; ++i) { _matrix(i, i) = ZERO_BOUND; _matrix(0,i) = ZERO_BOUND; }
         }
@@ -196,10 +188,17 @@ namespace PPDBM
         _param{param},
         _dbm{dim},
         _offsetCost(param + 1),
-        _rates(dim, param + 1, 0)
+        _rates(dim, param + 1, 0),
+        _PC(Polyhedron())
         {
-            if (init)
+            if (init) {
                 for (uint32_t i = 0; i < _dim; ++i) {_dbm(i,0) = ZERO_BOUND;}
+                for (uint32_t i = 1; i <= _param; ++i) {
+                    auto temp = std::vector<int>(_param + 1,0);
+                    temp[i] = -1;
+                    _PC.addParametricConstraint(ParametricConstraint(temp,false));
+                }
+            }
         }
 
         constexpr uint32_t getDim() const { return _dim; }
@@ -223,6 +222,7 @@ namespace PPDBM
         bool constrain_DBM_N(const std::vector<DbmConstraint>& constraints);
         std::vector<int> costAtOtherOffset(const DBMatrix& otherDbm) const;
         CostVector getSlope() const;
+        bool hasUnboundedDelay() const;
         void addConstantCost(const std::vector<uint32_t>& q);
         static bool alreadyCoveredBy(std::pair<uint32_t, Ppdbm> symbolicState,
         const std::vector<std::pair<uint32_t, Ppdbm>>& symbolicStateListe);
@@ -239,11 +239,11 @@ namespace PPDBM
         std::vector<Facet> upperFacetsRelativeTo(uint32_t clock) const;
 
         /// operator post, computes the successors of the ppdbm by delay.
-        std::vector<Ppdbm> post_delta(CostVector p, const std::vector<DbmConstraint>& J) const;
+        std::vector<Ppdbm> post_delta(CostVector p, const std::vector<DbmConstraint>& J, bool init = false) const;
         /// operator post, computes the succesors of the ppdbm by transition e.
         std::vector<Ppdbm> post_e(const std::vector<DbmConstraint>& g, uint32_t resetClock, const std::vector<uint32_t>& q) const;
         ///
-        static std::vector<std::pair<uint32_t,Ppdbm>> post(const std::pair<uint32_t,Ppdbm>& symbolicState, ParamPricedTimedAutomata automaton);
+        static std::vector<std::pair<uint32_t,Ppdbm>> post(const std::pair<uint32_t,Ppdbm>& symbolicState, ParamPricedTimedAutomata automaton, uint32_t target);
 
         /// Is there a domination relation between the two zones?
         relation_t relation(const Ppdbm& other) const;
@@ -284,9 +284,15 @@ namespace PPDBM
         std::vector<ParametricConstraint> constraints;
     };
 
+    using PCList = std::vector<ParametricConstraint>;
+
+    struct CostCandidate { CostVector cost; PCList region; };
+
+    std::vector<CostCandidate> buildCandidates(const std::vector<Ppdbm>& results);
+
     /// splits a set of (cost, region) results into the regions where each cost is
     /// actually the minimum among all of them (the "lower envelope").
-    std::vector<OptimalRegion> resolveOptimalPartition(const std::vector<Ppdbm>& results);
+    std::vector<OptimalRegion> resolveOptimalPartition(const std::vector<CostCandidate>& candidates);
 
 
 
@@ -295,7 +301,7 @@ namespace PPDBM
 
     struct Edge
     {
-        Edge(uint32_t from, uint32_t to, uint32_t clockToReset, const std::vector<PPDBM::DbmConstraint>& guards,
+        Edge(uint32_t from, uint32_t to, uint32_t clockToReset, const std::vector<DbmConstraint>& guards,
             std::vector<uint32_t> costFunction):
         _from{from},
         _to{to},
@@ -306,7 +312,7 @@ namespace PPDBM
         uint32_t _from;
         uint32_t _to;
         uint32_t _clockToReset;
-        std::vector<PPDBM::DbmConstraint> _guards;
+        std::vector<DbmConstraint> _guards;
         std::vector<uint32_t> _costFunction;
     };
 

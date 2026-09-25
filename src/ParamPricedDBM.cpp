@@ -494,8 +494,7 @@ namespace PPDBM
 
         for (uint32_t i = 1; i < _dim; ++i) {
             if (next[i] != 0) continue;
-            if (isRedundant(relaxed._dbm, 0, i, next))
-                continue; // Facet covered by others
+            if (isRedundant(relaxed._dbm, 0, i, next)) continue; // Facet covered by others
 
             Ppdbm facetZone = relaxed;
             const auto lower = relaxed(0, i);          // x0 - xi <= -L_i already set
@@ -607,6 +606,18 @@ namespace PPDBM
     }
 
     /**
+     *
+     * @return
+     */
+    bool Ppdbm::hasUnboundedDelay() const
+    {
+        for (uint32_t i = 1; i < _dim; ++i) {
+            if (_dbm(i, 0).isInfinite()) return true;
+        }
+        return false;
+    }
+
+    /**
      * suppress the clock constraints of the form x_i <= w. Delay operation on a facet.
      * @param clock
      * @param c
@@ -667,9 +678,11 @@ namespace PPDBM
      * returns every successor by delay
      * @param p
      * @param J
+     * @param init
+     * @param reset
      * @return
      */
-    std::vector<Ppdbm> Ppdbm::post_delta(CostVector p, const std::vector<DbmConstraint>& J) const
+    std::vector<Ppdbm> Ppdbm::post_delta(CostVector p, const std::vector<DbmConstraint>& J, bool init) const
     {
         std::vector<Ppdbm> result;
 
@@ -686,8 +699,9 @@ namespace PPDBM
                 auto [ppdbm, constraint] = f;
                 ppdbm.delay(constraint.i, p);
                 ppdbm.constrain_DBM_N(J);
-                ppdbm.getPC().addParametricConstraint(pconstraint);
+                //ppdbm.getPC().addParametricConstraint(pconstraint);
                 result.push_back(std::move(ppdbm));
+                if (init) break;
             }
         }
         {
@@ -698,17 +712,20 @@ namespace PPDBM
             }
             ParametricConstraint pconstraint{temp,true};
 
-            Ppdbm copy = *this;
-            copy.getPC().addParametricConstraint(pconstraint);
-            result.push_back(std::move(copy));
+            if (!init) {
+                Ppdbm copy = *this;
+                //copy.getPC().addParametricConstraint(pconstraint);
+                result.push_back(std::move(copy));
+            }
 
             std::vector<Facet> UF = upperFacets();
             for (Facet f : UF ) {
                 auto [ppdbm, constraint] = f;
                 ppdbm.delay(constraint.i, p);
                 ppdbm.constrain_DBM_N(J);
-                ppdbm.getPC().addParametricConstraint(pconstraint);
+                //ppdbm.getPC().addParametricConstraint(pconstraint);
                 result.push_back(std::move(ppdbm));
+                if (init) break;
             }
         }
         return result;
@@ -716,7 +733,7 @@ namespace PPDBM
 
     /**
      * returns every successor by transition e = (l, g, {x}, l'), with edge cost q.
-     * resetClock = std::nullopt si e ne reset aucune horloge.
+     * resetClock = 0 si e ne reset aucune horloge.
      */
     std::vector<Ppdbm> Ppdbm::post_e(const std::vector<DbmConstraint>& g, uint32_t resetClock, const std::vector<uint32_t>& q) const
     {
@@ -769,7 +786,7 @@ namespace PPDBM
     }
 
 
-    std::vector<std::pair<uint32_t,Ppdbm>> Ppdbm::post(const std::pair<uint32_t,Ppdbm>& symbolicState, ParamPricedTimedAutomata automaton)
+    std::vector<std::pair<uint32_t,Ppdbm>> Ppdbm::post(const std::pair<uint32_t,Ppdbm>& symbolicState, ParamPricedTimedAutomata automaton, uint32_t target)
     {
         // will contain the successors by transition + delay
         auto result = std::vector<std::pair<uint32_t,Ppdbm>>{};
@@ -785,9 +802,14 @@ namespace PPDBM
             }
         }
         for (auto state : temp) {
-            auto successors = state.second.post_delta(automaton.getCostFunction(state.first),automaton.getInvariants(state.first));
+            auto [to,ppdbm] = state;
+            if (to == target) {
+                result.emplace_back(to, std::move(ppdbm)); // pas de delta sur l'état cible
+                continue;
+            }
+            auto successors = ppdbm.post_delta(automaton.getCostFunction(to),automaton.getInvariants(to));
             for (auto successor : successors) {
-                result.emplace_back(state.first,successor);
+                result.emplace_back(to,successor);
             }
         }
         return result;
@@ -920,6 +942,10 @@ namespace PPDBM
                 c1.push_back(costAtVertex(v));
                 c2.push_back(other.costAtVertex(v));
             }
+            if (hasUnboundedDelay()) {
+                c1.push_back(getSlope());
+                c2.push_back(other.getSlope());
+            }
             return compareCostLists(c1, c2);
         }
 
@@ -932,6 +958,10 @@ namespace PPDBM
             for (const auto& v : vertices) {
                 c1.push_back(costAtVertex(v));
                 c2.push_back(other.costAtVertex(v));
+            }
+            if (other.hasUnboundedDelay()) {
+                c1.push_back(getSlope());
+                c2.push_back(other.getSlope());
             }
             auto costRel = compareCostLists(c1, c2);
             return (costRel == base_SUPERSET) ? base_SUPERSET : base_DIFFERENT;
@@ -946,6 +976,10 @@ namespace PPDBM
             for (const auto& v : vertices) {
                 c1.push_back(costAtVertex(v));
                 c2.push_back(other.costAtVertex(v));
+            }
+            if (hasUnboundedDelay()) {
+                c1.push_back(getSlope());
+                c2.push_back(other.getSlope());
             }
             auto costRel = compareCostLists(c1, c2);
             return (costRel == base_SUBSET) ? base_SUBSET : base_DIFFERENT;
@@ -968,7 +1002,10 @@ namespace PPDBM
         auto [location, ppdbm] = symbolicState;
         for (auto state : symbolicStateListe) {
             auto [previousLocation, previousPpdbm] = state;
-            if (location == previousLocation && ppdbm.relation(previousPpdbm) == base_SUBSET) { return true; }
+            if (location == previousLocation) {
+                auto rel = ppdbm.relation(previousPpdbm);
+                if (rel == base_SUBSET || rel == base_EQUAL) { return true; }
+            }
         }
         return false;
     }
@@ -1209,8 +1246,6 @@ namespace PPDBM
         return kept;
     }
 
-    using PCList = std::vector<ParametricConstraint>;
-
     static bool pcEmpty(const PCList& pc)
     {
         Polyhedron p;
@@ -1246,17 +1281,28 @@ namespace PPDBM
         return result;
     }
 
-    std::vector<OptimalRegion> resolveOptimalPartition(const std::vector<Ppdbm>& results)
+    std::vector<CostCandidate> buildCandidates(const std::vector<Ppdbm>& results)
+    {
+        std::vector<CostCandidate> candidates;
+        for (const auto& r : results) {
+            const auto& region = r.getPC().getConstraints();
+            for (const auto& v : r.verticesDBM())
+                candidates.push_back({ r.costAtVertex(v), region });
+        }
+        return candidates;
+    }
+
+    std::vector<OptimalRegion> resolveOptimalPartition(const std::vector<CostCandidate>& candidates)
     {
         struct Group { CostVector cost; std::vector<PCList> fragments; };
         std::vector<Group> groups;
 
-        for (const auto& r : results) {
-            const auto& cost = r.getOffsetCost();
+        for (const auto& c : candidates) {
+            const auto& cost = c.cost;
             auto it = std::find_if(groups.begin(), groups.end(),
                                     [&](const Group& g) { return g.cost == cost; });
-            if (it == groups.end()) groups.push_back({cost, {r.getPC().getConstraints()}});
-            else it->fragments.push_back(r.getPC().getConstraints());
+            if (it == groups.end()) groups.push_back({cost, {c.region}});
+            else it->fragments.push_back(c.region);
         }
 
         // snapshot of each group's ORIGINAL region, used as the fixed conflict source
@@ -1339,6 +1385,7 @@ namespace PPDBM
             if (!removed[i]) kept.push_back(std::move(regions[i]));
         return kept;
     }
+
 }// namespace PPBDM
 
 
